@@ -1,0 +1,7 @@
+{
+  "name": "JB³Ai Mazanzi Telephone Qualify",
+  "description": "Professional multi-lingual outbound sales qualification engine for Mzanzi Neural Hub.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
