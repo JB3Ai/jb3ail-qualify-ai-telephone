@@ -1,23 +1,29 @@
 import 'dotenv/config';
-import express, { RequestHandler } from 'express';
+import express from 'express';
 import { createServer } from 'http';
 import Twilio from 'twilio';
+import cors from 'cors'; // Added CORS for frontend-backend communication
 import { voiceService } from './services/voiceService';
 import { geminiService } from './services/geminiService';
 import { clientService } from './services/clientService';
 
 const app = express();
 const server = createServer(app);
-const PORT = 3001; // Runs on 3001 to not block your Dashboard (3000)
+const PORT = 3001; 
+
+// Enable CORS for all origins during development to fix "Failed to fetch"
+// Fix: Cast middleware to any to resolve type mismatch with express app.use overloads
+app.use(cors() as any);
 
 const client = Twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );
 
-app.use(express.json());
-// Fix: Added explicit cast to RequestHandler to satisfy Express type overloads
-app.use(express.urlencoded({ extended: true }) as RequestHandler);
+// Fix: Cast middleware to any to resolve type mismatch with express app.use overloads
+app.use(express.json() as any);
+// Fix: Cast middleware to any to resolve type mismatch with express app.use overloads
+app.use(express.urlencoded({ extended: true }) as any);
 
 // 1. Health Check
 app.get('/', (req, res) => {
@@ -31,22 +37,25 @@ app.all('/make-call', async (req, res) => {
     const targetClient = clients.find(c => c.status === 'pending');
 
     if (!targetClient) {
-      return res.status(404).send("No pending clients found.");
+      return res.status(404).json({ success: false, error: "No pending clients found." });
     }
 
     console.log(`☎️ Dialing ${targetClient.name}...`);
 
+    // Ensure DOMAIN is set or fallback to localhost for local testing
+    const domain = process.env.DOMAIN || `localhost:${PORT}`;
+
     const call = await client.calls.create({
       to: targetClient.phone,
       from: process.env.TWILIO_PHONE_NUMBER,
-      url: `https://${process.env.DOMAIN}/voice-handler`,
+      url: `https://${domain}/voice-handler`,
       timeout: 60
     });
 
-    res.send({ success: true, callSid: call.sid });
+    res.json({ success: true, callSid: call.sid });
   } catch (error: any) {
     console.error("Twilio Error:", error);
-    res.status(500).send({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -54,6 +63,7 @@ app.all('/make-call', async (req, res) => {
 app.all('/voice-handler', async (req, res) => {
   const twiml = new Twilio.twiml.VoiceResponse();
   const welcomeText = "Sawubona! This is Zandi from Mzansi Solutions. Am I speaking with the homeowner?";
+  const domain = process.env.DOMAIN || `localhost:${PORT}`;
 
   try {
     const gather = twiml.gather({
@@ -63,7 +73,7 @@ app.all('/voice-handler', async (req, res) => {
       speechTimeout: 'auto'
     });
 
-    gather.play(`https://${process.env.DOMAIN}/audio-stream?text=${encodeURIComponent(welcomeText)}`);
+    gather.play(`https://${domain}/audio-stream?text=${encodeURIComponent(welcomeText)}`);
     twiml.redirect('/voice-handler');
     
     res.type('text/xml');
@@ -78,13 +88,13 @@ app.all('/voice-handler', async (req, res) => {
 app.all('/handle-response', async (req, res) => {
   const twiml = new Twilio.twiml.VoiceResponse();
   const userSpeech = req.body.SpeechResult; 
+  const domain = process.env.DOMAIN || `localhost:${PORT}`;
 
   if (!userSpeech) {
     twiml.redirect('/voice-handler');
     return;
   }
 
-  // Uses the newly added generateResponse method in geminiService
   const aiResponse = await geminiService.generateResponse(userSpeech);
 
   const gather = twiml.gather({
@@ -93,7 +103,7 @@ app.all('/handle-response', async (req, res) => {
     language: 'en-ZA'
   });
 
-  gather.play(`https://${process.env.DOMAIN}/audio-stream?text=${encodeURIComponent(aiResponse)}`);
+  gather.play(`https://${domain}/audio-stream?text=${encodeURIComponent(aiResponse)}`);
 
   res.type('text/xml');
   res.send(twiml.toString());

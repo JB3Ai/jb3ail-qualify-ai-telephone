@@ -1,4 +1,3 @@
-
 export enum Language {
   ENGLISH = 'en',
   AFRIKAANS = 'af',
@@ -14,6 +13,8 @@ export interface LeadData {
   name?: string;
   surname?: string;
   area?: string;
+  billAmount?: string;
+  notes?: string;
   custom_parameters?: Record<string, string>;
 }
 
@@ -60,10 +61,4 @@ export interface ExecutiveTask extends TaskResult {
   timestamp: number;
   draftAction?: string;
   isResolved?: boolean;
-}
-
-export interface LeadData {
-  email?: string;
-  billAmount?: string;
-  notes?: string;
 }
