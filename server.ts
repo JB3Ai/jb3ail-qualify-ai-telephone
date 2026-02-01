@@ -1,3 +1,4 @@
+
 import 'dotenv/config';
 import express from 'express';
 import { createServer } from 'http';
@@ -6,6 +7,8 @@ import cors from 'cors'; // Added CORS for frontend-backend communication
 import { voiceService } from './services/voiceService';
 import { geminiService } from './services/geminiService';
 import { clientService } from './services/clientService';
+// Fix: Import Buffer explicitly for Node.js environments where it might not be globally available in the TypeScript context
+import { Buffer } from 'buffer';
 
 const app = express();
 const server = createServer(app);
@@ -120,6 +123,7 @@ app.get('/audio-stream', async (req, res) => {
       'Content-Type': 'audio/basic',
       'Content-Length': audioBuffer.length
     });
+    // Fix: Use Buffer.from to wrap the Uint8Array for binary transmission in Express
     res.send(Buffer.from(audioBuffer));
   } catch (err) {
     console.error("Audio Fail:", err);
