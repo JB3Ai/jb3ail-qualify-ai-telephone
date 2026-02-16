@@ -37,10 +37,14 @@ app.get('/', (req, res) => {
 app.all('/make-call', async (req, res) => {
   try {
     const clients = clientService.getClients();
-    const targetClient = clients.find(c => c.status === 'pending');
+    // Fix: Use clientId from request body if available, fallback to first pending client
+    const clientId = req.body.clientId;
+    const targetClient = clientId 
+      ? clients.find(c => c.id === clientId)
+      : clients.find(c => c.status === 'pending');
 
     if (!targetClient) {
-      return res.status(404).json({ success: false, error: "No pending clients found." });
+      return res.status(404).json({ success: false, error: "No client found to dial." });
     }
 
     console.log(`☎️ Dialing ${targetClient.name}...`);

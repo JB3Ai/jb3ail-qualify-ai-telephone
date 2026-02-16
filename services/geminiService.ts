@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Modality, Type, LiveServerMessage, Blob } from "@google/genai";
 import { Client, Language, LeadData, CallConfig } from "../types";
 
@@ -115,8 +116,9 @@ export class GeminiLiveService {
 
   async extractLeadData(transcript: string, config: CallConfig): Promise<{ status: 'qualified' | 'failed', data: LeadData, languageUsed: string }> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Upgrade to gemini-3-pro-preview for complex reasoning tasks like transcript analysis
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: `Analyze this qualification transcript. 
       Target Company: ${config.companyName}
       Requested Parameters: ${config.parameters.join(', ')}
@@ -140,7 +142,11 @@ export class GeminiLiveService {
                 email: { type: Type.STRING },
                 phone: { type: Type.STRING },
                 marketingPreference: { type: Type.STRING, enum: ['email', 'sms', 'none'] },
-                custom_parameters: { type: Type.OBJECT }
+                // Fix: Type.OBJECT must have properties. Changing to string for flexible JSON capture of dynamic parameters.
+                custom_parameters_json: { 
+                  type: Type.STRING, 
+                  description: "A JSON string containing any extra parameters captured that were not in the standard fields."
+                }
               }
             }
           },
@@ -151,6 +157,14 @@ export class GeminiLiveService {
 
     try {
       const result = JSON.parse(response.text || '{}');
+      // Re-map the custom_parameters if needed
+      if (result.data.custom_parameters_json) {
+        try {
+          result.data.custom_parameters = JSON.parse(result.data.custom_parameters_json);
+        } catch (e) {
+          console.warn("Failed to parse custom_parameters_json");
+        }
+      }
       return {
         status: result.status,
         data: result.data,

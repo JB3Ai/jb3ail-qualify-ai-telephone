@@ -10,9 +10,21 @@ const DEFAULT_CLIENTS: Client[] = [
     area: "Gauteng",
     phone: "+27820000000", 
     signup_date: "2023-10-27", 
-    status: "pending", 
+    status: "qualified", 
     language: Language.ZULU,
-    collected_data: {} 
+    collected_data: {
+      email: "thabo.m@example.co.za",
+      phone: "+27820000000",
+      marketingPreference: "email"
+    },
+    transcript: [
+      { role: 'model', text: "Sawubona! This is Zandi from Mzansi Solutions. Am I speaking with Thabo?", timestamp: 1698400000000 },
+      { role: 'user', text: "Yebo, ninjani? Yes, this is Thabo speaking.", timestamp: 1698400005000 },
+      { role: 'model', text: "Sikhona, ngiyabonga. I'm calling to verify your signup for the solar initiative. Can you confirm your email address?", timestamp: 1698400010000 },
+      { role: 'user', text: "Yes, it is thabo dot m at example dot co dot za.", timestamp: 1698400020000 },
+      { role: 'model', text: "Ngiyabonga. And are you the homeowner in the Gauteng area?", timestamp: 1698400025000 },
+      { role: 'user', text: "Yes, I am.", timestamp: 1698400030000 }
+    ]
   },
   { 
     id: "102", 
