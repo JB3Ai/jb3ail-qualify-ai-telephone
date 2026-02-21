@@ -1,112 +1,75 @@
-import { Client, Language, LeadData, TranscriptionEntry } from '../types';
+import { Client, Language } from '../types';
 
-const STORAGE_KEY = 'jb3_qualify_clients_v2';
-
-const DEFAULT_CLIENTS: Client[] = [
-  { 
-    id: "101", 
-    name: "Thabo", 
-    surname: "Mbeki",
-    area: "Gauteng",
-    phone: "+27820000000", 
-    signup_date: "2023-10-27", 
-    status: "qualified", 
-    language: Language.ZULU,
+// Simple temporary storage for the Robot (Backend)
+let serverMemoryClients: Client[] = [
+  {
+    id: '1',
+    name: 'Test Subject',
+    phone: '+27719691848', // Update this to your real number for testing
+    status: 'pending',
+    signup_date: new Date().toISOString(),
+    language: Language.ENGLISH,
     collected_data: {
-      email: "thabo.m@example.co.za",
-      phone: "+27820000000",
-      marketingPreference: "email"
-    },
-    transcript: [
-      { role: 'model', text: "Sawubona! This is Zandi from Mzansi Solutions. Am I speaking with Thabo?", timestamp: 1698400000000 },
-      { role: 'user', text: "Yebo, ninjani? Yes, this is Thabo speaking.", timestamp: 1698400005000 },
-      { role: 'model', text: "Sikhona, ngiyabonga. I'm calling to verify your signup for the solar initiative. Can you confirm your email address?", timestamp: 1698400010000 },
-      { role: 'user', text: "Yes, it is thabo dot m at example dot co dot za.", timestamp: 1698400020000 },
-      { role: 'model', text: "Ngiyabonga. And are you the homeowner in the Gauteng area?", timestamp: 1698400025000 },
-      { role: 'user', text: "Yes, I am.", timestamp: 1698400030000 }
-    ]
-  },
-  { 
-    id: "102", 
-    name: "Johan", 
-    surname: "Botha",
-    area: "Western Cape",
-    phone: "+27820000001", 
-    signup_date: "2023-10-28", 
-    status: "pending", 
-    language: Language.AFRIKAANS,
-    collected_data: {} 
-  },
-  { 
-    id: "103", 
-    name: "Lindiwe", 
-    surname: "Sisulu",
-    area: "Limpopo",
-    phone: "+27820000005", 
-    signup_date: "2023-11-01", 
-    status: "pending", 
-    language: Language.SEPEDI,
-    collected_data: {} 
-  },
-  { 
-    id: "104", 
-    name: "Nomvula", 
-    surname: "Mokonyane",
-    area: "Eastern Cape",
-    phone: "+27820000002", 
-    signup_date: "2023-10-29", 
-    status: "pending", 
-    language: Language.XHOSA,
-    collected_data: {} 
+      email: 'test@mzansi.ai'
+    }
   }
 ];
 
 export const clientService = {
+  // GET ALL CLIENTS
   getClients: (): Client[] => {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : DEFAULT_CLIENTS;
+    // 1. If running in Browser -> Use LocalStorage
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('mzansi_clients');
+      return stored ? JSON.parse(stored) : [];
+    }
+    // 2. If running in Robot (Server) -> Use Server Memory
+    return serverMemoryClients;
   },
 
-  addClient: (client: Omit<Client, 'status' | 'collected_data'>) => {
-    const clients = clientService.getClients();
-    const newClient: Client = {
-      ...client,
-      status: 'pending',
-      collected_data: {}
-    };
-    clients.unshift(newClient);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(clients));
-    return clients;
-  },
-
-  importClients: (newLeads: Omit<Client, 'status' | 'collected_data'>[]) => {
-    const currentClients = clientService.getClients();
-    const formattedLeads: Client[] = newLeads.map(lead => ({
-      ...lead,
-      status: 'pending',
-      collected_data: {}
-    }));
-    const updated = [...formattedLeads, ...currentClients];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    return updated;
-  },
-
-  updateClientStatus: (id: string, status: 'qualified' | 'failed', data: LeadData, transcript?: TranscriptionEntry[]) => {
-    const clients = clientService.getClients();
-    const index = clients.findIndex(c => c.id === id);
-    if (index !== -1) {
-      clients[index] = {
-        ...clients[index],
-        status: status,
-        collected_data: { ...clients[index].collected_data, ...data },
-        transcript: transcript
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(clients));
+  // ADD NEW CLIENT
+  addClient: (client: Client): void => {
+    if (typeof window !== 'undefined') {
+      // Browser: Save to LocalStorage
+      const clients = clientService.getClients();
+      clients.push(client);
+      localStorage.setItem('mzansi_clients', JSON.stringify(clients));
+    } else {
+      // Server: Save to Memory
+      serverMemoryClients.push(client);
     }
   },
 
-  reset: () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CLIENTS));
-    return DEFAULT_CLIENTS;
+  // UPDATE CLIENT
+  updateClient: (updatedClient: Client): void => {
+    if (typeof window !== 'undefined') {
+      const clients = clientService.getClients().map(c =>
+        c.id === updatedClient.id ? updatedClient : c
+      );
+      localStorage.setItem('mzansi_clients', JSON.stringify(clients));
+    } else {
+      serverMemoryClients = serverMemoryClients.map(c =>
+        c.id === updatedClient.id ? updatedClient : c
+      );
+    }
+  },
+
+  // DELETE CLIENT
+  deleteClient: (id: string): void => {
+    if (typeof window !== 'undefined') {
+      const clients = clientService.getClients().filter(c => c.id !== id);
+      localStorage.setItem('mzansi_clients', JSON.stringify(clients));
+    } else {
+      serverMemoryClients = serverMemoryClients.filter(c => c.id !== id);
+    }
+  },
+
+  // CLEAR ALL CLIENTS (For Testing)
+  clearClients: (): void => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('mzansi_clients');
+    } else {
+      serverMemoryClients = [];
+    }
   }
 };

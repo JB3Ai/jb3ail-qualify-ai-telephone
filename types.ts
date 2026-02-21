@@ -6,6 +6,12 @@ export enum Language {
   SEPEDI = 'nso'
 }
 
+export interface LanguageConfig {
+  code: string;
+  name: string;
+  script: string;
+}
+
 export interface LeadData {
   email?: string;
   phone?: string;
@@ -34,6 +40,7 @@ export interface Client {
   phone: string;
   signup_date: string;
   status: 'pending' | 'qualified' | 'failed';
+  source?: string;
   language: Language;
   collected_data?: LeadData;
   transcript?: TranscriptionEntry[];
