@@ -1,27 +1,40 @@
 export enum Language {
-  ENGLISH = 'en',
-  AFRIKAANS = 'af',
-  ZULU = 'zu',
-  XHOSA = 'xh',
-  SEPEDI = 'nso'
+  ENGLISH = 'en-ZA',
+  ZULU = 'zu-ZA',
+  XHOSA = 'xh-ZA',
+  AFRIKAANS = 'af-ZA',
+  SEPEDI = 'nso-ZA',
+  PORTUGUESE = 'pt-PT',
+  GREEK = 'el-GR',
+  MANDARIN = 'zh-CN'
 }
 
-export interface LanguageConfig {
-  code: string;
-  name: string;
-  script: string;
+export interface TranscriptionEntry {
+  role: 'user' | 'model';
+  text: string;
+  timestamp: number;
 }
 
 export interface LeadData {
+  name?: string;
   email?: string;
   phone?: string;
   marketingPreference?: 'email' | 'sms' | 'none';
-  name?: string;
-  surname?: string;
-  area?: string;
-  billAmount?: string;
-  notes?: string;
-  custom_parameters?: Record<string, string>;
+  custom_parameters?: Record<string, any>;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  surname: string;
+  area: string;
+  phone: string;
+  signup_date: string;
+  status: 'pending' | 'qualified' | 'failed' | 'signal_sent' | 'LOADED' | 'READY_FOR_EXECUTION';
+  language: Language;
+  source?: string;
+  collected_data: LeadData;
+  transcript?: TranscriptionEntry[];
 }
 
 export interface CallConfig {
@@ -32,40 +45,10 @@ export interface CallConfig {
   defaultLanguage: Language;
 }
 
-export interface Client {
+export interface ExecutiveTask {
   id: string;
-  name: string;
-  surname?: string;
-  area?: string;
-  phone: string;
-  signup_date: string;
-  status: 'pending' | 'qualified' | 'failed';
-  source?: string;
-  language: Language;
-  collected_data?: LeadData;
-  transcript?: TranscriptionEntry[];
-}
-
-export interface TranscriptionEntry {
-  text: string;
-  role: 'user' | 'model';
-  timestamp: number;
-  clientId?: string;
-}
-
-export interface TaskResult {
-  is_task: boolean;
   title: string;
-  priority: 'P1' | 'P2' | 'P3' | 'P4';
-  estimated_time: number;
-  project_tag: string;
-  reasoning: string;
-}
-
-export interface ExecutiveTask extends TaskResult {
-  id: string;
-  clientName: string;
+  description: string;
+  isResolved: boolean;
   timestamp: number;
-  draftAction?: string;
-  isResolved?: boolean;
 }

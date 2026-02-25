@@ -1,6 +1,6 @@
 {
-  "name": "JB³Ai Mazanzi Telephone Qualify",
-  "description": "Professional multi-lingual outbound sales qualification engine for Mzanzi Neural Hub.",
+  "name": "JB3Ai-Neural-Hub",
+  "description": "Advanced multi-lingual outbound signal processing and intelligence platform.",
   "requestFramePermissions": [
     "microphone"
   ]

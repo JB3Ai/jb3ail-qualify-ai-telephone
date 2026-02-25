@@ -1,10 +1,10 @@
-
 import { ExecutiveTask } from '../types';
 
 const STORAGE_KEY = 'jb3_executive_tasks';
 
 export const taskService = {
   getTasks: (): ExecutiveTask[] => {
+    if (typeof window === 'undefined') return [];
     const data = localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : [];
   },
