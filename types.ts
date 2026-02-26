@@ -37,12 +37,20 @@ export interface Client {
   transcript?: TranscriptionEntry[];
 }
 
+export interface LanguagePhrases {
+  greeting?: string;
+  objection?: string;
+  closing?: string;
+  signalSwitch?: string;
+}
+
 export interface CallConfig {
   companyName: string;
   objectives: string;
   parameters: string[];
   enabledLanguages: Language[];
   defaultLanguage: Language;
+  customPhrases?: Record<string, LanguagePhrases>;
 }
 
 export interface ExecutiveTask {

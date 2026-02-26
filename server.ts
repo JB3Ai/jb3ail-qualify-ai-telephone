@@ -1,6 +1,5 @@
 
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 import express from 'express';
 import { createServer } from 'http';
 import Twilio from 'twilio';
@@ -155,7 +154,8 @@ app.post('/api/log-compliance', (req, res) => {
       
       const isApiDisabled = error.message.includes('googleapis.com') || error.message.includes('disabled');
       
-      res.status(isApiDisabled ? 403 : 500).json({ 
+      // Use 200 status even on error to prevent platform's HTML 403/500 overrides
+      res.status(200).json({ 
         success: false, 
         message: isApiDisabled 
           ? `Google Sheets API is disabled. Please enable it in the Google Cloud Console: ${error.message}`
