@@ -45,7 +45,20 @@ const DEFAULT_CONFIG: CallConfig = {
   objectives: "Verify lead contact information, confirm marketing consent, and gauge employment status.",
   parameters: ["Email Address", "Phone Number", "Employment Status", "Residential Area"],
   enabledLanguages: [Language.ENGLISH, Language.ZULU, Language.XHOSA, Language.AFRIKAANS, Language.SEPEDI, Language.PORTUGUESE, Language.GREEK, Language.MANDARIN],
-  defaultLanguage: Language.ENGLISH
+  defaultLanguage: Language.ENGLISH,
+  customPhrases: {
+    [Language.ENGLISH]: {
+      greeting: "Hello, this is Zandi calling from Mzansi Solutions.",
+      objection: "I understand your concern, let me clarify that for you.",
+      closing: "Thank you for your time and have a great day!",
+      signalSwitch: "Switching languages now."
+    },
+    [Language.ZULU]: {
+      greeting: "Sawubona – ngikhuluma no",
+      closing: "Ngiyabonga kakhulu, ube nosuku oluhle."
+    }
+    // additional language phrases can be added here
+  }
 };
 
 const getLanguageName = (lang: string) => {
@@ -521,7 +534,7 @@ const App: React.FC = () => {
   const [transcriptions, setTranscriptions] = useState<TranscriptionEntry[]>([]);
   const [langFilter, setLangFilter] = useState<Language | 'ALL'>('ALL');
   const [viewingTranscriptClient, setViewingTranscriptClient] = useState<Client | null>(null);
-  const [showPopiaModal, setShowPopiaModal] = useState(false);
+  const [showPopiaModal, setShowPopiaModal] = useState<boolean>(localStorage.getItem('mzansi_protocol_accepted') !== 'true');
   const [showDashboardInfo, setShowDashboardInfo] = useState(false);
   const [showPipelineInfo, setShowPipelineInfo] = useState(false);
   const [showProtocolInfo, setShowProtocolInfo] = useState(false);
@@ -557,6 +570,8 @@ const App: React.FC = () => {
         setIsProtocolAccepted(true);
         localStorage.setItem('mzansi_protocol_accepted', 'true');
         setShowPopiaModal(false);
+      } else {
+        throw new Error('Compliance endpoint returned non-OK status.');
       }
     } catch (error) {
       console.error('Failed to log compliance:', error);
@@ -573,6 +588,26 @@ const App: React.FC = () => {
   const [testLogs, setTestLogs] = useState<string[]>([]);
   
   const [activeThreads, setActiveThreads] = useState<number>(0);
+
+  const parseJsonResponse = async (response: Response) => {
+    const contentType = response.headers.get('content-type') || '';
+    const bodyText = await response.text();
+
+    if (!contentType.toLowerCase().includes('application/json')) {
+      const looksLikeHtml = bodyText.trim().startsWith('<!DOCTYPE') || bodyText.trim().startsWith('<html');
+      throw new Error(
+        looksLikeHtml
+          ? 'Backend URL is serving HTML instead of API JSON. Check the Backend URL in System Config.'
+          : 'Backend response was not JSON. Check the Backend URL and API server status.',
+      );
+    }
+
+    try {
+      return JSON.parse(bodyText);
+    } catch {
+      throw new Error('Invalid JSON response from backend API.');
+    }
+  };
 
   useEffect(() => {
     setClients(clientService.getClients());
@@ -604,7 +639,19 @@ const App: React.FC = () => {
   const checkBackendHealth = async () => {
     try {
       const res = await fetch(`${backendUrl}/api/health`, { method: 'GET' });
-      if (res.ok) setBackendStatus('connected');
+      if (!res.ok) {
+        setBackendStatus('error');
+        return;
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.toLowerCase().includes('application/json')) {
+        setBackendStatus('error');
+        return;
+      }
+
+      const data = await res.json();
+      if (data?.status === 'ok') setBackendStatus('connected');
       else setBackendStatus('error');
     } catch (e) {
       setBackendStatus('error');
@@ -619,7 +666,7 @@ const App: React.FC = () => {
             body: JSON.stringify({ clientId: client.id })
         });
         
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
         if (data.success) {
             const updatedClients = clientService.updateClientStatus(client.id, 'signal_sent');
             setClients(updatedClients);
@@ -679,13 +726,14 @@ const App: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: testInput })
         });
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
         if (data.success) {
           const audio = new Audio(`data:audio/basic;base64,${data.audioBase64}`);
           await audio.play();
           setTestLogs(prev => [`[${new Date().toLocaleTimeString()}] AUDIO UNIT SUCCESS: Playback complete.`, ...prev]);
         } else {
-          throw new Error(data.error);
+          const msg = data.error + (data.details ? ` (${data.details})` : '');
+          throw new Error(msg);
         }
       } else {
         const response = await fetch(`${backendUrl}/api/test-logic`, {
@@ -693,7 +741,7 @@ const App: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: testInput })
         });
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
         if (data.success) {
           setTestLogs(prev => [`[${new Date().toLocaleTimeString()}] LOGIC UNIT RESPONSE: ${data.response}`, ...prev]);
         } else {
@@ -1612,12 +1660,14 @@ const App: React.FC = () => {
         {showPopiaModal && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-[#0A0C10]/95 backdrop-blur-xl animate-fade-in overflow-y-auto">
              <div className="bg-[#121212] w-full max-w-4xl rounded-[2rem] border border-[#22324A]/40 flex flex-col shadow-2xl relative my-auto max-h-[90vh]">
-                <button 
-                  onClick={() => setShowPopiaModal(false)} 
-                  className="absolute top-8 right-8 text-slate-500 hover:text-[#66FF66] transition-colors z-20"
-                >
-                  <XMarkIcon className="w-8 h-8" />
-                </button>
+                {isProtocolAccepted && (
+                  <button 
+                    onClick={() => setShowPopiaModal(false)} 
+                    className="absolute top-8 right-8 text-slate-500 hover:text-[#66FF66] transition-colors z-20"
+                  >
+                    <XMarkIcon className="w-8 h-8" />
+                  </button>
+                )}
                 
                 <div className="p-12 border-b border-[#22324A]/30 shrink-0">
                    <div className="flex items-center gap-4 mb-4">

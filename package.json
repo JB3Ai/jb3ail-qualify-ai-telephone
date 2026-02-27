@@ -1,14 +1,16 @@
 {
   "name": "jb3ai-neural-hub",
   "version": "1.0.0",
-  "description": "JB³Ai Neural Hub - Advanced multi-lingual outbound signal processing and intelligence platform.",
+  "description": "JB3Ai Neural Hub - Advanced multi-lingual outbound signal processing and intelligence platform.",
   "main": "index.tsx",
   "scripts": {
     "start": "ts-node index.tsx",
     "dev": "tsx server.ts",
     "build": "tsc && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
     "lint": "tsc --noEmit",
-    "server": "ts-node server.ts"
+    "server": "ts-node server.ts",
+    "start:api": "tsx server.ts"
   },
   "dependencies": {
     "@google-cloud/speech": "^6.1.0",

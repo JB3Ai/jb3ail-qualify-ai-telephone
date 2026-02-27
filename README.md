@@ -18,3 +18,7 @@ View your app in AI Studio: https://ai.studio/apps/97b5dd36-eccc-42c6-a473-03aee
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Architecture notes
+
+- **Azure AI gateways**: When deploying or extending AI/telephony, consider routing through [Azure AI Gateway](https://learn.microsoft.com/en-us/azure/ai-services/ai-gateway/) (or equivalent) for unified routing, rate limits, and observability alongside existing Azure Speech and Gemini usage.

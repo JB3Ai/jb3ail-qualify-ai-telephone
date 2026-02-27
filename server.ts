@@ -131,6 +131,10 @@ app.post('/api/log-compliance', (req, res) => {
       });
     } catch (error: any) {
       console.error('❌ Sheet Sync Error:', error.message);
+      // log the raw rows if available for debugging
+      if ((error as any).response?.data?.values) {
+        console.warn('🚨 Raw sheet rows that caused failure:', (error as any).response.data.values);
+      }
       
       // Fallback lead for demo purposes if API fails or auth fails
       const fallbackLead = {
@@ -274,6 +278,53 @@ app.get('/audio-stream', async (req, res) => {
   }
 });
 
+// helper to wrap mu-law buffer into WAV file (16-bit PCM) for browser playback
+function mulawTo16Bit(sample: number) {
+  // inverse mu-law companding
+  const MULAW_MAX = 0xFF;
+  sample = ~sample;
+  const sign = sample & 0x80;
+  let exponent = (sample & 0x70) >> 4;
+  let mantissa = sample & 0x0F;
+  let magnitude = ((mantissa << 4) + 0x08) << exponent;
+  magnitude = sign ? -(magnitude) : magnitude;
+  return magnitude;
+}
+
+function muLawToWav(muLawBuf: Uint8Array, sampleRate: number = 8000): Buffer {
+  const numSamples = muLawBuf.length;
+  const bytesPerSample = 2; // 16-bit
+  const blockAlign = bytesPerSample * 1;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = numSamples * bytesPerSample;
+
+  const buffer = Buffer.alloc(44 + dataSize);
+  let offset = 0;
+  // RIFF header
+  buffer.write('RIFF', offset); offset += 4;
+  buffer.writeUInt32LE(36 + dataSize, offset); offset += 4;
+  buffer.write('WAVE', offset); offset += 4;
+  // fmt chunk
+  buffer.write('fmt ', offset); offset += 4;
+  buffer.writeUInt32LE(16, offset); offset += 4; // subchunk1 size
+  buffer.writeUInt16LE(1, offset); offset += 2;  // PCM
+  buffer.writeUInt16LE(1, offset); offset += 2;  // num channels
+  buffer.writeUInt32LE(sampleRate, offset); offset += 4;
+  buffer.writeUInt32LE(byteRate, offset); offset += 4;
+  buffer.writeUInt16LE(blockAlign, offset); offset += 2;
+  buffer.writeUInt16LE(16, offset); offset += 2; // bits per sample
+  // data chunk
+  buffer.write('data', offset); offset += 4;
+  buffer.writeUInt32LE(dataSize, offset); offset += 4;
+  // write samples
+  for (let i = 0; i < numSamples; i++) {
+    const pcm = mulawTo16Bit(muLawBuf[i]);
+    buffer.writeInt16LE(pcm, offset);
+    offset += 2;
+  }
+  return buffer;
+}
+
 // 6. VOICE TESTER (Neural Lab)
 app.post('/api/test-voice', async (req, res) => {
   const { text } = req.body;
@@ -282,10 +333,13 @@ app.post('/api/test-voice', async (req, res) => {
   try {
     console.log(`🧪 Testing Voice: ${text}`);
     const audioBuffer = await voiceService.generateAudio(text);
-    res.json({ success: true, audioBase64: Buffer.from(audioBuffer).toString('base64') });
-  } catch (err) {
+    // convert to wav for browser
+    const wav = muLawToWav(audioBuffer);
+    res.json({ success: true, audioBase64: wav.toString('base64') });
+  } catch (err: any) {
     console.error("Voice Test Fail:", err);
-    res.status(500).json({ error: "Failed to generate test audio" });
+    // include the error message if available for better diagnostics
+    res.status(500).json({ error: "Failed to generate test audio", details: err?.message || err });
   }
 });
 

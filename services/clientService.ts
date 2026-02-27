@@ -89,7 +89,15 @@ export const clientService = {
       status: lead.status || 'pending',
       collected_data: lead.collected_data || {}
     }));
-    const updated = [...formattedLeads, ...currentClients];
+    // deduplicate: ignore leads whose phone or id already present
+    const existingKeys = new Set(currentClients.map(c => c.phone || c.id));
+    const dedupedLeads = formattedLeads.filter(l => {
+      const key = l.phone || l.id;
+      if (existingKeys.has(key)) return false;
+      existingKeys.add(key);
+      return true;
+    });
+    const updated = [...dedupedLeads, ...currentClients];
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     }

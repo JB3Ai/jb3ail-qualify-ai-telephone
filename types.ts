@@ -50,7 +50,7 @@ export interface CallConfig {
   parameters: string[];
   enabledLanguages: Language[];
   defaultLanguage: Language;
-  customPhrases?: Record<string, LanguagePhrases>;
+  customPhrases?: Partial<Record<Language, LanguagePhrases>>;
 }
 
 export interface ExecutiveTask {

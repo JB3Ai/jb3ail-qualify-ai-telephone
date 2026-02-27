@@ -7,16 +7,52 @@ import { Client, Language, LeadData, CallConfig } from "../types";
  */
 function buildSystemPrompt(config: CallConfig): string {
   const langRules = config.enabledLanguages.map((lang: Language) => {
+    // base language instruction
+    let base: string;
     switch (lang) {
-      case Language.ZULU: return "- If the user speaks **isiZulu** (zu-ZA), switch to isiZulu immediately. Use 'Sawubona'.";
-      case Language.XHOSA: return "- If the user speaks **isiXhosa** (xh-ZA), switch to isiXhosa immediately. Use 'Molo'.";
-      case Language.AFRIKAANS: return "- If the user speaks **Afrikaans** (af-ZA), switch to Afrikaans immediately. Use 'Goeie dag'.";
-      case Language.SEPEDI: return "- If the user speaks **Sepedi / Northern Sotho** (nso-ZA), switch to Sepedi immediately. Use 'Dumela'. Ensure your pronunciation and vocabulary follow the Northern Sotho (nso-ZA) dialect for the region.";
-      case Language.PORTUGUESE: return "- If the user speaks **Portuguese** (pt-PT), switch to Portuguese immediately. Tone: Direct & Energetic. Focus on efficiency and long-term 'Sistemas' reliability.";
-      case Language.GREEK: return "- If the user speaks **Greek** (el-GR), switch to Greek immediately. Tone: Executive & Tactical. Emphasize 'Logiki' (Logic) and the outcome of the solar transition.";
-      case Language.MANDARIN: return "- If the user speaks **Mandarin** (zh-CN), switch to Mandarin immediately. Tone: High-Speed & Precise. Use a very direct Problem → System → Outcome framework.";
-      default: return "- Use English as the fallback base language.";
+      case Language.ZULU:
+        base = "- If the user speaks **isiZulu** (zu-ZA), switch to isiZulu immediately. Use 'Sawubona'.";
+        break;
+      case Language.XHOSA:
+        base = "- If the user speaks **isiXhosa** (xh-ZA), switch to isiXhosa immediately. Use 'Molo'.";
+        break;
+      case Language.AFRIKAANS:
+        base = "- If the user speaks **Afrikaans** (af-ZA), switch to Afrikaans immediately. Use 'Goeie dag'.";
+        break;
+      case Language.SEPEDI:
+        base = "- If the user speaks **Sepedi / Northern Sotho** (nso-ZA), switch to Sepedi immediately. Use 'Dumela'. Ensure your pronunciation and vocabulary follow the Northern Sotho (nso-ZA) dialect for the region.";
+        break;
+      case Language.PORTUGUESE:
+        base = "- If the user speaks **Portuguese** (pt-PT), switch to Portuguese immediately. Tone: Direct & Energetic. Focus on efficiency and long-term 'Sistemas' reliability.";
+        break;
+      case Language.GREEK:
+        base = "- If the user speaks **Greek** (el-GR), switch to Greek immediately. Tone: Executive & Tactical. Emphasize 'Logiki' (Logic) and the outcome of the solar transition.";
+        break;
+      case Language.MANDARIN:
+        base = "- If the user speaks **Mandarin** (zh-CN), switch to Mandarin immediately. Tone: High-Speed & Precise. Use a very direct Problem → System → Outcome framework.";
+        break;
+      default:
+        base = "- Use English as the fallback base language.";
     }
+
+    // append custom phrases if provided
+    const custom = config.customPhrases?.[lang];
+    if (custom) {
+      if (custom.greeting) {
+        base += ` Greeting should begin with \"${custom.greeting}\".`;
+      }
+      if (custom.objection) {
+        base += ` If the user raises an objection, use \"${custom.objection}\" to address it.`;
+      }
+      if (custom.closing) {
+        base += ` Close the call with \"${custom.closing}\".`;
+      }
+      if (custom.signalSwitch) {
+        base += ` When switching language or giving a signal, say \"${custom.signalSwitch}\".`;
+      }
+    }
+
+    return base;
   }).join('\n');
 
   const defaultLangName = config.defaultLanguage === Language.ZULU ? 'isiZulu' :
