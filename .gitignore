@@ -1,0 +1,10 @@
+node_modules
+dist/
+
+# Local environment files
+.env
+.env.*
+services/.env.local
+
+# Generated archives
+*.zip
