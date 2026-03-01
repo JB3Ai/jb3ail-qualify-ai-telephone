@@ -77,6 +77,12 @@ const getLanguageName = (lang: string) => {
   return names[code] || lang;
 };
 
+const getDefaultBackendUrl = () => {
+  const isLocalhost =
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  return isLocalhost ? 'http://localhost:3000' : 'https://os3grid.azurewebsites.net';
+};
+
 const NeuralConnectivityMatrix: React.FC<{ 
   backendStatus: string; 
   isProtocolAccepted: boolean; 
@@ -192,7 +198,7 @@ const InfoOverlay: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="absolute inset-0 z-50 bg-[#0B0F1A]/95 backdrop-blur-xl p-12 overflow-y-auto animate-fade-in">
+    <div className="fixed inset-0 z-[120] bg-[#0B0F1A]/95 backdrop-blur-xl p-6 md:p-12 overflow-y-auto animate-fade-in">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-12">
           <div className="flex items-center gap-4">
@@ -435,16 +441,6 @@ const DataInbox: React.FC<{
   );
 };
 
-const QUICK_SCRIPTS = [
-  { name: 'Greeting Protocol', text: "Sawubona! This is Zandi from Mzansi Solutions. I'm calling about your recent interest in our services. Am I speaking with the homeowner?" },
-  { name: 'Objection Handling', text: "I understand you're busy. This will only take 60 seconds to verify your details and ensure you get the best rate. Is that alright?" },
-  { name: 'Closing Statement', text: "Perfect, everything looks verified. We'll send the confirmation to your email shortly. Have a wonderful day further!" },
-  { name: 'Zulu Switch', text: "Ngiyaxolisa, singakhuluma ngesiZulu uma uthanda? Sawubona, unjani?" },
-  { name: 'Portuguese Signal', text: "Sistemas superam o esforço. Inicializando verificação solar." },
-  { name: 'Greek Signal', text: "Τα συστήματα κερδίζουν την προσπάθεια. Προετοιμασία ελέγχου ηλιακής ενέργειας." },
-  { name: 'Mandarin Signal', text: "系统胜过努力。 正在初始化太阳能报价检查。" }
-];
-
 const LANGUAGE_PROTOCOLS: Record<Language, { greeting: string; objection: string; closing: string; switch: string }> = {
   [Language.ENGLISH]: {
     greeting: "Hello! This is Zandi from Mzansi Solutions. Am I speaking with the homeowner?",
@@ -494,6 +490,22 @@ const LANGUAGE_PROTOCOLS: Record<Language, { greeting: string; objection: string
     closing: "太好了，一切已核实。我们很快会向您发送确认信息。祝您生活愉快！",
     switch: "系统胜过努力。正在初始化太阳能验证信号。"
   }
+};
+
+const getQuickScriptsForLanguage = (language: Language) => {
+  const protocol = LANGUAGE_PROTOCOLS[language];
+  const languageName = getLanguageName(language);
+
+  return [
+    { name: `${languageName} Greeting`, text: protocol.greeting },
+    { name: `${languageName} Objection`, text: protocol.objection },
+    { name: `${languageName} Closing`, text: protocol.closing },
+    { name: `${languageName} Signal Switch`, text: protocol.switch },
+    { name: 'Consent Check', text: `${protocol.greeting} Before we continue, do I have your consent to proceed with this call?` },
+    { name: 'Identity Verify', text: `${protocol.greeting} Please confirm your full name and the best contact number for verification.` },
+    { name: 'Qualification Probe', text: `${protocol.objection} I just need two quick details: your area and your current energy usage profile.` },
+    { name: 'Callback Script', text: `${protocol.closing} If now is not ideal, please share your preferred callback time and language.` }
+  ];
 };
 
 const StatusIndicator: React.FC<{ label: string; status: 'connected' | 'error' | 'loading'; icon: React.ReactNode }> = ({ label, status, icon }) => (
@@ -550,11 +562,11 @@ const App: React.FC = () => {
   const [isInternalCall, setIsInternalCall] = useState(false);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
-  const language = langFilter === 'ALL' ? 'Multi-Dialect' : getLanguageName(langFilter);
+  const language = langFilter === 'ALL' ? 'Multi-Language' : getLanguageName(langFilter);
 
   const [backendUrl, setBackendUrl] = useState<string>(() => {
     const stored = localStorage.getItem('mzansi_backend_url');
-    const url = stored || window.location.origin;
+    const url = stored || getDefaultBackendUrl();
     return url.endsWith('/') ? url.slice(0, -1) : url;
   });
   const [backendStatus, setBackendStatus] = useState<'connected' | 'error' | 'loading'>('loading');
@@ -636,9 +648,11 @@ const App: React.FC = () => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcriptions]);
 
-  const checkBackendHealth = async () => {
+  const checkBackendHealth = async (urlOverride?: string) => {
+    const targetUrl = urlOverride || backendUrl;
     try {
-      const res = await fetch(`${backendUrl}/api/health`, { method: 'GET' });
+      setBackendStatus('loading');
+      const res = await fetch(`${targetUrl}/api/health`, { method: 'GET' });
       if (!res.ok) {
         setBackendStatus('error');
         return;
@@ -702,7 +716,7 @@ const App: React.FC = () => {
     });
     setActiveTab('LIVE_TERMINAL');
     setTranscriptions([
-        { role: 'model', text: `[INTERNAL LINK ESTABLISHED] Core dialect set to ${getLanguageName(lang)}. Speakerphone active. Ready for neural stimulus.`, timestamp: Date.now() }
+        { role: 'model', text: `[INTERNAL LINK ESTABLISHED] Core language set to ${getLanguageName(lang)}. Speakerphone active. Ready for neural stimulus.`, timestamp: Date.now() }
     ]);
   };
 
@@ -724,11 +738,11 @@ const App: React.FC = () => {
         const response = await fetch(`${backendUrl}/api/test-voice`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: testInput })
+          body: JSON.stringify({ text: testInput, language: testLang })
         });
         const data = await parseJsonResponse(response);
         if (data.success) {
-          const audio = new Audio(`data:audio/basic;base64,${data.audioBase64}`);
+          const audio = new Audio(`data:audio/wav;base64,${data.audioBase64}`);
           await audio.play();
           setTestLogs(prev => [`[${new Date().toLocaleTimeString()}] AUDIO UNIT SUCCESS: Playback complete.`, ...prev]);
         } else {
@@ -765,6 +779,12 @@ const App: React.FC = () => {
     const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
     setBackendUrl(cleanUrl);
     localStorage.setItem('mzansi_backend_url', cleanUrl);
+  };
+
+  const resetBackendUrlToDefault = () => {
+    const defaultUrl = getDefaultBackendUrl();
+    saveBackendUrl(defaultUrl);
+    checkBackendHealth(defaultUrl);
   };
 
   const handleCall = (id: string, phone: string) => {
@@ -859,7 +879,7 @@ const App: React.FC = () => {
                 </div>
               </div>
               <div className="text-right border-l border-white/10 pl-6">
-                <span className="font-mono text-[9px] block opacity-50 uppercase tracking-widest">Selected_Dialect</span>
+                <span className="font-mono text-[9px] block opacity-50 uppercase tracking-widest">Selected_Language</span>
                 <span className="font-orbitron text-sm font-bold uppercase">{language}</span>
               </div>
             </div>
@@ -881,8 +901,8 @@ const App: React.FC = () => {
                   },
                   {
                     step: '02',
-                    title: 'Dialect Filtering',
-                    desc: 'Use the dialect filter in the header to focus on specific language groups for targeted execution.'
+                    title: 'Language Filtering',
+                    desc: 'Use the language filter in the header to focus on specific language groups for targeted execution.'
                   },
                   {
                     step: '03',
@@ -1023,7 +1043,7 @@ const App: React.FC = () => {
 
                     <div className="bg-[#121212] p-6 rounded-3xl border border-[#22324A]/40">
                       <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex justify-between items-center">
-                        Detected Dialect <LanguageIcon className="w-4 h-4 text-[#66FF66]" />
+                        Detected Language <LanguageIcon className="w-4 h-4 text-[#66FF66]" />
                       </h5>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] font-black text-xs border border-[#66FF66]/20">
@@ -1114,14 +1134,39 @@ const App: React.FC = () => {
                                  <button onClick={() => setTestType('ask')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${testType === 'ask' ? 'bg-[#66FF66] text-[#121212]' : 'text-slate-500 hover:text-slate-300'}`}>Logic Unit (Gemini)</button>
                              </div>
                              <textarea value={testInput} onChange={(e) => setTestInput(e.target.value)} className="w-full bg-transparent border-none text-[#66FF66] text-sm font-mono focus:ring-0 h-32 resize-none" placeholder="Enter stimulus parameters..." />
+                             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                 <div>
+                                   <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Stimulus Language</label>
+                                   <select
+                                     value={testLang}
+                                     onChange={(e) => setTestLang(e.target.value as Language)}
+                                     className="w-full bg-black/40 border border-[#22324A]/40 rounded-xl px-4 py-3 text-white font-bold text-xs focus:ring-1 focus:ring-[#66FF66] outline-none appearance-none"
+                                   >
+                                     {Object.values(Language).map(lang => (
+                                       <option key={lang} value={lang} className="bg-[#121212]">{getLanguageName(lang)}</option>
+                                     ))}
+                                   </select>
+                                 </div>
+                             </div>
                              <div className="flex justify-end mt-4">
                                  <button onClick={runNeuralTest} disabled={isTestRunning} className="bg-white text-black px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#66FF66] transition-all disabled:opacity-20">
                                      {isTestRunning ? 'Processing...' : 'Execute Test'}
                                  </button>
                              </div>
                         </div>
+                        <div className="mb-4 flex flex-wrap gap-2">
+                          {Object.values(Language).map(lang => (
+                            <button
+                              key={`stimulus-lang-${lang}`}
+                              onClick={() => setTestLang(lang)}
+                              className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded border transition-all ${testLang === lang ? 'bg-[#66FF66] text-[#121212] border-[#66FF66]' : 'bg-[#22324A]/10 text-slate-400 border-[#22324A]/30 hover:border-[#66FF66]/40 hover:text-white'}`}
+                            >
+                              {getLanguageName(lang)}
+                            </button>
+                          ))}
+                        </div>
                         <div className="flex flex-wrap gap-2">
-                            {QUICK_SCRIPTS.map(s => (
+                          {getQuickScriptsForLanguage(testLang).map(s => (
                                 <button key={s.name} onClick={() => setTestInput(s.text)} className="px-3 py-1.5 bg-[#22324A]/10 text-[9px] font-black text-slate-400 uppercase tracking-widest rounded border border-[#22324A]/30 hover:border-[#66FF66]/40 transition-all hover:text-white">
                                     {s.name}
                                 </button>
@@ -1168,7 +1213,7 @@ const App: React.FC = () => {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Dialect Protocol</label>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Language Protocol</label>
                                         <select 
                                             value={testLang} 
                                             onChange={(e) => setTestLang(e.target.value as Language)}
@@ -1215,7 +1260,7 @@ const App: React.FC = () => {
                                         </p>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Core Dialect</label>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Core Language</label>
                                         <select 
                                             value={testLang} 
                                             onChange={(e) => setTestLang(e.target.value as Language)}
@@ -1470,8 +1515,8 @@ const App: React.FC = () => {
               steps={[
                 {
                   step: '01',
-                  title: 'Dialect Selection',
-                  desc: 'Choose the target language for the neural core. Each dialect has a specific instruction set.'
+                  title: 'Language Selection',
+                  desc: 'Choose the target language for the neural core. Each language has a specific instruction set.'
                 },
                 {
                   step: '02',
@@ -1486,7 +1531,7 @@ const App: React.FC = () => {
                 {
                   step: '04',
                   title: 'Neural Alignment',
-                  desc: 'Ensure the core dialect matches the target lead\'s profile for maximum conversion efficiency.'
+                  desc: 'Ensure the core language matches the target lead\'s profile for maximum conversion efficiency.'
                 }
               ]}
             />
@@ -1604,11 +1649,14 @@ const App: React.FC = () => {
                     <input type="text" value={backendUrl} onChange={(e) => saveBackendUrl(e.target.value)} className="w-full bg-black/40 border border-[#22324A]/40 rounded-xl px-6 py-4 text-[#66FF66] font-mono text-xs focus:ring-1 focus:ring-[#66FF66] outline-none transition-all" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <button onClick={checkBackendHealth} className="bg-[#22324A] text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#22324A]/80 transition-all">
+                    <button onClick={() => checkBackendHealth()} className="bg-[#22324A] text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#22324A]/80 transition-all">
                       Reboot Server
                     </button>
                     <button onClick={() => { console.log('Recalibrating Neural Hub...'); checkBackendHealth(); }} className="bg-[#66FF66] text-[#121212] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:scale-105 transition-all font-orbitron">
                       Recalibrate
+                    </button>
+                    <button onClick={resetBackendUrlToDefault} className="col-span-2 bg-[#22324A]/30 text-[#66FF66] border border-[#66FF66]/20 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#66FF66]/10 transition-all">
+                      Reset to Default Endpoint
                     </button>
                     <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="col-span-2 bg-red-600/10 text-red-600 border border-red-600/20 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-red-600 hover:text-white transition-all">
                       Reset Neural Hub

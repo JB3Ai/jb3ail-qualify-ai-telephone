@@ -1,60 +1,54 @@
-# Render Deployment Guide (OS3 Grid Telephone Backend)
+# Azure App Service Deployment Guide (OS3 Grid Telephone Backend)
 
-This project uses a static frontend plus a Node API backend.
+This project runs as a static frontend on cPanel plus a Node API on Azure App Service.
 
-- Frontend stays on cPanel: `https://jb3ai.com/os3grid-telephone/`
-- Backend should run online (Render recommended): `https://<your-render-service>.onrender.com`
-
----
-
-## 1) Create Render Web Service
-
-1. Push this project to GitHub.
-2. In Render, create a **New Web Service** from the repo.
-3. Use these settings:
-
-- **Environment**: Node
-- **Build Command**:
-
-```bash
-npm install && npm run build
-```
-
-- **Start Command**:
-
-```bash
-npm run start:api
-```
-
-- **Region**: closest to your users
-- **Instance type**: start with Free/Starter, scale as needed
+- Frontend: `https://jb3ai.com/os3grid-telephone/`
+- Backend: `https://os3grid.azurewebsites.net`
 
 ---
 
-## 2) Required Environment Variables
+## 1) Confirm Azure Resource Settings
 
-Set these in Render service settings:
+Use this exact target:
 
-- `GEMINI_API_KEY`
-- `SPEECH_KEY`
-- `SPEECH_REGION`
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_AUTH_TOKEN`
-- `TWILIO_PHONE_NUMBER`
-
-Recommended:
-
-- `APP_URL=https://<your-render-service>.onrender.com`
-- `DOMAIN=<your-render-service>.onrender.com`
-- `NODE_ENV=production`
+- **Subscription**: `f1334c25-fd29-4a15-9b3c-590793520e0f`
+- **Resource Group**: `tekephonemazanzi`
+- **Web App Name**: `os3grid`
+- **Runtime**: `Node 20 LTS`
+- **OS**: `Linux`
+- **Region**: `South Africa North`
+- **Plan**: `appsvc_linux_southafricanorth_basic` (Basic, Small)
+- **Application Insights**: Enabled
+- **Defender for App Service**: Enabled
+- **Basic Authentication (Deployment Credentials)**: Enabled
+- **GitHub Continuous Deployment**: Enabled (`JB3Ai/jb3ail-qualify-ai-telephone`, branch `main`)
 
 ---
 
-## 3) Verify Backend Is Live
+## 2) Configure Startup + App Settings
 
-After deploy, open:
+In **Web App > Configuration** set:
 
-- `https://<your-render-service>.onrender.com/api/health`
+- **Startup Command**: `npm run start:api`
+- **NODE_ENV**: `production`
+- **APP_URL**: `https://os3grid.azurewebsites.net`
+- **DOMAIN**: `os3grid.azurewebsites.net`
+- **GEMINI_API_KEY**: `<your key>`
+- **SPEECH_KEY**: `<your key>`
+- **SPEECH_REGION**: `<your speech region>`
+- **TWILIO_ACCOUNT_SID**: `<your sid>`
+- **TWILIO_AUTH_TOKEN**: `<your token>`
+- **TWILIO_PHONE_NUMBER**: `<your number>`
+
+Then restart the app.
+
+---
+
+## 3) Verify API Health
+
+Open:
+
+- `https://os3grid.azurewebsites.net/api/health`
 
 Expected JSON:
 
@@ -62,11 +56,11 @@ Expected JSON:
 { "status": "ok", "message": "🚀 JB³Ai Neural Hub Backend is Online!" }
 ```
 
-If you see HTML instead of JSON, the backend is not correctly running.
+If the response is HTML, the app process did not start correctly.
 
 ---
 
-## 4) Connect Frontend to Backend
+## 4) Connect Telephone Frontend
 
 In live Telephone UI (`/os3grid-telephone/`):
 
@@ -74,43 +68,34 @@ In live Telephone UI (`/os3grid-telephone/`):
 2. Set **Core Endpoint** to:
 
 ```text
-https://<your-render-service>.onrender.com
+https://os3grid.azurewebsites.net
 ```
 
 3. Click **Reboot Server**.
-4. Run Neural Lab test again.
+4. Run Voice and Logic tests.
 
 ---
 
 ## 5) Troubleshooting
 
-### Error: `Unexpected token '<'`
-Cause: frontend received HTML page, not JSON API response.
+### `Unexpected token '<'`
+Cause: frontend hit a non-API HTML response.
 
 Fix:
-- Ensure backend URL is the Render API host, not cPanel frontend URL.
+- Confirm Core Endpoint is `https://os3grid.azurewebsites.net`.
 - Confirm `/api/health` returns JSON.
 
-### Twilio call fails
+### Twilio call issues
 Check:
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
-- phone permissions/verified numbers in Twilio
+- Twilio verified numbers and permissions
 
-### Voice test fails
+### Voice test issues
 Check:
 - `SPEECH_KEY`, `SPEECH_REGION`
-- Azure speech quota/region validity
+- Azure Speech key/region match
 
-### Logic test fails
+### Logic test issues
 Check:
 - `GEMINI_API_KEY`
-- model access and key scope
-
----
-
-## 6) Optional Production Hardening
-
-- Add a custom API subdomain (e.g., `api.jb3ai.com`) to Render.
-- Add CORS allow-list to restrict domains.
-- Add uptime monitoring for `/api/health`.
-- Keep a deployment changelog with build hash and release date.
+- model access and quota

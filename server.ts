@@ -1,5 +1,6 @@
 
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+dotenv.config({ override: true });
 import express from 'express';
 import { createServer } from 'http';
 import Twilio from 'twilio';
@@ -21,7 +22,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = createServer(app);
-const PORT = 3000; 
+const PORT = Number(process.env.PORT) || 3000;
 
 // Enable CORS for all origins
 app.use(cors() as any);
@@ -327,15 +328,13 @@ function muLawToWav(muLawBuf: Uint8Array, sampleRate: number = 8000): Buffer {
 
 // 6. VOICE TESTER (Neural Lab)
 app.post('/api/test-voice', async (req, res) => {
-  const { text } = req.body;
+  const { text, language } = req.body;
   if (!text) return res.status(400).json({ error: "No text provided" });
 
   try {
     console.log(`🧪 Testing Voice: ${text}`);
-    const audioBuffer = await voiceService.generateAudio(text);
-    // convert to wav for browser
-    const wav = muLawToWav(audioBuffer);
-    res.json({ success: true, audioBase64: wav.toString('base64') });
+    const audioBuffer = await voiceService.generateAudio(text, { allowFallback: false, format: 'wav', language });
+    res.json({ success: true, audioBase64: Buffer.from(audioBuffer).toString('base64') });
   } catch (err: any) {
     console.error("Voice Test Fail:", err);
     // include the error message if available for better diagnostics
