@@ -271,7 +271,8 @@ const DataInbox: React.FC<{
   backendStatus: string;
   protocolMode: 'local' | 'intl';
   setProtocolMode: (mode: 'local' | 'intl') => void;
-}> = ({ onSync, onClear, clients, onStartCall, backendStatus, protocolMode, setProtocolMode }) => {
+  isSyncing?: boolean;
+}> = ({ onSync, onClear, clients, onStartCall, backendStatus, protocolMode, setProtocolMode, isSyncing }) => {
   const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
   const localLanguages = ['en-ZA', 'zu-ZA', 'xh-ZA', 'af-ZA', 'nso-ZA'];
   const intlLanguages = ['pt-PT', 'el-GR', 'zh-CN'];
@@ -291,15 +292,15 @@ const DataInbox: React.FC<{
 
   return (
     <div className="flex-1 flex flex-col bg-[#0B0F1A] animate-fade-in overflow-hidden">
-      <div className="h-20 bg-[#121212] border-b border-[#22324A]/40 flex items-center justify-between px-12 shrink-0">
-        <div className="flex items-center gap-4">
-          <InboxStackIcon className="w-6 h-6 text-[#66FF66]" />
+      <div className="min-h-[5rem] bg-[#121212] border-b border-[#22324A]/40 flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-8 lg:px-12 py-3 sm:py-0 gap-3 sm:gap-0 shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <InboxStackIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#66FF66]" />
           <div>
-            <h2 className="font-orbitron font-black text-white uppercase tracking-[0.2em] text-sm">Data Inbox // Intake Engine</h2>
-            <p className="text-[9px] text-slate-500 font-mono uppercase tracking-widest">Source: Hub_Central_Ledger</p>
+            <h2 className="font-orbitron font-black text-white uppercase tracking-[0.1em] sm:tracking-[0.2em] text-xs sm:text-sm">Data Inbox</h2>
+            <p className="text-[8px] sm:text-[9px] text-slate-500 font-mono uppercase tracking-widest hidden sm:block">Source: Hub_Central_Ledger</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <button 
             onClick={() => setShowWorkflowGuide(true)}
             className="w-12 h-12 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/20 rounded-xl flex items-center justify-center hover:bg-[#66FF66]/10 transition-all shadow-[0_0_15px_rgba(102,255,102,0.1)] group"
@@ -321,14 +322,15 @@ const DataInbox: React.FC<{
           </button>
           <button 
             onClick={onSync}
-            className={`${protocolMode === 'local' ? 'bg-[#39FF88] shadow-[0_0_20px_rgba(57,255,136,0.3)]' : 'bg-[#00D9FF] shadow-[0_0_20px_rgba(0,217,255,0.3)]'} text-[#0B0F1A] px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:scale-105 transition-all font-orbitron flex items-center gap-2`}
+            disabled={isSyncing}
+            className={`${protocolMode === 'local' ? 'bg-[#39FF88] shadow-[0_0_20px_rgba(57,255,136,0.3)]' : 'bg-[#00D9FF] shadow-[0_0_20px_rgba(0,217,255,0.3)]'} text-[#0B0F1A] px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:scale-105 transition-all font-orbitron flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait disabled:hover:scale-100`}
           >
-            <ArrowPathIcon className="w-4 h-4" /> Sync to Pipeline
+            <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /> {isSyncing ? 'Syncing...' : 'Sync to Pipeline'}
           </button>
         </div>
       </div>
 
-      <div className="flex-1 p-8 overflow-hidden flex flex-col relative">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden flex flex-col relative">
         <InfoOverlay 
           isOpen={showWorkflowGuide}
           onClose={() => setShowWorkflowGuide(false)}
@@ -366,9 +368,9 @@ const DataInbox: React.FC<{
           }}
         />
 
-        <div className="flex-1 grid grid-cols-12 overflow-hidden min-h-0 gap-6">
-          {/* Left 8 Columns: Google Sheet Iframe */}
-          <div className="col-span-8 border border-[#22324A]/30 bg-black flex flex-col relative group overflow-hidden rounded-[2rem]">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden min-h-0 gap-4 sm:gap-6">
+          {/* Left Columns: Google Sheet Iframe */}
+          <div className="hidden lg:flex lg:col-span-8 border border-[#22324A]/30 bg-black flex-col relative group overflow-hidden rounded-2xl lg:rounded-[2rem]">
             <div className="absolute top-6 left-6 z-10 bg-black/60 backdrop-blur-md px-4 py-2 rounded-lg border border-[#22324A]/40 flex items-center gap-2">
               <TableCellsIcon className="w-4 h-4 text-[#66FF66]" />
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Live Source: 12bR...dO5g</span>
@@ -381,8 +383,8 @@ const DataInbox: React.FC<{
             />
           </div>
 
-          {/* Right 4 Columns: Tactical List */}
-          <div className="col-span-4 flex flex-col bg-[#0A0C10] overflow-hidden rounded-[2rem] border border-[#22324A]/40">
+          {/* Right Columns: Tactical List */}
+          <div className="col-span-1 lg:col-span-4 flex flex-col bg-[#0A0C10] overflow-hidden rounded-2xl lg:rounded-[2rem] border border-[#22324A]/40">
             <div className="p-8 border-b border-[#22324A]/30 bg-[#121212]/50">
               <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] font-orbitron flex items-center gap-3">
                 <SignalIcon className="w-5 h-5 text-[#66FF66]" /> Ready for Execution
@@ -600,6 +602,7 @@ const App: React.FC = () => {
   const [testLogs, setTestLogs] = useState<string[]>([]);
   
   const [activeThreads, setActiveThreads] = useState<number>(0);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const parseJsonResponse = async (response: Response) => {
     const contentType = response.headers.get('content-type') || '';
@@ -812,10 +815,10 @@ const App: React.FC = () => {
     <div className="h-screen flex flex-row bg-[#0A0C10] text-slate-100 font-sans overflow-hidden selection:bg-[#66FF66]/30">
       
       {/* --- SIDEBAR --- */}
-      <nav className="w-20 lg:w-72 bg-[#121212] border-r border-[#22324A]/30 flex flex-col shrink-0">
-        <div className="p-8 flex items-center gap-4">
-          <div className="w-10 h-10 bg-[#66FF66] rounded-xl flex items-center justify-center text-[#121212] shadow-[0_0_15px_rgba(102,255,102,0.4)] transition-all hover:scale-105">
-            <CommandLineIcon className="w-6 h-6" />
+      <nav className="w-16 sm:w-20 lg:w-72 bg-[#121212] border-r border-[#22324A]/30 flex flex-col shrink-0">
+        <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center lg:justify-start gap-4">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#66FF66] rounded-xl flex items-center justify-center text-[#121212] shadow-[0_0_15px_rgba(102,255,102,0.4)] transition-all hover:scale-105">
+            <CommandLineIcon className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div className="hidden lg:block">
             <h2 className="font-black text-lg tracking-tighter uppercase leading-none">JB³Ai <span className="text-[#66FF66]">Neural Hub</span></h2>
@@ -823,7 +826,7 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        <div className="flex-1 px-4 space-y-2 py-6 overflow-y-auto scrollbar-hide">
+        <div className="flex-1 px-2 sm:px-4 space-y-1 sm:space-y-2 py-4 sm:py-6 overflow-y-auto scrollbar-hide">
           <NavItem active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="Data Inbox" disabled={!isProtocolAccepted} />
           <NavItem active={activeTab === 'PIPELINE'} onClick={() => setActiveTab('PIPELINE')} icon={<ListBulletIcon className="w-5 h-5" />} label="Pipeline" disabled={!isProtocolAccepted} />
           <NavItem active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={!isProtocolAccepted} />
@@ -843,8 +846,8 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-8 mt-auto border-t border-[#22324A]/30">
-          <div className="bg-[#22324A]/10 rounded-xl p-4 border border-[#22324A]/20 mb-4">
+        <div className="p-4 sm:p-6 lg:p-8 mt-auto border-t border-[#22324A]/30">
+          <div className="bg-[#22324A]/10 rounded-xl p-3 sm:p-4 border border-[#22324A]/20 mb-4">
              <div className="flex items-center gap-3 mb-2">
                 <div className={`w-2 h-2 rounded-full animate-pulse ${backendStatus === 'connected' ? 'bg-[#66FF66] shadow-[0_0_12px_#66FF66]' : 'bg-red-500 shadow-[0_0_12px_#ef4444]'}`}></div>
                 <span className={`text-[9px] font-black uppercase tracking-widest ${backendStatus === 'connected' ? 'text-[#66FF66] drop-shadow-[0_0_8px_rgba(102,255,102,0.4)]' : 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`}>
@@ -860,11 +863,11 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         
         {/* 🚀 MAIN CONTENT ZONE */}
-        <div className="flex-1 p-8 overflow-hidden flex flex-col">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden flex flex-col">
           
           {/* 🖥️ THE HUD (Active Protocol Screen) */}
           {['DATA_INBOX', 'PIPELINE', 'LIVE_TERMINAL', 'DASHBOARD'].includes(activeTab) && (
-            <div className={`mb-6 p-4 rounded-[18px] border bg-opacity-10 backdrop-blur-md flex justify-between items-center transition-all duration-500 shadow-lg ${
+            <div className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-xl sm:rounded-[18px] border bg-opacity-10 backdrop-blur-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 transition-all duration-500 shadow-lg ${
               protocolMode === 'local' ? 'border-[#39FF88]/30 bg-[#39FF88]/5 text-[#39FF88]' : 'border-[#00D9FF]/30 bg-[#00D9FF]/5 text-[#00D9FF]'
             }`}>
               <div className="flex items-center gap-4">
@@ -878,7 +881,7 @@ const App: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div className="text-right border-l border-white/10 pl-6">
+              <div className="text-right border-l border-white/10 pl-4 sm:pl-6 hidden sm:block">
                 <span className="font-mono text-[9px] block opacity-50 uppercase tracking-widest">Selected_Language</span>
                 <span className="font-orbitron text-sm font-bold uppercase">{language}</span>
               </div>
@@ -887,7 +890,7 @@ const App: React.FC = () => {
 
           {/* TAB: PIPELINE */}
           {activeTab === 'PIPELINE' && (
-            <div className="space-y-4 animate-fadeIn relative">
+            <div className="space-y-4 animate-fadeIn relative flex-1 flex flex-col overflow-hidden">
               <InfoOverlay 
                 isOpen={showPipelineInfo}
                 onClose={() => setShowPipelineInfo(false)}
@@ -916,7 +919,7 @@ const App: React.FC = () => {
                   }
                 ]}
               />
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => setShowPipelineInfo(true)}
@@ -925,19 +928,44 @@ const App: React.FC = () => {
                   >
                     <InformationCircleIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
                   </button>
-                  <h2 className="text-2xl font-black text-white uppercase tracking-tighter font-orbitron">Execution Pipeline</h2>
+                  <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter font-orbitron">Execution Pipeline</h2>
                 </div>
+              </div>
+              {/* Language Filter Pills */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button
+                  onClick={() => setLangFilter('ALL')}
+                  className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${langFilter === 'ALL' ? 'bg-[#66FF66] text-[#121212] border-[#66FF66] shadow-[0_0_12px_rgba(102,255,102,0.3)]' : 'bg-[#1A2333] text-slate-400 border-[#22324A]/40 hover:border-[#66FF66]/40 hover:text-white'}`}
+                >
+                  All
+                </button>
+                {(protocolMode === 'local'
+                  ? [Language.ENGLISH, Language.ZULU, Language.XHOSA, Language.AFRIKAANS, Language.SEPEDI]
+                  : [Language.PORTUGUESE, Language.GREEK, Language.MANDARIN]
+                ).map(lang => (
+                  <button
+                    key={lang}
+                    onClick={() => setLangFilter(lang)}
+                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${langFilter === lang ? 'bg-[#66FF66] text-[#121212] border-[#66FF66] shadow-[0_0_12px_rgba(102,255,102,0.3)]' : 'bg-[#1A2333] text-slate-400 border-[#22324A]/40 hover:border-[#66FF66]/40 hover:text-white'}`}
+                  >
+                    {getLanguageName(lang)}
+                  </button>
+                ))}
               </div>
               {pipelineClients.length === 0 ? (
                 <div className="p-20 text-center text-slate-600 font-orbitron text-xs">
                   NO_LEADS_IN_PIPELINE. SYNC_FROM_INBOX_TO_INITIALIZE.
                 </div>
               ) : (
-                <div className="bg-[#1A2333] rounded-[24px] border border-white/5 overflow-hidden">
-                  <table className="w-full text-left">
-                    <thead className="bg-[#0B0F1A] text-[10px] text-[#39FF88] font-orbitron">
+                <div className="bg-[#1A2333] rounded-[24px] border border-white/5 overflow-hidden overflow-x-auto flex-1">
+                  {/* Desktop table */}
+                  <table className="w-full text-left hidden sm:table">
+                    <thead className="bg-[#0B0F1A] text-[10px] text-[#39FF88] font-orbitron sticky top-0 z-10">
                        <tr>
                          <th className="p-4 uppercase">Identity</th>
+                         <th className="p-4 uppercase hidden md:table-cell">Phone</th>
+                         <th className="p-4 uppercase hidden lg:table-cell">Language</th>
+                         <th className="p-4 uppercase hidden lg:table-cell">Area</th>
                          <th className="p-4 uppercase">Status</th>
                          <th className="p-4 text-right">Action</th>
                        </tr>
@@ -948,13 +976,27 @@ const App: React.FC = () => {
                           <td className="p-4 font-bold uppercase text-xs text-white">
                             {c.name} {c.surname}
                           </td>
-                          <td className="p-4 text-[10px] font-mono text-[#00D9FF]">
-                            {c.status === 'signal_sent' ? 'SIGNAL_ACTIVE' : 'READY_FOR_EXECUTION'}
+                          <td className="p-4 font-mono text-[10px] text-slate-400 hidden md:table-cell">
+                            {c.phone}
+                          </td>
+                          <td className="p-4 hidden lg:table-cell">
+                            <span className="text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-widest text-[#66FF66] bg-[#66FF66]/10">
+                              {getLanguageName(c.language)}
+                            </span>
+                          </td>
+                          <td className="p-4 text-[10px] text-slate-500 uppercase tracking-wider hidden lg:table-cell">
+                            {c.area || '—'}
+                          </td>
+                          <td className="p-4">
+                            <span className={`text-[10px] font-mono px-2 py-1 rounded ${c.status === 'signal_sent' ? 'text-amber-400 bg-amber-400/10' : 'text-[#00D9FF] bg-[#00D9FF]/10'}`}>
+                              {c.status === 'signal_sent' ? 'ACTIVE' : 'READY'}
+                            </span>
                           </td>
                           <td className="p-4 text-right">
                             <button 
                               onClick={() => handleCall(c.id, c.phone)} 
-                              className="bg-[#00D9FF] text-[#0B0F1A] text-[9px] font-bold px-3 py-1 rounded hover:bg-[#39FF88] transition-colors"
+                              disabled={backendStatus !== 'connected'}
+                              className="bg-[#00D9FF] text-[#0B0F1A] text-[9px] font-bold px-4 py-2 rounded-lg hover:bg-[#39FF88] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               DIAL_NOW
                             </button>
@@ -963,6 +1005,30 @@ const App: React.FC = () => {
                       ))}
                     </tbody>
                   </table>
+
+                  {/* Mobile card list */}
+                  <div className="sm:hidden divide-y divide-white/5">
+                    {pipelineClients.map((c: any) => (
+                      <div key={c.id} className="p-4 flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-xs text-white uppercase truncate">{c.name} {c.surname}</h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded text-[#66FF66] bg-[#66FF66]/10 uppercase">{getLanguageName(c.language)}</span>
+                            <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${c.status === 'signal_sent' ? 'text-amber-400 bg-amber-400/10' : 'text-[#00D9FF] bg-[#00D9FF]/10'}`}>
+                              {c.status === 'signal_sent' ? 'ACTIVE' : 'READY'}
+                            </span>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleCall(c.id, c.phone)} 
+                          disabled={backendStatus !== 'connected'}
+                          className="bg-[#00D9FF] text-[#0B0F1A] text-[9px] font-bold px-3 py-2 rounded-lg hover:bg-[#39FF88] transition-colors shrink-0 disabled:opacity-30"
+                        >
+                          DIAL
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -1021,7 +1087,7 @@ const App: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-8 p-8 overflow-hidden">
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8 p-4 sm:p-8 overflow-hidden">
                   <div className="lg:col-span-1 space-y-6">
                     <div className="bg-[#121212] p-6 rounded-3xl border border-[#22324A]/40 group hover:border-[#66FF66]/30 transition-all">
                       <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex justify-between items-center">
@@ -1107,10 +1173,10 @@ const App: React.FC = () => {
                 </div>
               </>
             ) : (
-              <div className="flex-1 p-12 lg:p-24 overflow-y-auto scrollbar-hide">
-                <header className="mb-16 flex justify-between items-start">
+              <div className="flex-1 p-6 sm:p-12 lg:p-24 overflow-y-auto scrollbar-hide">
+                <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
-                      <h1 className="text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Neural Lab</h1>
+                      <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Neural Lab</h1>
                       <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Signal over Noise. Test the Audio and Logic units.</p>
                     </div>
                     <button 
@@ -1296,6 +1362,7 @@ const App: React.FC = () => {
               protocolMode={protocolMode}
               setProtocolMode={setProtocolMode}
               onSync={async () => {
+                setIsSyncing(true);
                 try {
                   console.log(`📡 Initiating sync with: ${backendUrl}/api/clients/sync-sheets`);
                   const response = await fetch(`${backendUrl}/api/clients/sync-sheets`, { method: 'POST' });
@@ -1326,15 +1393,18 @@ const App: React.FC = () => {
                 } catch (error: any) {
                   console.error('❌ Sync failed:', error);
                   alert(`Sync Failed: ${error.message}`);
+                } finally {
+                  setIsSyncing(false);
                 }
               }} 
               onClear={() => setClients(clientService.reset())}
+              isSyncing={isSyncing}
             />
         )}
 
         {/* TAB: CALL ARCHIVE */}
         {activeTab === 'CALL_ARCHIVE' && (
-             <div className="flex-1 overflow-y-auto p-12 lg:p-24 animate-fade-in scrollbar-hide relative">
+             <div className="flex-1 overflow-y-auto p-6 sm:p-12 lg:p-24 animate-fade-in scrollbar-hide relative">
                 <InfoOverlay 
                   isOpen={showArchiveInfo}
                   onClose={() => setShowArchiveInfo(false)}
@@ -1363,9 +1433,9 @@ const App: React.FC = () => {
                     }
                   ]}
                 />
-                <header className="mb-16 border-b border-[#22324A]/30 pb-12 flex justify-between items-start">
+                <header className="mb-8 sm:mb-16 border-b border-[#22324A]/30 pb-8 sm:pb-12 flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
-                      <h1 className="text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Intelligence Ledger</h1>
+                      <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Intelligence Ledger</h1>
                       <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Build once. Run forever. Full transcripts and signal tracking.</p>
                     </div>
                     <button 
@@ -1379,7 +1449,7 @@ const App: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {archiveClients.map(client => (
-                        <div key={client.id} className="bg-[#E6E6E6] p-8 rounded-3xl flex flex-col justify-between hover:translate-y-[-4px] transition-all border border-transparent hover:border-[#66FF66]/20">
+                        <div key={client.id} className="bg-[#121212] p-8 rounded-3xl flex flex-col justify-between hover:translate-y-[-4px] transition-all border border-[#22324A]/40 hover:border-[#66FF66]/20 shadow-lg">
                             <div>
                                 <div className="flex items-center justify-between mb-6">
                                     <div className={`p-2 rounded-lg ${client.status === 'qualified' ? 'bg-green-600/10 text-green-600' : 'bg-red-600/10 text-red-600'}`}>
@@ -1387,19 +1457,19 @@ const App: React.FC = () => {
                                     </div>
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{client.signup_date}</span>
                                 </div>
-                                <h3 className="text-xl font-black text-[#121212] mb-1">{client.name} {client.surname}</h3>
+                                <h3 className="text-xl font-black text-white mb-1">{client.name} {client.surname}</h3>
                                 <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-4">{getLanguageName(client.language)} Engine • {client.phone}</p>
                                 
                                 <div className="mb-6 flex items-center gap-2">
                                   <span className="text-[9px] font-black uppercase text-slate-400">Anti-Gravity Signal:</span>
                                   <div className="flex gap-1">
                                     {[1,2,3,4,5].map(star => (
-                                      <SparklesIcon key={star} className={`w-3 h-3 ${star <= (client.status === 'qualified' ? 5 : 2) ? 'text-[#66FF66]' : 'text-slate-300'}`} />
+                                      <SparklesIcon key={star} className={`w-3 h-3 ${star <= (client.status === 'qualified' ? 5 : 2) ? 'text-[#66FF66]' : 'text-slate-600'}`} />
                                     ))}
                                   </div>
                                 </div>
                             </div>
-                            <button onClick={() => setViewingTranscriptClient(client)} className="w-full bg-[#121212] text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#66FF66] hover:text-[#121212] transition-all">
+                            <button onClick={() => setViewingTranscriptClient(client)} className="w-full bg-[#22324A]/40 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#66FF66] hover:text-[#121212] transition-all border border-[#22324A]/30">
                                 <DocumentTextIcon className="w-4 h-4" /> Analyze Transcript
                             </button>
                         </div>
@@ -1416,7 +1486,7 @@ const App: React.FC = () => {
 
         {/* TAB: CONFIG HUB */}
         {activeTab === 'CONFIG_HUB' && (
-            <div className="flex-1 overflow-y-auto p-12 lg:p-24 animate-fade-in scrollbar-hide relative">
+            <div className="flex-1 overflow-y-auto p-6 sm:p-12 lg:p-24 animate-fade-in scrollbar-hide relative">
                 <InfoOverlay 
                   isOpen={showConfigInfo}
                   onClose={() => setShowConfigInfo(false)}
@@ -1445,8 +1515,8 @@ const App: React.FC = () => {
                     }
                   ]}
                 />
-                <div className="flex justify-between items-center mb-12">
-                  <h1 className="text-6xl font-black text-white uppercase tracking-tighter text-glow">Config Hub</h1>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-12">
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter text-glow">Config Hub</h1>
                   <button 
                     onClick={() => setShowConfigInfo(true)}
                     className="w-12 h-12 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/20 rounded-xl flex items-center justify-center hover:bg-[#66FF66]/10 transition-all shadow-[0_0_15px_rgba(102,255,102,0.1)] group"
@@ -1506,7 +1576,7 @@ const App: React.FC = () => {
 
         {/* TAB: RUN PROTOCOL */}
         {activeTab === 'RUN_PROTOCOL' && (
-          <div className="flex-1 overflow-y-auto p-12 lg:p-24 animate-fade-in scrollbar-hide relative">
+          <div className="flex-1 overflow-y-auto p-6 sm:p-12 lg:p-24 animate-fade-in scrollbar-hide relative">
             <InfoOverlay 
               isOpen={showProtocolInfo}
               onClose={() => setShowProtocolInfo(false)}
@@ -1535,9 +1605,9 @@ const App: React.FC = () => {
                 }
               ]}
             />
-            <header className="mb-16 flex justify-between items-start">
+            <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div>
-                  <h1 className="text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Run Protocol</h1>
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Run Protocol</h1>
                   <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">The Logic Gate. Instruction sets for Zandi's neural core.</p>
                 </div>
                 <button 
@@ -1595,7 +1665,7 @@ const App: React.FC = () => {
 
         {/* TAB: BACKEND SETTINGS */}
         {activeTab === 'BACKEND_SETTINGS' && (
-          <div className="flex-1 overflow-y-auto p-12 lg:p-24 animate-fade-in scrollbar-hide relative">
+          <div className="flex-1 overflow-y-auto p-6 sm:p-12 lg:p-24 animate-fade-in scrollbar-hide relative">
             <InfoOverlay 
               isOpen={showBackendInfo}
               onClose={() => setShowBackendInfo(false)}
@@ -1624,9 +1694,9 @@ const App: React.FC = () => {
                 }
               ]}
             />
-            <header className="mb-16 flex justify-between items-start">
+            <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div>
-                  <h1 className="text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">System Recalibration</h1>
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">System Recalibration</h1>
                   <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Backend control and Neural Hub reset protocols.</p>
                 </div>
                 <button 
@@ -1649,11 +1719,11 @@ const App: React.FC = () => {
                     <input type="text" value={backendUrl} onChange={(e) => saveBackendUrl(e.target.value)} className="w-full bg-black/40 border border-[#22324A]/40 rounded-xl px-6 py-4 text-[#66FF66] font-mono text-xs focus:ring-1 focus:ring-[#66FF66] outline-none transition-all" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <button onClick={() => checkBackendHealth()} className="bg-[#22324A] text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#22324A]/80 transition-all">
-                      Reboot Server
+                    <button onClick={() => checkBackendHealth()} disabled={backendStatus === 'loading'} className="bg-[#22324A] text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#22324A]/80 transition-all disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2">
+                      {backendStatus === 'loading' ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Checking...</> : 'Reboot Server'}
                     </button>
-                    <button onClick={() => { console.log('Recalibrating Neural Hub...'); checkBackendHealth(); }} className="bg-[#66FF66] text-[#121212] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:scale-105 transition-all font-orbitron">
-                      Recalibrate
+                    <button onClick={() => { console.log('Recalibrating Neural Hub...'); checkBackendHealth(); }} disabled={backendStatus === 'loading'} className="bg-[#66FF66] text-[#121212] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:scale-105 transition-all font-orbitron disabled:opacity-50 disabled:cursor-wait disabled:hover:scale-100 flex items-center justify-center gap-2">
+                      {backendStatus === 'loading' ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Working...</> : 'Recalibrate'}
                     </button>
                     <button onClick={resetBackendUrlToDefault} className="col-span-2 bg-[#22324A]/30 text-[#66FF66] border border-[#66FF66]/20 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#66FF66]/10 transition-all">
                       Reset to Default Endpoint
