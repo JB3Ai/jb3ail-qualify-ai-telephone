@@ -22,8 +22,97 @@ const DEFAULT_CLIENTS: Client[] = [
       { role: 'user', text: "Yebo, ninjani? Yes, this is Thabo speaking.", timestamp: 1698400005000 },
       { role: 'model', text: "Sikhona, ngiyabonga. I'm calling to verify your signup for the solar initiative. Can you confirm your email address?", timestamp: 1698400010000 },
       { role: 'user', text: "Yes, it is thabo dot m at example dot co dot za.", timestamp: 1698400020000 },
-      { role: 'model', text: "Ngiyabonga. And are you the homeowner in the Gauteng area?", timestamp: 1698400025000 },
-      { role: 'user', text: "Yes, I am.", timestamp: 1698400030000 }
+      { role: 'model', text: "Ngiyabonga kakhulu. And can you confirm you are the homeowner in the Gauteng area?", timestamp: 1698400025000 },
+      { role: 'user', text: "Yes, I am the homeowner. I signed up last month at the community event.", timestamp: 1698400030000 },
+      { role: 'model', text: "Perfect. Now, regarding marketing — would you prefer us to contact you via email, SMS, or would you rather we don't reach out?", timestamp: 1698400035000 },
+      { role: 'user', text: "Email is fine. I don't like getting too many SMSes.", timestamp: 1698400040000 },
+      { role: 'model', text: "Understood, we'll keep it to email only. One last question — what is your current energy provider, and roughly how much do you spend on electricity per month?", timestamp: 1698400045000 },
+      { role: 'user', text: "We're with Eskom. Spending about R2,500 a month, sometimes more in winter.", timestamp: 1698400050000 },
+      { role: 'model', text: "Ngiyabonga kakhulu, Thabo. That's all I need. You're now fully verified for the solar initiative. We'll send a confirmation email shortly. Ube nosuku oluhle!", timestamp: 1698400055000 },
+      { role: 'user', text: "Ngiyabonga, Zandi. Bye-bye.", timestamp: 1698400060000 }
+    ]
+  },
+  {
+    id: "105",
+    name: "Pieter",
+    surname: "van der Merwe",
+    area: "Western Cape",
+    phone: "+27821234567",
+    signup_date: "2023-11-05",
+    status: "qualified",
+    language: Language.AFRIKAANS,
+    collected_data: {
+      email: "pieter.vdm@example.co.za",
+      phone: "+27821234567",
+      marketingPreference: "sms"
+    },
+    transcript: [
+      { role: 'model', text: "Goeiedag! Dit is Zandi van Mzansi Solutions. Praat ek met die huiseienaar?", timestamp: 1699100000000 },
+      { role: 'user', text: "Ja, dit is Pieter. Waarmee kan ek help?", timestamp: 1699100005000 },
+      { role: 'model', text: "Dankie, Pieter. Ek skakel om u inskrywing vir die sonkrag-inisiatief te verifieer. Kan u asseblief u e-posadres bevestig?", timestamp: 1699100010000 },
+      { role: 'user', text: "Ja, dis pieter punt v d m by example punt co punt za.", timestamp: 1699100015000 },
+      { role: 'model', text: "Baie dankie. En kan u bevestig dat u die eienaar van die eiendom in die Wes-Kaap is?", timestamp: 1699100020000 },
+      { role: 'user', text: "Ja, dis reg. Ek bly in Stellenbosch, het die huis al vyf jaar.", timestamp: 1699100025000 },
+      { role: 'model', text: "Uitstekend. Nou, oor bemarkingsvoorkeure — wil u hê ons moet u per e-pos, SMS, of glad nie kontak nie?", timestamp: 1699100030000 },
+      { role: 'user', text: "SMS is fine vir my. Maar nie te veel nie.", timestamp: 1699100035000 },
+      { role: 'model', text: "Natuurlik, ons sal dit beperk. Laaste vraag — wat is u huidige kragvoorsiener en hoeveel spandeer u per maand aan elektrisiteit?", timestamp: 1699100040000 },
+      { role: 'user', text: "Ons is by die Stad Kaapstad. Omtrent R1,800 per maand. Maar ek soek lankal na alternatiewe.", timestamp: 1699100045000 },
+      { role: 'model', text: "Perfek, Pieter. Alles is geverifieer. Ons sal binnekort 'n bevestiging per SMS stuur. Geniet u dag verder!", timestamp: 1699100050000 },
+      { role: 'user', text: "Baie dankie, Zandi. Totsiens!", timestamp: 1699100055000 }
+    ]
+  },
+  {
+    id: "106",
+    name: "Noluthando",
+    surname: "Mthembu",
+    area: "Eastern Cape",
+    phone: "+27829876543",
+    signup_date: "2023-11-10",
+    status: "qualified",
+    language: Language.XHOSA,
+    collected_data: {
+      email: "noluthando.m@example.co.za",
+      phone: "+27829876543",
+      marketingPreference: "email"
+    },
+    transcript: [
+      { role: 'model', text: "Molo! NdinguZandi waseMzansi Solutions. Ingaba ndithetha nomnikazi wekhaya?", timestamp: 1699800000000 },
+      { role: 'user', text: "Ewe, ndinguNoluthando. Kutheni undifowunela?", timestamp: 1699800005000 },
+      { role: 'model', text: "Enkosi, Noluthando. Ndifowunela ukuqinisekisa ukubhalisa kwakho kwinkqubo yamandla elanga. Ungaqinisekisa idilesi yakho ye-imeyile?", timestamp: 1699800010000 },
+      { role: 'user', text: "Ewe, yi noluthando dot m at example dot co dot za.", timestamp: 1699800015000 },
+      { role: 'model', text: "Enkosi kakhulu. Ungaqinisekisa ukuba ungumnikazi wendlu eMpuma Koloni?", timestamp: 1699800020000 },
+      { role: 'user', text: "Ewe, ndingumnikazi. Ndihlala eBhisho, ndinekhaya apho.", timestamp: 1699800025000 },
+      { role: 'model', text: "Kulungile. Ngokuphathelele neentengiso — ngaba ungathanda ukuba siqhagamshelane nawe nge-imeyile, nge-SMS, okanye ungathandi konke konke?", timestamp: 1699800030000 },
+      { role: 'user', text: "Nge-imeyile kulungile. Ndiyayithanda into yokufunda ngexesha lam.", timestamp: 1699800035000 },
+      { role: 'model', text: "Siyakuva. Umbuzo wokugqibela — ngubani umniki-mbane wakho okwangoku, yaye uchitha malini ngenyanga?", timestamp: 1699800040000 },
+      { role: 'user', text: "Ndisebenzisa uEskom. Malunga neR2,000 ngenyanga, kodwa ngamanye amaxesha iyenyuka xa kubanda.", timestamp: 1699800045000 },
+      { role: 'model', text: "Enkosi kakhulu, Noluthando. Yonke into iqinisekisiwe. Sizokuthumelela isiqinisekiso nge-imeyile kungekudala. Ube nosuku oluhle!", timestamp: 1699800050000 },
+      { role: 'user', text: "Enkosi, Zandi. Usale kakuhle!", timestamp: 1699800055000 }
+    ]
+  },
+  {
+    id: "107",
+    name: "Ricardo",
+    surname: "Ferreira",
+    area: "Johannesburg",
+    phone: "+27824445555",
+    signup_date: "2023-11-15",
+    status: "failed",
+    language: Language.PORTUGUESE,
+    collected_data: {
+      phone: "+27824445555"
+    },
+    transcript: [
+      { role: 'model', text: "Olá! Aqui é a Zandi da Mzansi Solutions. Estou a falar com o proprietário da casa?", timestamp: 1700100000000 },
+      { role: 'user', text: "Sim, sou o Ricardo. De que se trata?", timestamp: 1700100005000 },
+      { role: 'model', text: "Obrigada, Ricardo. Estou a ligar para verificar a sua inscrição na iniciativa de energia solar. Pode confirmar o seu endereço de e-mail?", timestamp: 1700100010000 },
+      { role: 'user', text: "Olhe, agora não é boa altura. Estou muito ocupado com o trabalho.", timestamp: 1700100015000 },
+      { role: 'model', text: "Compreendo que esteja ocupado. Isto levará apenas 60 segundos para verificar os seus dados para a melhor tarifa disponível.", timestamp: 1700100020000 },
+      { role: 'user', text: "Não, a sério, não tenho tempo agora. Podem ligar-me noutra altura?", timestamp: 1700100025000 },
+      { role: 'model', text: "Claro, sem problema. Qual seria o melhor horário para voltar a ligar? E em que idioma prefere que falemos?", timestamp: 1700100030000 },
+      { role: 'user', text: "Talvez amanhã de manhã, por volta das 10. Pode ser em português mesmo.", timestamp: 1700100035000 },
+      { role: 'model', text: "Anotado — amanhã às 10h, em português. Obrigada pela sua disponibilidade, Ricardo. Tenha um excelente dia!", timestamp: 1700100040000 },
+      { role: 'user', text: "Obrigado, até amanhã.", timestamp: 1700100045000 }
     ]
   },
   { 

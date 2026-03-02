@@ -546,9 +546,10 @@ const App: React.FC = () => {
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [isCalling, setIsCalling] = useState(false);
   const [transcriptions, setTranscriptions] = useState<TranscriptionEntry[]>([]);
-  const [langFilter, setLangFilter] = useState<Language | 'ALL'>('ALL');
+  const ALL_LANGUAGES = [Language.ENGLISH, Language.ZULU, Language.XHOSA, Language.AFRIKAANS, Language.SEPEDI, Language.PORTUGUESE, Language.GREEK, Language.MANDARIN];
+  const [activeLangs, setActiveLangs] = useState<Set<Language>>(() => new Set(ALL_LANGUAGES));
   const [viewingTranscriptClient, setViewingTranscriptClient] = useState<Client | null>(null);
-  const [showPopiaModal, setShowPopiaModal] = useState<boolean>(localStorage.getItem('mzansi_protocol_accepted') !== 'true');
+  const [showPopiaModal, setShowPopiaModal] = useState<boolean>(true);
   const [showDashboardInfo, setShowDashboardInfo] = useState(false);
   const [showPipelineInfo, setShowPipelineInfo] = useState(false);
   const [showProtocolInfo, setShowProtocolInfo] = useState(false);
@@ -564,7 +565,20 @@ const App: React.FC = () => {
   const [isInternalCall, setIsInternalCall] = useState(false);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
-  const language = langFilter === 'ALL' ? 'Multi-Language' : getLanguageName(langFilter);
+  const language = activeLangs.size === ALL_LANGUAGES.length ? 'Multi-Language' : activeLangs.size === 0 ? 'None' : activeLangs.size === 1 ? getLanguageName([...activeLangs][0]) : `${activeLangs.size} Languages`;
+
+  const toggleLang = (lang: Language) => {
+    setActiveLangs(prev => {
+      const next = new Set(prev);
+      if (next.has(lang)) next.delete(lang);
+      else next.add(lang);
+      return next;
+    });
+  };
+
+  const toggleAllLangs = () => {
+    setActiveLangs(prev => prev.size === ALL_LANGUAGES.length ? new Set() : new Set(ALL_LANGUAGES));
+  };
 
   const [backendUrl, setBackendUrl] = useState<string>(() => {
     const stored = localStorage.getItem('mzansi_backend_url');
@@ -733,40 +747,84 @@ const App: React.FC = () => {
   const runNeuralTest = async () => {
     if (!testInput) return;
     setIsTestRunning(true);
-    const newLog = `[${new Date().toLocaleTimeString()}] INITIATING ${testType.toUpperCase()} SEQUENCE...`;
-    setTestLogs(prev => [newLog, ...prev]);
+    const ts = () => new Date().toLocaleTimeString();
+    setTestLogs(prev => [`[${ts()}] INITIATING ${testType.toUpperCase()} SEQUENCE...`, ...prev]);
+
+    // Pre-flight: check backend reachability before attempting the test
+    if (backendStatus !== 'connected') {
+      setTestLogs(prev => [
+        `[${ts()}] ERROR: Backend is offline. Go to Backend Settings and verify the Core Endpoint is correct, then Recalibrate.`,
+        `[${ts()}] HINT: Current endpoint → ${backendUrl}`,
+        ...prev
+      ]);
+      setIsTestRunning(false);
+      return;
+    }
 
     try {
       if (testType === 'speak') {
-        const response = await fetch(`${backendUrl}/api/test-voice`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: testInput, language: testLang })
-        });
+        let response: Response;
+        try {
+          response = await fetch(`${backendUrl}/api/test-voice`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: testInput, language: testLang })
+          });
+        } catch (fetchErr: any) {
+          throw new Error(`Network error reaching backend at ${backendUrl}. Ensure the server is running. (${fetchErr.message})`);
+        }
         const data = await parseJsonResponse(response);
         if (data.success) {
-          const audio = new Audio(`data:audio/wav;base64,${data.audioBase64}`);
-          await audio.play();
-          setTestLogs(prev => [`[${new Date().toLocaleTimeString()}] AUDIO UNIT SUCCESS: Playback complete.`, ...prev]);
+          try {
+            const audio = new Audio(`data:audio/wav;base64,${data.audioBase64}`);
+            await audio.play();
+            setTestLogs(prev => [`[${ts()}] AUDIO UNIT SUCCESS: Playback complete.`, ...prev]);
+          } catch (playErr: any) {
+            setTestLogs(prev => [
+              `[${ts()}] WARN: Audio generated but browser playback failed: ${playErr.message}`,
+              `[${ts()}] HINT: Audio data received (${(data.audioBase64?.length || 0)} bytes). Try a different browser or check audio permissions.`,
+              ...prev
+            ]);
+          }
         } else {
           const msg = data.error + (data.details ? ` (${data.details})` : '');
           throw new Error(msg);
         }
       } else {
-        const response = await fetch(`${backendUrl}/api/test-logic`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: testInput })
-        });
+        let response: Response;
+        try {
+          response = await fetch(`${backendUrl}/api/test-logic`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: testInput })
+          });
+        } catch (fetchErr: any) {
+          throw new Error(`Network error reaching backend at ${backendUrl}. Ensure the server is running. (${fetchErr.message})`);
+        }
         const data = await parseJsonResponse(response);
         if (data.success) {
-          setTestLogs(prev => [`[${new Date().toLocaleTimeString()}] LOGIC UNIT RESPONSE: ${data.response}`, ...prev]);
+          setTestLogs(prev => [`[${ts()}] LOGIC UNIT RESPONSE: ${data.response}`, ...prev]);
         } else {
-          throw new Error(data.error);
+          throw new Error(data.error || 'Unknown logic unit error');
         }
       }
     } catch (err: any) {
-      setTestLogs(prev => [`[${new Date().toLocaleTimeString()}] ERROR: ${err.message}`, ...prev]);
+      const msg = err.message || 'Unknown error';
+      const hints: string[] = [];
+      if (msg.includes('Failed to fetch') || msg.includes('Network error') || msg.includes('NetworkError')) {
+        hints.push(`HINT: Backend at ${backendUrl} is unreachable. Check Backend Settings → Core Endpoint.`);
+      } else if (msg.includes('HTML instead of API JSON') || msg.includes('not JSON')) {
+        hints.push('HINT: The endpoint returned a web page, not an API. The backend URL may point to the frontend instead of the API server.');
+      } else if (msg.includes('AZURE') || msg.includes('speech') || msg.includes('SpeechSDK')) {
+        hints.push('HINT: Azure Speech key may be missing or invalid. Check .env for AZURE_SPEECH_KEY and AZURE_SPEECH_REGION.');
+      } else if (msg.includes('API key') || msg.includes('GEMINI') || msg.includes('generativelanguage')) {
+        hints.push('HINT: Gemini API key may be missing or invalid. Check .env for GEMINI_API_KEY.');
+      }
+      setTestLogs(prev => [
+        ...hints.map(h => `[${ts()}] ${h}`),
+        `[${ts()}] ERROR: ${msg}`,
+        ...prev
+      ]);
     } finally {
       setIsTestRunning(false);
     }
@@ -799,13 +857,10 @@ const App: React.FC = () => {
     return clients.filter(c => {
       // Sync moved leads have 'READY_FOR_EXECUTION' status. We also show active calls.
       const isStatusMatch = c.status === 'READY_FOR_EXECUTION' || c.status === 'signal_sent';
-      const isProtocolMatch = protocolMode === 'intl' 
-        ? ['pt-PT', 'el-GR', 'zh-CN'].includes(c.language)
-        : !['pt-PT', 'el-GR', 'zh-CN'].includes(c.language);
-      const isLangMatch = langFilter === 'ALL' || c.language === langFilter;
-      return isStatusMatch && isProtocolMatch && isLangMatch;
+      const isLangMatch = activeLangs.size === 0 || activeLangs.has(c.language);
+      return isStatusMatch && isLangMatch;
     });
-  }, [clients, protocolMode, langFilter]);
+  }, [clients, activeLangs]);
 
   const archiveClients = useMemo(() => {
     return clients.filter(c => c.status === 'qualified' || c.status === 'failed');
@@ -932,25 +987,33 @@ const App: React.FC = () => {
                 </div>
               </div>
               {/* Language Filter Pills */}
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-2 mb-4 items-center">
                 <button
-                  onClick={() => setLangFilter('ALL')}
-                  className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${langFilter === 'ALL' ? 'bg-[#66FF66] text-[#121212] border-[#66FF66] shadow-[0_0_12px_rgba(102,255,102,0.3)]' : 'bg-[#1A2333] text-slate-400 border-[#22324A]/40 hover:border-[#66FF66]/40 hover:text-white'}`}
+                  onClick={toggleAllLangs}
+                  className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${activeLangs.size === ALL_LANGUAGES.length ? 'bg-[#66FF66] text-[#121212] border-[#66FF66] shadow-[0_0_12px_rgba(102,255,102,0.3)]' : 'bg-[#1A2333] text-slate-400 border-[#22324A]/40 hover:border-[#66FF66]/40 hover:text-white'}`}
                 >
                   All
                 </button>
-                {(protocolMode === 'local'
-                  ? [Language.ENGLISH, Language.ZULU, Language.XHOSA, Language.AFRIKAANS, Language.SEPEDI]
-                  : [Language.PORTUGUESE, Language.GREEK, Language.MANDARIN]
-                ).map(lang => (
-                  <button
-                    key={lang}
-                    onClick={() => setLangFilter(lang)}
-                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${langFilter === lang ? 'bg-[#66FF66] text-[#121212] border-[#66FF66] shadow-[0_0_12px_rgba(102,255,102,0.3)]' : 'bg-[#1A2333] text-slate-400 border-[#22324A]/40 hover:border-[#66FF66]/40 hover:text-white'}`}
-                  >
-                    {getLanguageName(lang)}
-                  </button>
-                ))}
+                <span className="text-slate-600 text-[9px] font-mono mx-1">|</span>
+                {ALL_LANGUAGES.map(lang => {
+                  const isOn = activeLangs.has(lang);
+                  return (
+                    <button
+                      key={lang}
+                      onClick={() => toggleLang(lang)}
+                      className={`group px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${
+                        isOn
+                          ? 'bg-[#66FF66]/10 text-[#66FF66] border-[#66FF66]/50 shadow-[0_0_10px_rgba(102,255,102,0.15)]'
+                          : 'bg-[#1A2333] text-slate-600 border-[#22324A]/30 hover:border-slate-500/40 line-through decoration-slate-700'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full transition-all ${
+                        isOn ? 'bg-[#66FF66] shadow-[0_0_6px_#66FF66]' : 'bg-red-500/60'
+                      }`} />
+                      {getLanguageName(lang)}
+                    </button>
+                  );
+                })}
               </div>
               {pipelineClients.length === 0 ? (
                 <div className="p-20 text-center text-slate-600 font-orbitron text-xs">
@@ -1365,7 +1428,24 @@ const App: React.FC = () => {
                 setIsSyncing(true);
                 try {
                   console.log(`📡 Initiating sync with: ${backendUrl}/api/clients/sync-sheets`);
-                  const response = await fetch(`${backendUrl}/api/clients/sync-sheets`, { method: 'POST' });
+                  let response: Response;
+                  try {
+                    response = await fetch(`${backendUrl}/api/clients/sync-sheets`, { method: 'POST' });
+                  } catch (fetchErr: any) {
+                    // Network error — backend unreachable. Inject demo fallback leads.
+                    console.warn('⚠️ Backend unreachable, injecting demo leads locally.', fetchErr.message);
+                    const demoLeads: Client[] = [
+                      { id: `DEMO-${Date.now()}-1`, name: 'Sipho', surname: 'Dlamini', phone: '+27821112222', language: Language.ZULU, status: 'READY_FOR_EXECUTION' as const, source: 'DEMO_SYNC', area: 'KwaZulu-Natal', signup_date: new Date().toISOString(), collected_data: {} },
+                      { id: `DEMO-${Date.now()}-2`, name: 'Anelize', surname: 'van Wyk', phone: '+27823334444', language: Language.AFRIKAANS, status: 'READY_FOR_EXECUTION' as const, source: 'DEMO_SYNC', area: 'Free State', signup_date: new Date().toISOString(), collected_data: {} },
+                      { id: `DEMO-${Date.now()}-3`, name: 'Thabiso', surname: 'Molefe', phone: '+27825556666', language: Language.SEPEDI, status: 'READY_FOR_EXECUTION' as const, source: 'DEMO_SYNC', area: 'Limpopo', signup_date: new Date().toISOString(), collected_data: {} },
+                      { id: `DEMO-${Date.now()}-4`, name: 'Nikos', surname: 'Papadopoulos', phone: '+27827778888', language: Language.GREEK, status: 'READY_FOR_EXECUTION' as const, source: 'DEMO_SYNC', area: 'Johannesburg', signup_date: new Date().toISOString(), collected_data: {} },
+                      { id: `DEMO-${Date.now()}-5`, name: 'Wei', surname: 'Chen', phone: '+27829990000', language: Language.MANDARIN, status: 'READY_FOR_EXECUTION' as const, source: 'DEMO_SYNC', area: 'Cape Town', signup_date: new Date().toISOString(), collected_data: {} },
+                    ];
+                    const updated = clientService.importClients(demoLeads);
+                    setClients(updated);
+                    setIsSyncing(false);
+                    return;
+                  }
                   
                   const contentType = response.headers.get("content-type");
                   if (contentType && contentType.indexOf("application/json") !== -1) {
