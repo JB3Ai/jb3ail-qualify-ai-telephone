@@ -2,7 +2,7 @@
 
 This project runs as a static frontend on cPanel plus a Node API on Azure App Service.
 
-- Frontend: `https://jb3ai.com/os3grid-telephone/`
+// Frontend: `https://jb3ai.com/os3grid-telephone/` (deprecated, do not use)
 - Backend: `https://os3grid.azurewebsites.net`
 
 ---
@@ -62,7 +62,7 @@ If the response is HTML, the app process did not start correctly.
 
 ## 4) Connect Telephone Frontend
 
-In live Telephone UI (`/os3grid-telephone/`):
+// In live Telephone UI (`/os3grid-telephone/`): (deprecated, do not use)
 
 1. Open **System Recalibration**.
 2. Set **Core Endpoint** to:

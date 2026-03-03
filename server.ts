@@ -1,4 +1,3 @@
-
 import * as dotenv from 'dotenv';
 dotenv.config({ override: true });
 import express from 'express';
@@ -7,6 +6,7 @@ import Twilio from 'twilio';
 import cors from 'cors'; // Added CORS for frontend-backend communication
 import { voiceService } from './services/voiceService';
 import { geminiService } from './services/geminiService';
+import { aiService } from './services/azureOpenAiService';
 import { clientService } from './services/clientService';
 import { google } from 'googleapis';
 import { Language } from './types';
@@ -16,6 +16,16 @@ import { Buffer } from 'buffer';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import * as appInsights from 'applicationinsights';
+
+appInsights.setup()
+    .setAutoDependencyCorrelation(true)
+    .setAutoCollectRequests(true)
+    .setAutoCollectExceptions(true)
+    .setAutoCollectDependencies(true)
+    .start();
+
+const telemetryClient = appInsights.defaultClient;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -235,7 +245,7 @@ app.all('/voice-handler', async (req, res) => {
   }
 });
 
-// 4. BRAIN LOGIC
+// 4. BRAIN LOGIC — Azure OpenAI
 app.all('/handle-response', async (req, res) => {
   const twiml = new Twilio.twiml.VoiceResponse();
   const userSpeech = req.body.SpeechResult; 
@@ -246,7 +256,11 @@ app.all('/handle-response', async (req, res) => {
     return;
   }
 
-  const aiResponse = await geminiService.generateResponse(userSpeech);
+  // AI logic switched from Gemini to Azure OpenAI
+  const aiResponse = await aiService.generateResponse(
+    userSpeech,
+    "You are Zandi, a professional qualification agent for Mzansi Solutions."
+  );
 
   const gather = twiml.gather({
     input: ['speech'],
@@ -254,6 +268,7 @@ app.all('/handle-response', async (req, res) => {
     language: 'en-ZA'
   });
 
+  // Audio still streams through voiceService (Azure TTS)
   gather.play(`https://${domain}/audio-stream?text=${encodeURIComponent(aiResponse)}`);
 
   res.type('text/xml');
@@ -349,7 +364,7 @@ app.post('/api/test-logic', async (req, res) => {
 
   try {
     console.log(`🧠 Testing Logic: ${text}`);
-    const aiResponse = await geminiService.generateResponse(text);
+    const aiResponse = await aiService.generateResponse(text);
     res.json({ success: true, response: aiResponse });
   } catch (err) {
     console.error("Logic Test Fail:", err);
