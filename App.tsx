@@ -80,7 +80,7 @@ const getLanguageName = (lang: string) => {
 const getDefaultBackendUrl = () => {
   const isLocalhost =
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocalhost ? 'http://localhost:3000' : 'https://os3grid.azurewebsites.net';
+  return isLocalhost ? 'http://localhost:3000' : 'https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net';
 };
 
 const NeuralConnectivityMatrix: React.FC<{ 

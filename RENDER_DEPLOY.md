@@ -3,7 +3,7 @@
 This project runs as a static frontend on cPanel plus a Node API on Azure App Service.
 
 // Frontend: `https://jb3ai.com/os3grid-telephone/` (deprecated, do not use)
-- Backend: `https://os3grid.azurewebsites.net`
+- Backend: `https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net`
 
 ---
 
@@ -31,8 +31,8 @@ In **Web App > Configuration** set:
 
 - **Startup Command**: `npm run start:api`
 - **NODE_ENV**: `production`
-- **APP_URL**: `https://os3grid.azurewebsites.net`
-- **DOMAIN**: `os3grid.azurewebsites.net`
+- **APP_URL**: `https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net`
+- **DOMAIN**: `os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net`
 - **GEMINI_API_KEY**: `<your key>`
 - **SPEECH_KEY**: `<your key>`
 - **SPEECH_REGION**: `<your speech region>`
@@ -48,7 +48,7 @@ Then restart the app.
 
 Open:
 
-- `https://os3grid.azurewebsites.net/api/health`
+- `https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net/api/health`
 
 Expected JSON:
 
@@ -68,7 +68,7 @@ If the response is HTML, the app process did not start correctly.
 2. Set **Core Endpoint** to:
 
 ```text
-https://os3grid.azurewebsites.net
+https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net
 ```
 
 3. Click **Reboot Server**.
@@ -82,7 +82,7 @@ https://os3grid.azurewebsites.net
 Cause: frontend hit a non-API HTML response.
 
 Fix:
-- Confirm Core Endpoint is `https://os3grid.azurewebsites.net`.
+- Confirm Core Endpoint is `https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net`.
 - Confirm `/api/health` returns JSON.
 
 ### Twilio call issues
