@@ -20,7 +20,6 @@ import { Buffer } from 'buffer';
 
 
 import path from 'path';
-import { fileURLToPath } from 'url';
 import * as appInsights from 'applicationinsights';
 
 // Only initialise Application Insights when the connection string is configured
@@ -35,8 +34,7 @@ if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
 
 const telemetryClient = appInsights.defaultClient ?? null;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// __dirname is provided natively in CommonJS modules (no declaration needed)
 
 const app = express();
 const server = createServer(app);

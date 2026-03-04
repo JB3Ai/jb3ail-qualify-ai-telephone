@@ -27,6 +27,8 @@ jobs:
         run: |
           npm install
           npm run build --if-present
+          npx tsc -p tsconfig.server.json --skipLibCheck
+          echo "Server compiled to dist-server/ ✓"
 
       - name: Write production .env from secrets
         run: |
@@ -54,13 +56,10 @@ jobs:
         run: |
           mkdir deploy-package
           cp package.json deploy-package/
-          cp tsconfig.json deploy-package/
-          cp server.ts deploy-package/
-          cp types.ts deploy-package/
           cp .env deploy-package/
-          cp -r services deploy-package/
+          cp -r dist-server deploy-package/
           cp -r dist deploy-package/
-          # Install production dependencies only (no devDeps) inside the package
+          # Install production dependencies on Linux (native, no cross-arch issues)
           cd deploy-package && npm install --omit=dev --ignore-scripts
           echo "Package size:"
           du -sh ../deploy-package/
