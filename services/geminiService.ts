@@ -9,7 +9,7 @@ const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
 
 async function azureChat(messages: Array<{role: string; content: any}>, jsonMode = false): Promise<string> {
   if (!azureEndpoint || !azureKey) throw new Error('Azure OpenAI not configured');
-  const url = `${azureEndpoint}/openai/deployments/${azureDeployment}/chat/completions?api-version=2024-02-01`;
+  const url = `${azureEndpoint}/openai/deployments/${azureDeployment}/chat/completions?api-version=${process.env.AZURE_OPENAI_API_VERSION || '2025-01-01-preview'}`;
   const body: any = { messages, temperature: 0.3, max_tokens: 2000 };
   if (jsonMode) body.response_format = { type: 'json_object' };
   const res = await fetch(url, {

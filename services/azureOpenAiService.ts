@@ -10,8 +10,8 @@ export class AzureOpenAiService {
     if (!this._client) {
       this._client = new OpenAI({
         apiKey: process.env.AZURE_OPENAI_API_KEY,
-        // Standardized v1 path for Azure 2026 integrations
-        baseURL: `${process.env.AZURE_OPENAI_ENDPOINT}openai/v1`,
+        baseURL: `${process.env.AZURE_OPENAI_ENDPOINT}openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT || ''}`,
+        defaultQuery: { 'api-version': process.env.AZURE_OPENAI_API_VERSION || '2025-01-01-preview' },
         defaultHeaders: { 'api-key': process.env.AZURE_OPENAI_API_KEY! }
       });
     }
