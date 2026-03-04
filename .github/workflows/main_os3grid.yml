@@ -73,5 +73,4 @@ jobs:
           app-name: 'os3grid'
           slot-name: 'Production'
           package: .
-          startup-command: 'tsx server.ts'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_37C6871AB3C04757BE05915D2A914563 }}
