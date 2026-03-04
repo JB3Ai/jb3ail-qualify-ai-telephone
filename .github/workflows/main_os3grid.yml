@@ -59,6 +59,8 @@ jobs:
           cp .env deploy-package/
           cp -r dist-server deploy-package/
           cp -r dist deploy-package/
+          # Prevent Oryx from re-running npm build (no source files in package)
+          echo -e "[config]\nSCM_DO_BUILD_DURING_DEPLOYMENT=false" > deploy-package/.deployment
           # Install production dependencies on Linux (native, no cross-arch issues)
           cd deploy-package && npm install --omit=dev --ignore-scripts
           echo "Package size:"
