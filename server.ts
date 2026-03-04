@@ -1,5 +1,10 @@
 import * as dotenv from 'dotenv';
 dotenv.config({ override: true });
+
+// --- STARTUP DIAGNOSTICS (helps debug Azure App Service issues) ---
+console.log(`[STARTUP] Node ${process.version} | ENV=${process.env.NODE_ENV} | PORT=${process.env.PORT} | CWD=${process.cwd()}`);
+console.log(`[STARTUP] TWILIO_SID=${process.env.TWILIO_ACCOUNT_SID ? 'SET' : 'MISSING'} | AZURE_KEY=${process.env.AZURE_OPENAI_API_KEY ? 'SET' : 'MISSING'} | SPEECH=${process.env.SPEECH_KEY ? 'SET' : 'MISSING'}`);
+
 import express from 'express';
 import { createServer } from 'http';
 import Twilio from 'twilio';
