@@ -1,6 +1,7 @@
 import { OpenAI } from "openai";
 import * as appInsights from 'applicationinsights';
-const telemetryClient = appInsights.defaultClient;
+// defaultClient is null unless appInsights.setup() was called first
+const telemetryClient = appInsights.defaultClient ?? null;
 
 export class AzureOpenAiService {
   private _client: OpenAI | null = null;
@@ -29,10 +30,10 @@ export class AzureOpenAiService {
         max_tokens: 150,
         temperature: 0.7,
       });
-      telemetryClient.trackMetric({ name: "AI_Logic_Latency", value: Date.now() - startTime });
+      telemetryClient?.trackMetric({ name: "AI_Logic_Latency", value: Date.now() - startTime });
       return response.choices[0].message.content || "";
     } catch (error) {
-      telemetryClient.trackException({ exception: error as Error });
+      telemetryClient?.trackException({ exception: error as Error });
       throw error;
     }
   }

@@ -18,14 +18,17 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import * as appInsights from 'applicationinsights';
 
-appInsights.setup()
+// Only initialise Application Insights when the connection string is configured
+if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
+  appInsights.setup(process.env.APPLICATIONINSIGHTS_CONNECTION_STRING)
     .setAutoDependencyCorrelation(true)
     .setAutoCollectRequests(true)
     .setAutoCollectExceptions(true)
     .setAutoCollectDependencies(true)
     .start();
+}
 
-const telemetryClient = appInsights.defaultClient;
+const telemetryClient = appInsights.defaultClient ?? null;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -401,4 +404,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error('💥 Fatal server startup error:', err);
+  process.exit(1);
+});
