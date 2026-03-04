@@ -18,7 +18,7 @@ import { Language } from './types';
 // Fix: Import Buffer explicitly for Node.js environments where it might not be globally available in the TypeScript context
 import { Buffer } from 'buffer';
 
-import { createServer as createViteServer } from 'vite';
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 import * as appInsights from 'applicationinsights';
@@ -399,6 +399,8 @@ async function startServer() {
   });
 
   if (process.env.NODE_ENV !== 'production') {
+    // Dynamic import of Vite — only in dev mode, keeps production bundle lean
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
