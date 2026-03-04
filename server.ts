@@ -48,10 +48,17 @@ app.use((req, res, next) => {
   next();
 });
 
-const twilioClient = Twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+// Lazy Twilio client — only initialised when actually needed (not at startup)
+let _twilioClient: ReturnType<typeof Twilio> | null = null;
+function getTwilioClient() {
+  if (!_twilioClient) {
+    const sid = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    if (!sid || !token) throw new Error('TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not configured');
+    _twilioClient = Twilio(sid, token);
+  }
+  return _twilioClient;
+}
 
 // 1. Health Check
 app.get('/api/health', (req, res) => {
@@ -209,7 +216,7 @@ app.all('/make-call', async (req, res) => {
     // Ensure DOMAIN is set or fallback to APP_URL for the environment
     const domain = process.env.DOMAIN || (process.env.APP_URL ? new URL(process.env.APP_URL).host : `localhost:${PORT}`);
 
-    const call = await twilioClient.calls.create({
+    const call = await getTwilioClient().calls.create({
       to: targetClient.phone,
       from: process.env.TWILIO_PHONE_NUMBER || '',
       url: `https://${domain}/voice-handler`,
