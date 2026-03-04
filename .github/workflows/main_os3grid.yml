@@ -60,8 +60,10 @@ jobs:
           cp .env deploy-package/
           cp -r services deploy-package/
           cp -r dist deploy-package/
+          # Install production dependencies only (no devDeps) inside the package
+          cd deploy-package && npm install --omit=dev --ignore-scripts
           echo "Package size:"
-          du -sh deploy-package/
+          du -sh ../deploy-package/
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
