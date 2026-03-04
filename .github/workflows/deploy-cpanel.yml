@@ -37,4 +37,10 @@ jobs:
           local-dir: ./dist/
           server-dir: ./public_html/os3grid/
           timeout: 600000
+          log-level: verbose
           dangerous-clean-slate: false
+          exclude: |
+            **/.git*/**
+            **/.git*
+            **/node_modules/**
+            **/.DS_Store
