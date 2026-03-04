@@ -2,6 +2,26 @@
 import { GoogleGenAI, Modality, Type, LiveServerMessage, Blob } from "@google/genai";
 import { Client, Language, LeadData, CallConfig } from "../types";
 
+// Azure OpenAI failsafe for text generation
+const azureEndpoint = (process.env.AZURE_OPENAI_ENDPOINT || process.env.AZURE_AI_ENDPOINT || '').replace(/\/$/, '');
+const azureKey = process.env.AZURE_OPENAI_KEY || process.env.AZURE_AI_KEY || '';
+const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+
+async function azureChat(messages: Array<{role: string; content: any}>, jsonMode = false): Promise<string> {
+  if (!azureEndpoint || !azureKey) throw new Error('Azure OpenAI not configured');
+  const url = `${azureEndpoint}/openai/deployments/${azureDeployment}/chat/completions?api-version=2024-02-01`;
+  const body: any = { messages, temperature: 0.3, max_tokens: 2000 };
+  if (jsonMode) body.response_format = { type: 'json_object' };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': azureKey },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Azure OpenAI ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
 /**
  * Generates a dynamic system prompt based on user configuration.
  */
@@ -84,12 +104,21 @@ ${config.parameters.map((p: string) => `- ${p}`).join('\n')}
 export class GeminiLiveService {
   // Added this method to support text generation in server.ts
   async generateResponse(prompt: string): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-    });
-    return response.text || '';
+    // Primary: Gemini
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: prompt,
+        });
+        return response.text || '';
+      } catch (geminiErr) {
+        console.warn('[Zandi] Gemini generateResponse failed, falling back to Azure:', geminiErr);
+      }
+    }
+    // Fallback: Azure OpenAI
+    return azureChat([{ role: 'user', content: prompt }]);
   }
 
   async connect(options: {
@@ -154,62 +183,67 @@ export class GeminiLiveService {
   }
 
   async extractLeadData(transcript: string, config: CallConfig): Promise<{ status: 'qualified' | 'failed', data: LeadData, languageUsed: string }> {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    // Upgrade to gemini-3-pro-preview for complex reasoning tasks like transcript analysis
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: `Analyze this qualification transcript. 
+    const extractPrompt = `Analyze this qualification transcript. 
       Target Company: ${config.companyName}
       Requested Parameters: ${config.parameters.join(', ')}
       
       Transcript:
-      ${transcript}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            status: { type: Type.STRING, enum: ['qualified', 'failed'] },
-            languageUsed: { 
-              type: Type.STRING, 
-              description: "The BCP-47 language tag of the language detected (e.g., 'en-ZA', 'zu-ZA', 'nso-ZA')." 
-            },
-            data: {
+      ${transcript}
+      
+      Return a JSON object with: status ("qualified" or "failed"), languageUsed (BCP-47 tag e.g. en-ZA), and data (name, email, phone, marketingPreference, custom_parameters_json).`;
+
+    const parseResult = (text: string) => {
+      const result = JSON.parse(text);
+      if (result.data?.custom_parameters_json) {
+        try { result.data.custom_parameters = JSON.parse(result.data.custom_parameters_json); } catch (_) {}
+      }
+      return { status: result.status, data: result.data, languageUsed: result.languageUsed };
+    };
+
+    // Primary: Gemini
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-pro-preview',
+          contents: extractPrompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
               type: Type.OBJECT,
               properties: {
-                name: { type: Type.STRING },
-                email: { type: Type.STRING },
-                phone: { type: Type.STRING },
-                marketingPreference: { type: Type.STRING, enum: ['email', 'sms', 'none'] },
-                // Fix: Type.OBJECT must have properties. Changing to string for flexible JSON capture of dynamic parameters.
-                custom_parameters_json: { 
-                  type: Type.STRING, 
-                  description: "A JSON string containing any extra parameters captured that were not in the standard fields."
+                status: { type: Type.STRING, enum: ['qualified', 'failed'] },
+                languageUsed: { type: Type.STRING, description: "BCP-47 language tag" },
+                data: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    email: { type: Type.STRING },
+                    phone: { type: Type.STRING },
+                    marketingPreference: { type: Type.STRING, enum: ['email', 'sms', 'none'] },
+                    custom_parameters_json: { type: Type.STRING }
+                  }
                 }
-              }
+              },
+              required: ['status', 'data', 'languageUsed']
             }
-          },
-          required: ['status', 'data', 'languageUsed']
-        }
+          }
+        });
+        return parseResult(response.text || '{}');
+      } catch (geminiErr) {
+        console.warn('[Zandi] Gemini extractLeadData failed, falling back to Azure:', geminiErr);
       }
-    });
+    }
 
+    // Fallback: Azure OpenAI
     try {
-      const result = JSON.parse(response.text || '{}');
-      // Re-map the custom_parameters if needed
-      if (result.data.custom_parameters_json) {
-        try {
-          result.data.custom_parameters = JSON.parse(result.data.custom_parameters_json);
-        } catch (e) {
-          console.warn("Failed to parse custom_parameters_json");
-        }
-      }
-      return {
-        status: result.status,
-        data: result.data,
-        languageUsed: result.languageUsed
-      };
-    } catch (e) {
+      const text = await azureChat([
+        { role: 'system', content: 'You are a lead qualification analyst. Extract structured data from call transcripts. Return ONLY valid JSON.' },
+        { role: 'user', content: extractPrompt }
+      ], true);
+      return parseResult(text);
+    } catch (azureErr) {
+      console.error('[Zandi] Azure extractLeadData also failed:', azureErr);
       return { status: 'failed', data: {}, languageUsed: 'unknown' };
     }
   }
