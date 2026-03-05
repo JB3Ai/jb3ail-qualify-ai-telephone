@@ -37,6 +37,7 @@ jobs:
           PORT=8080
           DOMAIN=os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net
           AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT=https://os3gridopenai.openai.azure.com/
           AZURE_OPENAI_DEPLOYMENT=${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_API_VERSION=2024-05-01-preview
