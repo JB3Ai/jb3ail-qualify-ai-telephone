@@ -20,6 +20,7 @@ import { Buffer } from 'buffer';
 
 
 import path from 'path';
+import fs from 'fs';
 import * as appInsights from 'applicationinsights';
 
 // Only initialise Application Insights when the connection string is configured
@@ -39,6 +40,16 @@ const telemetryClient = appInsights.defaultClient ?? null;
 const app = express();
 const server = createServer(app);
 const PORT = Number(process.env.PORT) || 3000;
+
+function resolveFrontendDistDir() {
+  const candidates = [
+    path.join(process.cwd(), 'dist'),
+    path.join(__dirname, 'dist'),
+    path.join(__dirname, '..', 'dist')
+  ];
+
+  return candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html')));
+}
 
 // Enable CORS for all origins
 app.use(cors() as any);
@@ -75,8 +86,17 @@ app.post('/api/log-compliance', (req, res) => {
 });
 
   // 1.2 Lead Injection / Sheet Sync
-  const SPREADSHEET_ID = '12bRfRW-m0cjNjRP6NdIdNsIMFBhS9Lv50JrLlt5dO5g';
-  const RANGE = 'MZANZI_ENGINE!A2:E';
+  const SPREADSHEET_ID = '1e4ZanBSWWDYkp-ww79vVl3SQZt294Zfhi7dvAkWKaN4';
+  const RANGE = 'MZANZI_ENGINE!A2:J';
+
+  // In-memory call tracking: CallSid → metadata
+  interface ActiveCall {
+    phone: string;
+    name: string;
+    startTime: Date;
+    aiConversation: string[];
+  }
+  const activeCalls = new Map<string, ActiveCall>();
 
   // Support both GET and POST for easier debugging/testing
   app.all(['/api/clients/sync-sheets', '/api/clients/sync-sheets/'], async (req, res) => {
@@ -86,7 +106,7 @@ app.post('/api/log-compliance', (req, res) => {
       // In a real environment, you'd use a service account or OAuth2
       // For this demo, we'll attempt to use the environment's default credentials if available
       const auth = new google.auth.GoogleAuth({
-        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
       });
       
       let googleAuth;
@@ -204,26 +224,40 @@ app.get('/api/clients', (req, res) => {
 app.all('/make-call', async (req, res) => {
   try {
     const clients = clientService.getClients();
-    // Fix: Use clientId from request body if available, fallback to first pending client
     const clientId = req.body.clientId;
+    const phone = req.body.phone;
+    const name = req.body.name || 'Manual';
+    const callableStatuses = new Set(['pending', 'READY_FOR_EXECUTION', 'LOADED']);
     const targetClient = clientId 
       ? clients.find(c => c.id === clientId)
-      : clients.find(c => c.status === 'pending');
+      : clients.find(c => callableStatuses.has(c.status));
 
-    if (!targetClient) {
-      return res.status(404).json({ success: false, error: "No client found to dial." });
+    // Allow ad-hoc calls when a phone number is provided directly
+    const dialPhone = targetClient?.phone || phone;
+    const dialName = targetClient?.name || name;
+
+    if (!dialPhone) {
+      return res.status(400).json({ success: false, error: "No phone number or matching client found to dial." });
     }
 
-    console.log(`☎️ Dialing ${targetClient.name}...`);
+    console.log(`☎️ Dialing ${dialName} at ${dialPhone}...`);
 
     // Ensure DOMAIN is set or fallback to APP_URL for the environment
     const domain = process.env.DOMAIN || (process.env.APP_URL ? new URL(process.env.APP_URL).host : `localhost:${PORT}`);
 
     const call = await getTwilioClient().calls.create({
-      to: targetClient.phone,
+      to: dialPhone,
       from: process.env.TWILIO_PHONE_NUMBER || '',
       url: `https://${domain}/voice-handler`,
       timeout: 60
+    });
+
+    // Track call metadata for Intelligence Ledger
+    activeCalls.set(call.sid, {
+      phone: dialPhone,
+      name: dialName,
+      startTime: new Date(),
+      aiConversation: []
     });
 
     res.json({ success: true, callSid: call.sid });
@@ -262,10 +296,13 @@ app.all('/voice-handler', async (req, res) => {
 app.all('/handle-response', async (req, res) => {
   const twiml = new Twilio.twiml.VoiceResponse();
   const userSpeech = req.body.SpeechResult; 
+  const callSid = req.body.CallSid as string | undefined;
   const domain = process.env.DOMAIN || (process.env.APP_URL ? new URL(process.env.APP_URL).host : `localhost:${PORT}`);
 
   if (!userSpeech) {
     twiml.redirect('/voice-handler');
+    res.type('text/xml');
+    res.send(twiml.toString());
     return;
   }
 
@@ -275,18 +312,122 @@ app.all('/handle-response', async (req, res) => {
     "You are Zandi, a professional qualification agent for Mzansi Solutions."
   );
 
-  const gather = twiml.gather({
-    input: ['speech'],
-    action: '/handle-response',
-    language: 'en-ZA'
-  });
+  // Track conversation for Intelligence Ledger
+  if (callSid && activeCalls.has(callSid)) {
+    activeCalls.get(callSid)!.aiConversation.push(`User: ${userSpeech}`, `AI: ${aiResponse}`);
+  }
 
-  // Audio still streams through voiceService (Azure TTS)
-  gather.play(`https://${domain}/audio-stream?text=${encodeURIComponent(aiResponse)}`);
+  // Detect call completion (verification keywords or goodbye phrases)
+  const completionKeywords = ['verified', 'qualified', 'thank you for your time', 'goodbye', 'have a great day', 'call complete'];
+  const isCallComplete = completionKeywords.some(kw => aiResponse.toLowerCase().includes(kw));
+
+  if (isCallComplete && callSid) {
+    // Log to Intelligence Ledger asynchronously (don't block TwiML response)
+    logCallToIntelligenceLedger(callSid).catch(err => {
+      console.error('❌ Intelligence Ledger write failed:', err.message);
+    });
+
+    // Say final message and hang up
+    twiml.play(`https://${domain}/audio-stream?text=${encodeURIComponent(aiResponse)}`);
+    twiml.hangup();
+  } else {
+    const gather = twiml.gather({
+      input: ['speech'],
+      action: '/handle-response',
+      language: 'en-ZA'
+    });
+
+    // Audio still streams through voiceService (Azure TTS)
+    gather.play(`https://${domain}/audio-stream?text=${encodeURIComponent(aiResponse)}`);
+  }
 
   res.type('text/xml');
   res.send(twiml.toString());
 });
+
+// 4.1 INTELLIGENCE LEDGER — Write call metadata back to Google Sheets
+async function logCallToIntelligenceLedger(callSid: string): Promise<void> {
+  const callData = activeCalls.get(callSid);
+  if (!callData) {
+    console.warn(`⚠️ No active call data for SID ${callSid}`);
+    return;
+  }
+
+  try {
+    // Fetch call duration from Twilio
+    let durationSec = 0;
+    try {
+      const twilioCall = await getTwilioClient().calls(callSid).fetch();
+      durationSec = parseInt(twilioCall.duration || '0', 10);
+    } catch (err: any) {
+      console.warn('⚠️ Could not fetch Twilio call duration:', err.message);
+      // Fallback: calculate from startTime
+      durationSec = Math.round((Date.now() - callData.startTime.getTime()) / 1000);
+    }
+
+    const aiOutput = callData.aiConversation.join(' | ');
+    const callDate = callData.startTime.toISOString().split('T')[0]; // YYYY-MM-DD
+    const callTime = callData.startTime.toLocaleTimeString('en-ZA', { hour12: false }); // HH:MM:SS
+
+    // Find the row matching this phone number in the sheet
+    const auth = new google.auth.GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    const googleAuth = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: googleAuth as any });
+
+    // Read column C (phone numbers) to find the matching row
+    const phoneCol = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'MZANZI_ENGINE!C2:C',
+    });
+
+    const phones = phoneCol.data.values || [];
+    let targetRow = -1;
+    for (let i = 0; i < phones.length; i++) {
+      const sheetPhone = (phones[i][0] || '').replace(/\s/g, '');
+      const callPhone = callData.phone.replace(/\s/g, '');
+      if (sheetPhone === callPhone || sheetPhone.endsWith(callPhone.slice(-9)) || callPhone.endsWith(sheetPhone.slice(-9))) {
+        targetRow = i + 2; // Sheet rows are 1-indexed, data starts at row 2
+        break;
+      }
+    }
+
+    if (targetRow === -1) {
+      console.warn(`⚠️ No matching row found for phone ${callData.phone} — appending new row`);
+      // Append a new row with the call data in columns G-J
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'MZANZI_ENGINE!G:J',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[aiOutput, callDate, callTime, durationSec]]
+        }
+      });
+    } else {
+      // Update columns G-J for the matched row
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `MZANZI_ENGINE!G${targetRow}:J${targetRow}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[aiOutput, callDate, callTime, durationSec]]
+        }
+      });
+    }
+
+    console.log(`📝 Intelligence Ledger: Logged call ${callSid} → row ${targetRow} (duration: ${durationSec}s)`);
+
+    // Clean up tracked call
+    activeCalls.delete(callSid);
+  } catch (err: any) {
+    console.error(`❌ Intelligence Ledger error for ${callSid}:`, err.message);
+    // Still clean up to prevent memory leak
+    activeCalls.delete(callSid);
+    throw err;
+  }
+}
 
 // 5. AUDIO STREAMER
 app.get('/audio-stream', async (req, res) => {
@@ -405,9 +546,14 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, 'dist')));
+    const distDir = resolveFrontendDistDir();
+    if (!distDir) {
+      throw new Error('Unable to locate frontend dist directory. Expected dist/index.html.');
+    }
+
+    app.use(express.static(distDir));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+      res.sendFile(path.join(distDir, 'index.html'));
     });
   }
 

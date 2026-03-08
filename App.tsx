@@ -377,7 +377,7 @@ const DataInbox: React.FC<{
             </div>
             <iframe 
               id="sheet-frame"
-              src="https://docs.google.com/spreadsheets/d/12bRfRW-m0cjNjRP6NdIdNsIMFBhS9Lv50JrLlt5dO5g/edit?usp=sharing&rm=minimal" 
+              src="https://docs.google.com/spreadsheets/d/1e4ZanBSWWDYkp-ww79vVl3SQZt294Zfhi7dvAkWKaN4/edit?usp=sharing&rm=minimal" 
               className="flex-1 w-full h-full border-none invert opacity-70 grayscale contrast-125 hover:opacity-90 transition-opacity" 
               title="Google Sheet Source" 
             />
@@ -563,6 +563,27 @@ const App: React.FC = () => {
   const [testPhone, setTestPhone] = useState('');
   const [testLang, setTestLang] = useState<Language>(Language.ZULU);
   const [isInternalCall, setIsInternalCall] = useState(false);
+
+  // Editable Run Protocol state
+  const [languageProtocols, setLanguageProtocols] = useState<Record<string, { greeting: string; objection: string; closing: string; switch: string }>>(() => {
+    const stored = localStorage.getItem('mzansi_language_protocols');
+    return stored ? JSON.parse(stored) : LANGUAGE_PROTOCOLS;
+  });
+  const [editingProtocolLang, setEditingProtocolLang] = useState<string | null>(null);
+  const [protocolDraft, setProtocolDraft] = useState({ greeting: '', objection: '', closing: '', switch: '' });
+  const [editingCompanyConfig, setEditingCompanyConfig] = useState(false);
+  const [companyConfig, setCompanyConfig] = useState<Record<string, string>>(() => {
+    const stored = localStorage.getItem('mzansi_company_config');
+    if (stored) return JSON.parse(stored);
+    return {
+      companyName: DEFAULT_CONFIG.companyName,
+      objectives: DEFAULT_CONFIG.objectives,
+      personality: "Zandi is a warm, professional, and empathetic qualification agent. She speaks clearly, respects the lead's time, and always maintains a positive tone.",
+      productInfo: "Solar energy initiative for residential homeowners. Aim: verify lead eligibility and collect qualification data.",
+      parameters: DEFAULT_CONFIG.parameters.join(', ')
+    };
+  });
+  const [companyDraft, setCompanyDraft] = useState<Record<string, string>>({});
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
   const language = activeLangs.size === ALL_LANGUAGES.length ? 'Multi-Language' : activeLangs.size === 0 ? 'None' : activeLangs.size === 1 ? getLanguageName([...activeLangs][0]) : `${activeLangs.size} Languages`;
@@ -578,6 +599,19 @@ const App: React.FC = () => {
 
   const toggleAllLangs = () => {
     setActiveLangs(prev => prev.size === ALL_LANGUAGES.length ? new Set() : new Set(ALL_LANGUAGES));
+  };
+
+  const saveProtocol = (lang: string) => {
+    const updated = { ...languageProtocols, [lang]: { ...protocolDraft } };
+    setLanguageProtocols(updated);
+    localStorage.setItem('mzansi_language_protocols', JSON.stringify(updated));
+    setEditingProtocolLang(null);
+  };
+
+  const saveCompanyConfig = () => {
+    setCompanyConfig({ ...companyDraft });
+    localStorage.setItem('mzansi_company_config', JSON.stringify(companyDraft));
+    setEditingCompanyConfig(false);
   };
 
   const [backendUrl, setBackendUrl] = useState<string>(() => {
@@ -691,11 +725,17 @@ const App: React.FC = () => {
 
   const handleStartCall = async (client: Client) => {
     try {
-        const response = await fetch(`${backendUrl}/make-call`, { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId: client.id })
-        });
+        let response: Response;
+        try {
+          response = await fetch(`${backendUrl}/make-call`, { 
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ clientId: client.id, phone: client.phone, name: client.name, language: client.language })
+          });
+        } catch (networkErr: any) {
+          alert(`Backend unreachable: ${networkErr.message}. Check Backend Settings.`);
+          return;
+        }
         
         const data = await parseJsonResponse(response);
         if (data.success) {
@@ -709,11 +749,11 @@ const App: React.FC = () => {
               { role: 'model', text: `Sawubona! This is Zandi from Mzansi Solutions. Am I speaking with ${client.name}?`, timestamp: Date.now() }
             ]);
         } else {
-            throw new Error(data.error || "Failed to initiate call");
+            alert(`Call failed: ${data.error || "Unknown error from backend."}`);
         }
     } catch (e: any) {
-        console.error("Backend offline", e);
-        alert(`Backend Error: ${e.message}.`);
+        console.error("Call initiation error", e);
+        alert(`Call Error: ${e.message}`);
     }
   };
 
@@ -1665,30 +1705,30 @@ const App: React.FC = () => {
               steps={[
                 {
                   step: '01',
-                  title: 'Language Selection',
-                  desc: 'Choose the target language for the neural core. Each language has a specific instruction set.'
+                  title: 'Company & Call Guide',
+                  desc: 'Configure company details, product info, AI personality, and the objectives for the call.'
                 },
                 {
                   step: '02',
-                  title: 'Protocol Verification',
-                  desc: 'Review the greeting, objection handling, and closing statements for each language.'
+                  title: 'Language Protocols',
+                  desc: 'Set the greeting, objection handling, closing, and signal switch phrases for each language.'
                 },
                 {
                   step: '03',
-                  title: 'Signal Switch',
-                  desc: 'Use the technical switch phrase to transition between system states during a live session.'
+                  title: 'Edit Mode',
+                  desc: 'Click the Edit button on any section to modify parameters. Save or Cancel to commit your changes.'
                 },
                 {
                   step: '04',
-                  title: 'Neural Alignment',
-                  desc: 'Ensure the core language matches the target lead\'s profile for maximum conversion efficiency.'
+                  title: 'Persistence',
+                  desc: 'All settings are stored locally and persist across sessions. Reset from Backend Settings if needed.'
                 }
               ]}
             />
             <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div>
                   <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Run Protocol</h1>
-                  <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">The Logic Gate. Instruction sets for Zandi's neural core.</p>
+                  <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Company, Product, Personality & Instruction Sets for each Language.</p>
                 </div>
                 <button 
                   onClick={() => setShowProtocolInfo(true)}
@@ -1700,35 +1740,111 @@ const App: React.FC = () => {
             </header>
 
             <div className="space-y-12">
-              {Object.entries(LANGUAGE_PROTOCOLS).map(([lang, protocols]) => (
-                <div key={lang} className="bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40">
-                  <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 rounded-2xl bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] border border-[#66FF66]/20">
-                      <LanguageIcon className="w-6 h-6" />
+              {/* COMPANY & CALL GUIDE */}
+              <div className="bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-[#00D9FF]/10 flex items-center justify-center text-[#00D9FF] border border-[#00D9FF]/20">
+                      <MegaphoneIcon className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-black text-white uppercase tracking-tighter">{getLanguageName(lang)} Protocol</h3>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Instruction Set Alpha-1</p>
+                      <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Company & Call Guide</h3>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Personality, Objectives & Product Information</p>
                     </div>
+                  </div>
+                  {editingCompanyConfig ? (
+                    <div className="flex gap-2">
+                      <button onClick={saveCompanyConfig} className="flex items-center gap-2 px-5 py-3 bg-[#39FF88] text-[#0B0F1A] rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all">
+                        <CheckBadgeIcon className="w-4 h-4" /> Save
+                      </button>
+                      <button onClick={() => setEditingCompanyConfig(false)} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-slate-400 border border-[#22324A]/40 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">
+                        <XMarkIcon className="w-4 h-4" /> Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setEditingCompanyConfig(true); setCompanyDraft({ ...companyConfig }); }} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-[#00D9FF] border border-[#00D9FF]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#00D9FF] hover:text-[#0B0F1A] transition-all">
+                      <AdjustmentsHorizontalIcon className="w-4 h-4" /> Edit
+                    </button>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[
+                    { label: 'Company Name', key: 'companyName', span: false },
+                    { label: 'Call Objectives', key: 'objectives', span: false },
+                    { label: 'AI Personality', key: 'personality', span: false },
+                    { label: 'Product / Service Info', key: 'productInfo', span: false },
+                    { label: 'Parameters to Collect', key: 'parameters', span: true }
+                  ].map((item) => (
+                    <div key={item.key} className={item.span ? 'md:col-span-2' : ''}>
+                      <div className="bg-black/40 rounded-2xl p-6 border border-[#22324A]/40 hover:border-[#00D9FF]/20 transition-all">
+                        <span className="text-[9px] font-black text-[#00D9FF] uppercase tracking-widest bg-[#00D9FF]/10 px-3 py-1 rounded-full inline-block mb-4">{item.label}</span>
+                        {editingCompanyConfig ? (
+                          <textarea
+                            value={companyDraft[item.key] || ''}
+                            onChange={(e) => setCompanyDraft(prev => ({ ...prev, [item.key]: e.target.value }))}
+                            className="w-full bg-[#0B0F1A] border border-[#22324A]/60 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono focus:ring-1 focus:ring-[#00D9FF] outline-none resize-none h-24"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-400 leading-relaxed font-medium">
+                            {companyConfig[item.key]}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* PER-LANGUAGE PROTOCOLS */}
+              {Object.entries(languageProtocols).map(([lang, protocols]) => (
+                <div key={lang} className="bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] border border-[#66FF66]/20">
+                        <LanguageIcon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">{getLanguageName(lang)} Protocol</h3>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Instruction Set</p>
+                      </div>
+                    </div>
+                    {editingProtocolLang === lang ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => saveProtocol(lang)} className="flex items-center gap-2 px-5 py-3 bg-[#39FF88] text-[#0B0F1A] rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all">
+                          <CheckBadgeIcon className="w-4 h-4" /> Save
+                        </button>
+                        <button onClick={() => setEditingProtocolLang(null)} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-slate-400 border border-[#22324A]/40 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">
+                          <XMarkIcon className="w-4 h-4" /> Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setEditingProtocolLang(lang); setProtocolDraft({ ...(protocols as any) }); }} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#66FF66] hover:text-[#0B0F1A] transition-all">
+                        <AdjustmentsHorizontalIcon className="w-4 h-4" /> Edit
+                      </button>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {[
-                      { label: 'Greeting', text: protocols.greeting },
-                      { label: 'Objection', text: protocols.objection },
-                      { label: 'Closing Statement', text: protocols.closing },
-                      { label: 'Signal Switch', text: protocols.switch }
-                    ].map((item, i) => (
-                      <div key={i} className="bg-black/40 rounded-2xl p-6 border border-[#22324A]/40 group hover:border-[#66FF66]/30 transition-all">
-                        <div className="flex justify-between items-center mb-4">
-                          <span className="text-[9px] font-black text-[#66FF66] uppercase tracking-widest bg-[#66FF66]/10 px-3 py-1 rounded-full">{item.label}</span>
-                          <button className="text-slate-600 hover:text-white transition-colors">
-                            <AdjustmentsHorizontalIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <p className="text-sm text-slate-400 leading-relaxed font-mono italic">
-                          "{item.text}"
-                        </p>
+                      { label: 'Greeting', key: 'greeting' },
+                      { label: 'Objection Handling', key: 'objection' },
+                      { label: 'Closing Statement', key: 'closing' },
+                      { label: 'Signal Switch', key: 'switch' }
+                    ].map((item) => (
+                      <div key={item.key} className="bg-black/40 rounded-2xl p-6 border border-[#22324A]/40 group hover:border-[#66FF66]/30 transition-all">
+                        <span className="text-[9px] font-black text-[#66FF66] uppercase tracking-widest bg-[#66FF66]/10 px-3 py-1 rounded-full inline-block mb-4">{item.label}</span>
+                        {editingProtocolLang === lang ? (
+                          <textarea
+                            value={(protocolDraft as any)[item.key] || ''}
+                            onChange={(e) => setProtocolDraft(prev => ({ ...prev, [item.key]: e.target.value }))}
+                            className="w-full bg-[#0B0F1A] border border-[#22324A]/60 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono focus:ring-1 focus:ring-[#66FF66] outline-none resize-none h-24"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-400 leading-relaxed font-mono italic">
+                            "{(protocols as any)[item.key]}"
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
