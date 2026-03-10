@@ -6,5 +6,8 @@ dist/
 .env.*
 services/.env.local
 
+# Google service account key (sensitive credentials — POPIA compliance)
+google-key.json
+
 # Generated archives
 *.zip

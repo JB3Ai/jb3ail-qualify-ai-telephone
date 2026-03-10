@@ -18,16 +18,25 @@ export class AzureOpenAiService {
     return this._client;
   }
 
-  async generateResponse(userText: string, systemPrompt?: string): Promise<string> {
+  /**
+   * Execute a signal through the Neural Protocol.
+   * Wraps the system prompt in XML protocol indicators (matching the C# NeuralProtocolController pattern).
+   */
+  async generateResponse(userText: string, protocolSection?: string): Promise<string> {
     const startTime = Date.now();
+
+    const systemPrompt = protocolSection
+      ? `<protocol_context>\n${protocolSection}\n</protocol_context>\n\n<contract>\nRespond in clear, professional prosody under three concise sentences.\nIf the interaction is complete, append the JSON output contract specified in the protocol.\n</contract>`
+      : "You are Zandi, a professional qualification agent for Mzansi Solutions.";
+
     try {
       const response = await this.client.chat.completions.create({
         model: process.env.AZURE_OPENAI_DEPLOYMENT || "",
         messages: [
-          { role: "system", content: systemPrompt || "You are Zandi, a professional qualification agent for Mzansi Solutions." },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userText }
         ],
-        max_tokens: 150,
+        max_tokens: 1000,
         temperature: 0.7,
       });
       telemetryClient?.trackMetric({ name: "AI_Logic_Latency", value: Date.now() - startTime });

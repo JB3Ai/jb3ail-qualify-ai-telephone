@@ -89,16 +89,18 @@ const NeuralConnectivityMatrix: React.FC<{
   onAcceptProtocol: () => void; 
   onLoadTeam: () => void;
   onShowInfo: () => void;
-}> = ({ backendStatus, isProtocolAccepted, onAcceptProtocol, onLoadTeam, onShowInfo }) => {
+  wsConnected?: boolean;
+  ledgerStatus?: string;
+}> = ({ backendStatus, isProtocolAccepted, onAcceptProtocol, onLoadTeam, onShowInfo, wsConnected, ledgerStatus }) => {
   const statusItems = [
-    { name: 'Twilio Gateway', status: backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE' },
-    { name: 'Azure Neural', status: 'ONLINE' },
-    { name: 'Gemini Core', status: 'ONLINE' },
-    { name: 'Google Cloud ADC', status: 'ONLINE' },
+    { name: 'Twilio Gateway', status: wsConnected ? 'ONLINE' : (backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE') },
+    { name: 'Azure Neural', status: backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE' },
+    { name: 'Intelligence Ledger', status: ledgerStatus === 'SYNCING' ? 'SYNCING' : (backendStatus === 'connected' ? 'READY' : 'OFFLINE') },
+    { name: 'Google Cloud ADC', status: backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE' },
   ];
 
   return (
-    <div className="bg-[#0B0F1A] p-10 rounded-[2.5rem] border border-[#1A2333] font-inter shadow-2xl relative">
+    <div className="bg-[#020617] p-10 rounded-lg border border-[#1A2333] font-inter shadow-2xl relative">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
         <div className="flex items-center gap-6">
           <button 
@@ -116,14 +118,14 @@ const NeuralConnectivityMatrix: React.FC<{
         <div className="flex gap-4 w-full lg:w-auto">
           <button 
             onClick={onAcceptProtocol}
-            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-[#1A2333] text-[#39FF88] border border-[#39FF88]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#39FF88] hover:text-[#0B0F1A] transition-all font-orbitron"
+            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-[#1A2333] text-[#39FF88] border border-[#39FF88]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#39FF88] hover:text-[#020617] transition-all font-orbitron"
           >
             <ShieldCheckIcon className="w-4 h-4" /> Security & POPIA
           </button>
           <button 
             onClick={onLoadTeam}
             disabled={!isProtocolAccepted}
-            className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all font-orbitron ${isProtocolAccepted ? 'bg-[#39FF88] text-[#0B0F1A] hover:scale-105 shadow-[0_0_20px_rgba(57,255,136,0.4)]' : 'bg-[#1A2333] text-slate-600 cursor-not-allowed opacity-50'}`}
+            className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all font-orbitron ${isProtocolAccepted ? 'bg-[#39FF88] text-[#020617] shadow-[0_0_20px_rgba(57,255,136,0.4)]' : 'bg-[#1A2333] text-slate-600 cursor-not-allowed opacity-50'}`}
           >
             <UserGroupIcon className="w-4 h-4" /> Load Team
           </button>
@@ -132,7 +134,7 @@ const NeuralConnectivityMatrix: React.FC<{
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statusItems.map((item) => (
-          <div key={item.name} className="bg-[#1A2333] p-8 rounded-3xl border border-[#22324A]/40 group hover:border-[#39FF88]/30 transition-all">
+          <div key={item.name} className="bg-[#1A2333] p-8 rounded-lg border border-[#1e293b]/40 group hover:border-[#39FF88]/30 transition-all">
             <div className="flex justify-between items-start mb-6">
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-orbitron">{item.name}</span>
               <div className={`w-2 h-2 rounded-full ${item.status === 'ONLINE' ? 'bg-[#39FF88] animate-pulse shadow-[0_0_10px_#39FF88]' : 'bg-red-500'}`}></div>
@@ -140,9 +142,9 @@ const NeuralConnectivityMatrix: React.FC<{
             <div className="text-2xl font-black text-white tracking-tighter font-orbitron">
               {item.status}
             </div>
-            <div className="mt-4 pt-4 border-t border-[#22324A]/20 flex items-center justify-between">
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest font-inter">Latency</span>
-              <span className="text-[10px] font-mono text-[#39FF88] font-bold">24ms</span>
+            <div className="mt-4 pt-4 border-t border-[#1e293b]/20 flex items-center justify-between">
+              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest font-inter">{item.status === 'SYNCING' ? 'Active' : 'Latency'}</span>
+              <span className={`text-[10px] font-mono font-bold ${item.status === 'SYNCING' ? 'text-[#FFD700] animate-pulse' : 'text-[#39FF88]'}`}>{item.status === 'SYNCING' ? 'WRITING...' : '24ms'}</span>
             </div>
           </div>
         ))}
@@ -152,7 +154,7 @@ const NeuralConnectivityMatrix: React.FC<{
 };
 
 const ProtocolHUD: React.FC<{ mode: 'local' | 'intl'; setMode: (mode: 'local' | 'intl') => void; currentLanguage?: string }> = ({ mode, setMode, currentLanguage }) => (
-  <div className={`mb-6 p-4 rounded-2xl border transition-all duration-500 shadow-xl flex justify-between items-center ${
+  <div className={`mb-6 p-4 rounded-md border transition-all duration-500 shadow-xl flex justify-between items-center ${
     mode === 'local' ? 'border-[#39FF88]/30 bg-[#39FF88]/5' : 'border-[#00D9FF]/30 bg-[#00D9FF]/5'
   }`}>
     <div className="flex items-center gap-4">
@@ -177,7 +179,7 @@ const ProtocolHUD: React.FC<{ mode: 'local' | 'intl'; setMode: (mode: 'local' | 
       <button 
         onClick={() => setMode(mode === 'local' ? 'intl' : 'local')}
         className={`px-4 py-2 rounded-lg font-orbitron text-[10px] border transition-all uppercase tracking-widest ${
-          mode === 'local' ? 'bg-[#39FF88]/10 text-[#39FF88] border-[#39FF88]/30 hover:bg-[#39FF88] hover:text-[#0B0F1A]' : 'bg-[#00D9FF]/10 text-[#00D9FF] border-[#00D9FF]/30 hover:bg-[#00D9FF] hover:text-[#0B0F1A]'
+          mode === 'local' ? 'bg-[#39FF88]/10 text-[#39FF88] border-[#39FF88]/30 hover:bg-[#39FF88] hover:text-[#020617]' : 'bg-[#00D9FF]/10 text-[#00D9FF] border-[#00D9FF]/30 hover:bg-[#00D9FF] hover:text-[#020617]'
         }`}
       >
         Switch_Cluster
@@ -198,11 +200,11 @@ const InfoOverlay: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] bg-[#0B0F1A]/95 backdrop-blur-xl p-6 md:p-12 overflow-y-auto animate-fade-in">
+    <div className="fixed inset-0 z-[120] bg-[#020617]/95 backdrop-blur-xl p-6 md:p-12 overflow-y-auto animate-fade-in">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-12">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] border border-[#66FF66]/20">
+            <div className="w-12 h-12 rounded-md bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] border border-[#66FF66]/20">
               {icon}
             </div>
             <h2 className="text-4xl font-black text-white uppercase tracking-tighter">{title}</h2>
@@ -217,7 +219,7 @@ const InfoOverlay: React.FC<{
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {steps.map((item) => (
-            <div key={item.step} className="bg-[#121212] p-8 rounded-[2rem] border border-[#22324A]/40 relative overflow-hidden group">
+            <div key={item.step} className="bg-[#0d1117] p-8 rounded-lg border border-[#1e293b]/40 relative overflow-hidden group">
               <span className="absolute -top-4 -right-4 text-8xl font-black text-white/[0.02] group-hover:text-[#66FF66]/[0.05] transition-colors">{item.step}</span>
               <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-4 flex items-center gap-3">
                 <span className="text-[#66FF66] font-mono text-xs">{item.step}.</span> {item.title}
@@ -228,9 +230,9 @@ const InfoOverlay: React.FC<{
         </div>
 
         {warning && (
-          <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-8 mb-12">
+          <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-8 mb-12">
             <div className="flex items-start gap-6">
-              <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+              <div className="w-12 h-12 rounded-md bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
                 <ShieldExclamationIcon className="w-6 h-6" />
               </div>
               <div>
@@ -244,9 +246,9 @@ const InfoOverlay: React.FC<{
         )}
 
         {solution && (
-          <div className="bg-[#66FF66]/5 border border-[#66FF66]/20 rounded-3xl p-8">
+          <div className="bg-[#66FF66]/5 border border-[#66FF66]/20 rounded-lg p-8">
             <div className="flex items-start gap-6">
-              <div className="w-12 h-12 rounded-2xl bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] shrink-0">
+              <div className="w-12 h-12 rounded-md bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] shrink-0">
                 <CpuChipIcon className="w-6 h-6" />
               </div>
               <div>
@@ -291,8 +293,8 @@ const DataInbox: React.FC<{
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0B0F1A] animate-fade-in overflow-hidden">
-      <div className="min-h-[5rem] bg-[#121212] border-b border-[#22324A]/40 flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-8 lg:px-12 py-3 sm:py-0 gap-3 sm:gap-0 shrink-0">
+    <div className="flex-1 flex flex-col bg-[#020617] animate-fade-in overflow-hidden">
+      <div className="min-h-[5rem] bg-[#0d1117] border-b border-[#1e293b]/40 flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-8 lg:px-12 py-3 sm:py-0 gap-3 sm:gap-0 shrink-0">
         <div className="flex items-center gap-3 sm:gap-4">
           <InboxStackIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#66FF66]" />
           <div>
@@ -310,20 +312,20 @@ const DataInbox: React.FC<{
           </button>
           <button 
             onClick={handleRefreshSheet}
-            className="bg-[#1A2333] text-white border border-[#22324A]/40 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white/5 transition-all font-orbitron"
+            className="bg-[#1A2333] text-white border border-[#1e293b]/40 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white/5 transition-all font-orbitron"
           >
             Refresh Sheet
           </button>
           <button 
             onClick={onClear}
-            className="bg-red-600/10 text-red-500 border border-red-500/20 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-red-600 hover:text-white transition-all font-orbitron"
+            className="signal-trigger-pro px-6 py-3 text-red-400 border-red-500/30 hover:text-red-300 hover:border-red-500"
           >
             Wipe Session
           </button>
           <button 
             onClick={onSync}
             disabled={isSyncing}
-            className={`${protocolMode === 'local' ? 'bg-[#39FF88] shadow-[0_0_20px_rgba(57,255,136,0.3)]' : 'bg-[#00D9FF] shadow-[0_0_20px_rgba(0,217,255,0.3)]'} text-[#0B0F1A] px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:scale-105 transition-all font-orbitron flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait disabled:hover:scale-100`}
+            className="signal-trigger-pro px-8 py-3 flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait"
           >
             <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /> {isSyncing ? 'Syncing...' : 'Sync to Pipeline'}
           </button>
@@ -370,8 +372,8 @@ const DataInbox: React.FC<{
 
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden min-h-0 gap-4 sm:gap-6">
           {/* Left Columns: Google Sheet Iframe */}
-          <div className="hidden lg:flex lg:col-span-8 border border-[#22324A]/30 bg-black flex-col relative group overflow-hidden rounded-2xl lg:rounded-[2rem]">
-            <div className="absolute top-6 left-6 z-10 bg-black/60 backdrop-blur-md px-4 py-2 rounded-lg border border-[#22324A]/40 flex items-center gap-2">
+          <div className="hidden lg:flex lg:col-span-8 border border-[#1e293b]/30 bg-black flex-col relative group overflow-hidden rounded-md lg:rounded-lg">
+            <div className="absolute top-6 left-6 z-10 bg-black/60 backdrop-blur-md px-4 py-2 rounded-lg border border-[#1e293b]/40 flex items-center gap-2">
               <TableCellsIcon className="w-4 h-4 text-[#66FF66]" />
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Live Source: 12bR...dO5g</span>
             </div>
@@ -384,8 +386,8 @@ const DataInbox: React.FC<{
           </div>
 
           {/* Right Columns: Tactical List */}
-          <div className="col-span-1 lg:col-span-4 flex flex-col bg-[#0A0C10] overflow-hidden rounded-2xl lg:rounded-[2rem] border border-[#22324A]/40">
-            <div className="p-8 border-b border-[#22324A]/30 bg-[#121212]/50">
+          <div className="col-span-1 lg:col-span-4 flex flex-col bg-[#020617] overflow-hidden rounded-md lg:rounded-lg border border-[#1e293b]/40">
+            <div className="p-8 border-b border-[#1e293b]/30 bg-[#0d1117]/50">
               <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] font-orbitron flex items-center gap-3">
                 <SignalIcon className="w-5 h-5 text-[#66FF66]" /> Ready for Execution
               </h3>
@@ -395,7 +397,7 @@ const DataInbox: React.FC<{
             <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
               {pendingClients.length > 0 ? (
                 pendingClients.map(client => (
-                  <div key={client.id} className="bg-[#1A2333] p-6 rounded-2xl border border-[#22324A]/40 hover:border-[#66FF66]/30 transition-all group">
+                  <div key={client.id} className="bg-[#1A2333] p-6 rounded-md border border-[#1e293b]/40 hover:border-[#66FF66]/30 transition-all group">
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h4 className="font-black text-white text-sm tracking-tight">{client.name} {client.surname}</h4>
@@ -415,7 +417,7 @@ const DataInbox: React.FC<{
                     <button 
                       onClick={() => onStartCall(client)}
                       disabled={backendStatus !== 'connected'}
-                      className={`w-full py-3 bg-[#121212] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${protocolMode === 'local' ? 'hover:bg-[#66FF66] hover:text-[#121212] group-hover:shadow-[0_0_15px_rgba(102,255,102,0.2)]' : 'hover:bg-[#00D9FF] hover:text-[#121212] group-hover:shadow-[0_0_15px_rgba(0,217,255,0.2)]'}`}
+                      className="signal-trigger-pro w-full py-3 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <PhoneIcon className="w-3 h-3" /> Initialize Signal
                     </button>
@@ -430,7 +432,7 @@ const DataInbox: React.FC<{
               )}
             </div>
 
-            <div className="p-6 bg-[#121212]/50 border-t border-[#22324A]/30">
+            <div className="p-6 bg-[#0d1117]/50 border-t border-[#1e293b]/30">
               <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-slate-500">
                 <span>Queue Depth</span>
                 <span className={protocolMode === 'local' ? 'text-[#66FF66]' : 'text-[#00D9FF]'}>{pendingClients.length} Leads</span>
@@ -511,7 +513,7 @@ const getQuickScriptsForLanguage = (language: Language) => {
 };
 
 const StatusIndicator: React.FC<{ label: string; status: 'connected' | 'error' | 'loading'; icon: React.ReactNode }> = ({ label, status, icon }) => (
-  <div className="bg-[#121212] p-4 rounded-2xl border border-[#22324A]/30 flex items-center justify-between group hover:border-[#66FF66]/30 transition-all">
+  <div className="bg-[#0d1117] p-4 rounded-md border border-[#1e293b]/30 flex items-center justify-between group hover:border-[#66FF66]/30 transition-all">
     <div className="flex items-center gap-3">
       <div className={`p-2 rounded-lg ${status === 'connected' ? 'bg-[#66FF66]/10 text-[#66FF66]' : status === 'loading' ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
         {icon}
@@ -531,9 +533,9 @@ const NavItem: React.FC<{ active: boolean; onClick: () => void; icon: React.Reac
   <button 
     onClick={onClick}
     disabled={disabled}
-    className={`w-full flex items-center gap-6 px-6 py-4 rounded-2xl transition-all relative group ${active ? 'bg-[#66FF66] text-[#121212] shadow-[0_0_20px_rgba(102,255,102,0.3)]' : 'text-slate-500 hover:bg-[#22324A]/20 hover:text-[#66FF66] disabled:opacity-20'}`}
+    className={`sidebar-btn-3d ${active ? 'active' : ''}`}
   >
-    <div className={`shrink-0 transition-transform ${active ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</div>
+    <div className={`shrink-0 transition-transform ${active ? 'scale-110' : ''}`}>{icon}</div>
     <span className="font-bold text-[10px] uppercase tracking-[0.2em] hidden lg:block text-left">{label}</span>
     {badge && <span className="absolute top-4 right-4 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[9px] text-white font-black animate-pulse shadow-lg">{badge}</span>}
   </button>
@@ -651,6 +653,37 @@ const App: React.FC = () => {
   
   const [activeThreads, setActiveThreads] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [ledgerStatus, setLedgerStatus] = useState<string>('IDLE');
+
+  useEffect(() => {
+    const wsUrl = backendUrl.replace(/^http/, 'ws');
+    let socket: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
+
+    const connect = () => {
+      socket = new WebSocket(wsUrl);
+      socket.onopen = () => setWsConnected(true);
+      socket.onclose = () => {
+        setWsConnected(false);
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+      socket.onerror = () => socket?.close();
+      socket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data as string);
+          const ts = new Date().toLocaleTimeString();
+          const line = `[${ts}] [${msg.type}] ${msg.message}`;
+          setTestLogs(prev => [line, ...prev].slice(0, 200));
+          if (msg.message?.includes('LEDGER_SYNC_INITIATED') || msg.message?.includes('Syncing call')) setLedgerStatus('SYNCING');
+          if (msg.message?.includes('SYNC_COMPLETE') || msg.message?.includes('synced successfully')) setLedgerStatus('IDLE');
+          if (msg.type === 'ERROR') setLedgerStatus('ERROR');
+        } catch { /* ignore non-JSON */ }
+      };
+    };
+    connect();
+    return () => { clearTimeout(reconnectTimer); socket?.close(); };
+  }, [backendUrl]);
 
   const parseJsonResponse = async (response: Response) => {
     const contentType = response.headers.get('content-type') || '';
@@ -907,28 +940,36 @@ const App: React.FC = () => {
   }, [clients]);
 
   return (
-    <div className="h-screen flex flex-row bg-[#0A0C10] text-slate-100 font-sans overflow-hidden selection:bg-[#66FF66]/30">
+    <div className="h-screen flex flex-row bg-[#020617] text-slate-100 font-sans overflow-hidden selection:bg-[#66FF66]/30 surface-grain">
       
       {/* --- SIDEBAR --- */}
-      <nav className="w-16 sm:w-20 lg:w-72 bg-[#121212] border-r border-[#22324A]/30 flex flex-col shrink-0">
+      <nav className="w-16 sm:w-20 lg:w-72 bg-[#0f172a] border-r border-[#1e293b] flex flex-col shrink-0 surface-grain">
         <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center lg:justify-start gap-4">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#66FF66] rounded-xl flex items-center justify-center text-[#121212] shadow-[0_0_15px_rgba(102,255,102,0.4)] transition-all hover:scale-105">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#66FF66] rounded-xl flex items-center justify-center text-[#0d1117] shadow-[0_0_15px_rgba(102,255,102,0.4)] transition-all">
             <CommandLineIcon className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div className="hidden lg:block">
             <h2 className="font-black text-lg tracking-tighter uppercase leading-none">JB³Ai <span className="text-[#66FF66]">Neural Hub</span></h2>
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Mzanzi Neural Hub</p>
+            <p className="text-[9px] font-black text-[#39FF88] uppercase tracking-widest mt-1">Mzanzi OS Grid</p>
           </div>
         </div>
         
-        <div className="flex-1 px-2 sm:px-4 space-y-1 sm:space-y-2 py-4 sm:py-6 overflow-y-auto scrollbar-hide">
-          <NavItem active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="Data Inbox" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'PIPELINE'} onClick={() => setActiveTab('PIPELINE')} icon={<ListBulletIcon className="w-5 h-5" />} label="Pipeline" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'LIVE_TERMINAL'} onClick={() => setActiveTab('LIVE_TERMINAL')} icon={<CommandLineIcon className="w-5 h-5" />} label="Live Terminal" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'RUN_PROTOCOL'} onClick={() => setActiveTab('RUN_PROTOCOL')} icon={<BeakerIcon className="w-5 h-5" />} label="Run Protocol" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="Config Hub" />
-          <NavItem active={activeTab === 'BACKEND_SETTINGS'} onClick={() => setActiveTab('BACKEND_SETTINGS')} icon={<CpuChipIcon className="w-5 h-5" />} label="Backend Settings" />
+        <div className="flex-1 px-2 sm:px-4 space-y-1 py-4 sm:py-6 overflow-y-auto scrollbar-hide">
+          {/* WHO */}
+          <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-2 pb-2 hidden lg:block">Who</p>
+          <NavItem active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="02 · Data Inbox" disabled={!isProtocolAccepted} />
+          <NavItem active={activeTab === 'PIPELINE'} onClick={() => setActiveTab('PIPELINE')} icon={<ListBulletIcon className="w-5 h-5" />} label="03 · Pipeline" disabled={!isProtocolAccepted} />
+
+          {/* WHAT */}
+          <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">What</p>
+          <NavItem active={activeTab === 'RUN_PROTOCOL'} onClick={() => setActiveTab('RUN_PROTOCOL')} icon={<BeakerIcon className="w-5 h-5" />} label="04 · Run Protocol" disabled={!isProtocolAccepted} />
+
+          {/* HOW */}
+          <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">How</p>
+          <NavItem active={activeTab === 'LIVE_TERMINAL'} onClick={() => setActiveTab('LIVE_TERMINAL')} icon={<CommandLineIcon className="w-5 h-5" />} label="05 · Live Terminal" disabled={!isProtocolAccepted} />
+          <NavItem active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="06 · Call Archive" disabled={!isProtocolAccepted} />
+          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="07 · Config Hub" />
+          <NavItem active={activeTab === 'BACKEND_SETTINGS'} onClick={() => setActiveTab('BACKEND_SETTINGS')} icon={<CpuChipIcon className="w-5 h-5" />} label="08 · Backend Settings" />
           
           <div className="mt-8 px-4">
             <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-4">Security</p>
@@ -941,15 +982,16 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 lg:p-8 mt-auto border-t border-[#22324A]/30">
-          <div className="bg-[#22324A]/10 rounded-xl p-3 sm:p-4 border border-[#22324A]/20 mb-4">
+        <div className="p-4 sm:p-6 lg:p-8 mt-auto border-t border-[#1e293b]/30">
+          <div className="bg-[#1e293b]/10 rounded-xl p-3 sm:p-4 border border-[#1e293b]/20 mb-4">
              <div className="flex items-center gap-3 mb-2">
-                <div className={`w-2 h-2 rounded-full animate-pulse ${backendStatus === 'connected' ? 'bg-[#66FF66] shadow-[0_0_12px_#66FF66]' : 'bg-red-500 shadow-[0_0_12px_#ef4444]'}`}></div>
-                <span className={`text-[9px] font-black uppercase tracking-widest ${backendStatus === 'connected' ? 'text-[#66FF66] drop-shadow-[0_0_8px_rgba(102,255,102,0.4)]' : 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`}>
+                <div className={`w-2 h-2 rounded-full ${backendStatus === 'connected' ? 'bg-[#39FF88] shadow-[0_0_12px_#39FF88]' : 'bg-red-500 shadow-[0_0_12px_#ef4444]'}`} style={backendStatus === 'connected' ? { animation: 'pulse 1.5s infinite' } : {}}></div>
+                <span className={`text-[9px] font-black uppercase tracking-widest ${backendStatus === 'connected' ? 'text-[#39FF88] drop-shadow-[0_0_8px_rgba(57,255,136,0.4)]' : 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`}>
                   {backendStatus === 'connected' ? 'Uplink Established' : 'Uplink Severed'}
                 </span>
              </div>
              <p className="text-[9px] text-slate-600 font-mono tracking-tighter">v3.4.1-stable-mzanzi</p>
+             <p className="text-[8px] text-slate-700 font-mono tracking-tighter mt-1">POPIA VALID</p>
           </div>
         </div>
       </nav>
@@ -958,7 +1000,7 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         
         {/* 🚀 MAIN CONTENT ZONE */}
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden flex flex-col">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden flex flex-col content-module-layered">
           
           {/* 🖥️ THE HUD (Active Protocol Screen) */}
           {['DATA_INBOX', 'PIPELINE', 'LIVE_TERMINAL', 'DASHBOARD'].includes(activeTab) && (
@@ -1030,7 +1072,7 @@ const App: React.FC = () => {
               <div className="flex flex-wrap gap-2 mb-4 items-center">
                 <button
                   onClick={toggleAllLangs}
-                  className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${activeLangs.size === ALL_LANGUAGES.length ? 'bg-[#66FF66] text-[#121212] border-[#66FF66] shadow-[0_0_12px_rgba(102,255,102,0.3)]' : 'bg-[#1A2333] text-slate-400 border-[#22324A]/40 hover:border-[#66FF66]/40 hover:text-white'}`}
+                  className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${activeLangs.size === ALL_LANGUAGES.length ? 'bg-[#66FF66] text-[#0d1117] border-[#66FF66] shadow-[0_0_12px_rgba(102,255,102,0.3)]' : 'bg-[#1A2333] text-slate-400 border-[#1e293b]/40 hover:border-[#66FF66]/40 hover:text-white'}`}
                 >
                   All
                 </button>
@@ -1044,7 +1086,7 @@ const App: React.FC = () => {
                       className={`group px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${
                         isOn
                           ? 'bg-[#66FF66]/10 text-[#66FF66] border-[#66FF66]/50 shadow-[0_0_10px_rgba(102,255,102,0.15)]'
-                          : 'bg-[#1A2333] text-slate-600 border-[#22324A]/30 hover:border-slate-500/40 line-through decoration-slate-700'
+                          : 'bg-[#1A2333] text-slate-600 border-[#1e293b]/30 hover:border-slate-500/40 line-through decoration-slate-700'
                       }`}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full transition-all ${
@@ -1063,7 +1105,7 @@ const App: React.FC = () => {
                 <div className="bg-[#1A2333] rounded-[24px] border border-white/5 overflow-hidden overflow-x-auto flex-1">
                   {/* Desktop table */}
                   <table className="w-full text-left hidden sm:table">
-                    <thead className="bg-[#0B0F1A] text-[10px] text-[#39FF88] font-orbitron sticky top-0 z-10">
+                    <thead className="bg-[#020617] text-[10px] text-[#39FF88] font-orbitron sticky top-0 z-10">
                        <tr>
                          <th className="p-4 uppercase">Identity</th>
                          <th className="p-4 uppercase hidden md:table-cell">Phone</th>
@@ -1099,7 +1141,7 @@ const App: React.FC = () => {
                             <button 
                               onClick={() => handleCall(c.id, c.phone)} 
                               disabled={backendStatus !== 'connected'}
-                              className="bg-[#00D9FF] text-[#0B0F1A] text-[9px] font-bold px-4 py-2 rounded-lg hover:bg-[#39FF88] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="bg-[#00D9FF] text-[#020617] text-[9px] font-bold px-4 py-2 rounded-lg hover:bg-[#39FF88] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               DIAL_NOW
                             </button>
@@ -1125,7 +1167,7 @@ const App: React.FC = () => {
                         <button 
                           onClick={() => handleCall(c.id, c.phone)} 
                           disabled={backendStatus !== 'connected'}
-                          className="bg-[#00D9FF] text-[#0B0F1A] text-[9px] font-bold px-3 py-2 rounded-lg hover:bg-[#39FF88] transition-colors shrink-0 disabled:opacity-30"
+                          className="bg-[#00D9FF] text-[#020617] text-[9px] font-bold px-3 py-2 rounded-lg hover:bg-[#39FF88] transition-colors shrink-0 disabled:opacity-30"
                         >
                           DIAL
                         </button>
@@ -1170,9 +1212,9 @@ const App: React.FC = () => {
               />
               {isCalling ? (
               <>
-                <div className="p-8 border-b border-[#22324A]/30 bg-[#121212]/80 flex items-center justify-between">
+                <div className="p-8 border-b border-[#1e293b]/30 bg-[#0d1117]/80 flex items-center justify-between">
                   <div className="flex items-center gap-6">
-                    <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 animate-pulse border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                    <div className="w-12 h-12 rounded-md bg-red-500/10 flex items-center justify-center text-red-500 animate-pulse border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
                       {isInternalCall ? <CpuChipIcon className="w-6 h-6 text-[#66FF66]" /> : <PhoneIcon className="w-6 h-6" />}
                     </div>
                     <div>
@@ -1185,14 +1227,14 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   
-                  <button onClick={endCall} className="bg-red-600 hover:bg-red-500 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
+                  <button onClick={endCall} className="bg-red-600 hover:bg-red-500 text-white px-8 py-4 rounded-md text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
                     <PhoneXMarkIcon className="w-4 h-4" /> {isInternalCall ? 'Sever Neural Link' : 'Terminate Session'}
                   </button>
                 </div>
 
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8 p-4 sm:p-8 overflow-hidden">
                   <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-[#121212] p-6 rounded-3xl border border-[#22324A]/40 group hover:border-[#66FF66]/30 transition-all">
+                    <div className="bg-[#0d1117] p-6 rounded-lg border border-[#1e293b]/40 group hover:border-[#66FF66]/30 transition-all">
                       <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex justify-between items-center">
                         Call Duration <ClockIcon className="w-4 h-4 text-[#66FF66]" />
                       </h5>
@@ -1201,7 +1243,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="bg-[#121212] p-6 rounded-3xl border border-[#22324A]/40">
+                    <div className="bg-[#0d1117] p-6 rounded-lg border border-[#1e293b]/40">
                       <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex justify-between items-center">
                         {isInternalCall ? 'Neural Synapses' : 'Interaction Flow'} <ArrowsRightLeftIcon className="w-4 h-4 text-[#66FF66]" />
                       </h5>
@@ -1210,7 +1252,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="bg-[#121212] p-6 rounded-3xl border border-[#22324A]/40">
+                    <div className="bg-[#0d1117] p-6 rounded-lg border border-[#1e293b]/40">
                       <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex justify-between items-center">
                         Detected Language <LanguageIcon className="w-4 h-4 text-[#66FF66]" />
                       </h5>
@@ -1224,15 +1266,15 @@ const App: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="bg-[#121212] p-6 rounded-3xl border border-[#22324A]/40 h-32 flex items-center justify-center gap-1 overflow-hidden">
+                    <div className="bg-[#0d1117] p-6 rounded-lg border border-[#1e293b]/40 h-32 flex items-center justify-center gap-1 overflow-hidden">
                       {[...Array(20)].map((_, i) => (
                         <div key={i} className="w-1 rounded-full bg-[#66FF66]/40 animate-waveform" style={{ height: `${Math.random() * 80 + 20}%`, animationDelay: `${i * 0.05}s` }} />
                       ))}
                     </div>
                   </div>
 
-                  <div className="lg:col-span-3 flex flex-col bg-[#121212] rounded-[2.5rem] border border-[#22324A]/40 overflow-hidden shadow-2xl">
-                    <div className="p-6 border-b border-[#22324A]/30 bg-white/[0.01] flex items-center justify-between">
+                  <div className="lg:col-span-3 flex flex-col bg-[#0d1117] rounded-lg border border-[#1e293b]/40 overflow-hidden shadow-2xl">
+                    <div className="p-6 border-b border-[#1e293b]/30 bg-white/[0.01] flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CommandLineIcon className="w-5 h-5 text-[#66FF66]" />
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">Encrypted Session Metadata</span>
@@ -1244,14 +1286,14 @@ const App: React.FC = () => {
                         <div key={i} className={`flex ${t.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
                           <div className="max-w-[70%]">
                             <div className={`flex items-center gap-3 mb-3 ${t.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${t.role === 'user' ? 'bg-[#66FF66] text-[#121212] shadow-lg' : 'bg-[#22324A]/40 text-slate-400 border border-[#22324A]/30'}`}>
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${t.role === 'user' ? 'bg-[#66FF66] text-[#0d1117] shadow-lg' : 'bg-[#1e293b]/40 text-slate-400 border border-[#1e293b]/30'}`}>
                                   {t.role === 'user' ? <UserIcon className="w-4 h-4" /> : <CpuChipIcon className="w-4 h-4" />}
                                 </div>
                                 <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
                                   {t.role === 'user' ? (isInternalCall ? 'Stimulus Input' : 'Remote Stream') : 'Neural Core'}
                                 </span>
                             </div>
-                            <div className={`p-6 rounded-2xl text-sm leading-relaxed ${t.role === 'user' ? 'bg-[#66FF66]/10 border border-[#66FF66]/20 text-[#66FF66] rounded-tr-none' : 'bg-[#22324A]/20 border border-[#22324A]/30 text-slate-300 rounded-tl-none'}`}>
+                            <div className={`p-6 rounded-md text-sm leading-relaxed ${t.role === 'user' ? 'bg-[#66FF66]/10 border border-[#66FF66]/20 text-[#66FF66] rounded-tr-none' : 'bg-[#1e293b]/20 border border-[#1e293b]/30 text-slate-300 rounded-tl-none'}`}>
                                 {t.text}
                             </div>
                           </div>
@@ -1260,9 +1302,9 @@ const App: React.FC = () => {
                       <div ref={transcriptEndRef} />
                     </div>
                     
-                    <div className="p-8 border-t border-[#22324A]/30 bg-black/10">
+                    <div className="p-8 border-t border-[#1e293b]/30 bg-black/10">
                       <div className="flex items-center gap-6">
-                          <div className="flex-1 h-12 bg-black/40 rounded-xl border border-[#22324A]/30 flex items-center px-6 text-slate-600 text-xs font-mono italic">
+                          <div className="flex-1 h-12 bg-black/40 rounded-xl border border-[#1e293b]/30 flex items-center px-6 text-slate-600 text-xs font-mono italic">
                             Synchronizing duplex audio buffer...
                           </div>
                           <div className="flex items-center gap-3">
@@ -1292,15 +1334,15 @@ const App: React.FC = () => {
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                    <div className="bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40">
+                    <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40">
                         <div className="flex items-center gap-4 mb-8">
                             <BeakerIcon className="w-8 h-8 text-[#66FF66]" />
                             <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Neural Stimulus</h3>
                         </div>
-                        <div className="bg-black/40 rounded-2xl p-6 border border-[#22324A]/40 mb-6">
+                        <div className="bg-black/40 rounded-md p-6 border border-[#1e293b]/40 mb-6">
                              <div className="flex gap-2 mb-4">
-                                 <button onClick={() => setTestType('speak')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${testType === 'speak' ? 'bg-[#66FF66] text-[#121212]' : 'text-slate-500 hover:text-slate-300'}`}>Audio Unit (Azure)</button>
-                                 <button onClick={() => setTestType('ask')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${testType === 'ask' ? 'bg-[#66FF66] text-[#121212]' : 'text-slate-500 hover:text-slate-300'}`}>Logic Unit (Gemini)</button>
+                                 <button onClick={() => setTestType('speak')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${testType === 'speak' ? 'bg-[#66FF66] text-[#0d1117]' : 'text-slate-500 hover:text-slate-300'}`}>Audio Unit (Azure)</button>
+                                 <button onClick={() => setTestType('ask')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${testType === 'ask' ? 'bg-[#66FF66] text-[#0d1117]' : 'text-slate-500 hover:text-slate-300'}`}>Logic Unit (Gemini)</button>
                              </div>
                              <textarea value={testInput} onChange={(e) => setTestInput(e.target.value)} className="w-full bg-transparent border-none text-[#66FF66] text-sm font-mono focus:ring-0 h-32 resize-none" placeholder="Enter stimulus parameters..." />
                              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1309,10 +1351,10 @@ const App: React.FC = () => {
                                    <select
                                      value={testLang}
                                      onChange={(e) => setTestLang(e.target.value as Language)}
-                                     className="w-full bg-black/40 border border-[#22324A]/40 rounded-xl px-4 py-3 text-white font-bold text-xs focus:ring-1 focus:ring-[#66FF66] outline-none appearance-none"
+                                     className="w-full bg-black/40 border border-[#1e293b]/40 rounded-xl px-4 py-3 text-white font-bold text-xs focus:ring-1 focus:ring-[#66FF66] outline-none appearance-none"
                                    >
                                      {Object.values(Language).map(lang => (
-                                       <option key={lang} value={lang} className="bg-[#121212]">{getLanguageName(lang)}</option>
+                                       <option key={lang} value={lang} className="bg-[#0d1117]">{getLanguageName(lang)}</option>
                                      ))}
                                    </select>
                                  </div>
@@ -1328,7 +1370,7 @@ const App: React.FC = () => {
                             <button
                               key={`stimulus-lang-${lang}`}
                               onClick={() => setTestLang(lang)}
-                              className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded border transition-all ${testLang === lang ? 'bg-[#66FF66] text-[#121212] border-[#66FF66]' : 'bg-[#22324A]/10 text-slate-400 border-[#22324A]/30 hover:border-[#66FF66]/40 hover:text-white'}`}
+                              className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded border transition-all ${testLang === lang ? 'bg-[#66FF66] text-[#0d1117] border-[#66FF66]' : 'bg-[#1e293b]/10 text-slate-400 border-[#1e293b]/30 hover:border-[#66FF66]/40 hover:text-white'}`}
                             >
                               {getLanguageName(lang)}
                             </button>
@@ -1336,19 +1378,19 @@ const App: React.FC = () => {
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {getQuickScriptsForLanguage(testLang).map(s => (
-                                <button key={s.name} onClick={() => setTestInput(s.text)} className="px-3 py-1.5 bg-[#22324A]/10 text-[9px] font-black text-slate-400 uppercase tracking-widest rounded border border-[#22324A]/30 hover:border-[#66FF66]/40 transition-all hover:text-white">
+                                <button key={s.name} onClick={() => setTestInput(s.text)} className="px-3 py-1.5 bg-[#1e293b]/10 text-[9px] font-black text-slate-400 uppercase tracking-widest rounded border border-[#1e293b]/30 hover:border-[#66FF66]/40 transition-all hover:text-white">
                                     {s.name}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    <div className="bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40 flex flex-col">
+                    <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40 flex flex-col">
                         <div className="flex items-center gap-4 mb-8">
                             <CommandLineIcon className="w-8 h-8 text-[#66FF66]" />
                             <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Lab Output</h3>
                         </div>
-                        <div className="flex-1 bg-black/40 rounded-2xl p-6 border border-[#22324A]/40 font-mono text-[10px] text-slate-400 overflow-y-auto space-y-2">
+                        <div className="flex-1 bg-black/40 rounded-md p-6 border border-[#1e293b]/40 font-mono text-[10px] text-slate-400 overflow-y-auto space-y-2">
                             {testLogs.map((log, i) => (
                               <div key={i} className={log.includes('ERROR') ? 'text-red-500' : log.includes('SUCCESS') ? 'text-[#66FF66]' : ''}>
                                 {log}
@@ -1358,7 +1400,7 @@ const App: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40 lg:col-span-2">
+                    <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40 lg:col-span-2">
                         <div className="flex items-center gap-4 mb-8">
                             <PhoneIcon className="w-8 h-8 text-[#00D9FF]" />
                             <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Manual Signal Trigger</h3>
@@ -1378,7 +1420,7 @@ const App: React.FC = () => {
                                             value={testPhone} 
                                             onChange={(e) => setTestPhone(e.target.value)}
                                             placeholder="+27..."
-                                            className="w-full bg-black/40 border border-[#22324A]/40 rounded-xl px-4 py-3 text-[#00D9FF] font-mono text-sm focus:ring-1 focus:ring-[#00D9FF] outline-none"
+                                            className="w-full bg-black/40 border border-[#1e293b]/40 rounded-xl px-4 py-3 text-[#00D9FF] font-mono text-sm focus:ring-1 focus:ring-[#00D9FF] outline-none"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -1386,10 +1428,10 @@ const App: React.FC = () => {
                                         <select 
                                             value={testLang} 
                                             onChange={(e) => setTestLang(e.target.value as Language)}
-                                            className="w-full bg-black/40 border border-[#22324A]/40 rounded-xl px-4 py-3 text-white font-bold text-xs focus:ring-1 focus:ring-[#00D9FF] outline-none appearance-none"
+                                            className="w-full bg-black/40 border border-[#1e293b]/40 rounded-xl px-4 py-3 text-white font-bold text-xs focus:ring-1 focus:ring-[#00D9FF] outline-none appearance-none"
                                         >
                                             {Object.values(Language).map(lang => (
-                                                <option key={lang} value={lang} className="bg-[#121212]">{getLanguageName(lang)}</option>
+                                                <option key={lang} value={lang} className="bg-[#0d1117]">{getLanguageName(lang)}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -1409,7 +1451,7 @@ const App: React.FC = () => {
                                             });
                                         }}
                                         disabled={!testPhone || backendStatus !== 'connected'}
-                                        className="w-full bg-[#00D9FF] text-[#121212] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#39FF88] transition-all disabled:opacity-20 flex items-center justify-center gap-2"
+                                        className="w-full bg-[#00D9FF] text-[#0d1117] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#39FF88] transition-all disabled:opacity-20 flex items-center justify-center gap-2"
                                     >
                                         <PhoneIcon className="w-4 h-4" /> Initialize Outbound
                                     </button>
@@ -1417,7 +1459,7 @@ const App: React.FC = () => {
                             </div>
 
                             {/* Internal Section */}
-                            <div className="space-y-6 border-l border-[#22324A]/30 pl-12">
+                            <div className="space-y-6 border-l border-[#1e293b]/30 pl-12">
                                 <div className="flex items-center gap-2 mb-2">
                                     <CpuChipIcon className="w-4 h-4 text-[#66FF66]" />
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Internal Neural Link</span>
@@ -1433,16 +1475,16 @@ const App: React.FC = () => {
                                         <select 
                                             value={testLang} 
                                             onChange={(e) => setTestLang(e.target.value as Language)}
-                                            className="w-full bg-black/40 border border-[#22324A]/40 rounded-xl px-4 py-3 text-white font-bold text-xs focus:ring-1 focus:ring-[#66FF66] outline-none appearance-none"
+                                            className="w-full bg-black/40 border border-[#1e293b]/40 rounded-xl px-4 py-3 text-white font-bold text-xs focus:ring-1 focus:ring-[#66FF66] outline-none appearance-none"
                                         >
                                             {Object.values(Language).map(lang => (
-                                                <option key={lang} value={lang} className="bg-[#121212]">{getLanguageName(lang)}</option>
+                                                <option key={lang} value={lang} className="bg-[#0d1117]">{getLanguageName(lang)}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <button 
                                         onClick={() => handleStartInternalCall(testLang)}
-                                        className="w-full bg-[#66FF66] text-[#121212] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(102,255,102,0.2)]"
+                                        className="w-full bg-[#66FF66] text-[#0d1117] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(102,255,102,0.2)]"
                                     >
                                         <SpeakerWaveIcon className="w-4 h-4" /> Establish Internal Link
                                     </button>
@@ -1553,7 +1595,7 @@ const App: React.FC = () => {
                     }
                   ]}
                 />
-                <header className="mb-8 sm:mb-16 border-b border-[#22324A]/30 pb-8 sm:pb-12 flex flex-col sm:flex-row justify-between items-start gap-4">
+                <header className="mb-8 sm:mb-16 border-b border-[#1e293b]/30 pb-8 sm:pb-12 flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
                       <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Intelligence Ledger</h1>
                       <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Build once. Run forever. Full transcripts and signal tracking.</p>
@@ -1569,7 +1611,7 @@ const App: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {archiveClients.map(client => (
-                        <div key={client.id} className="bg-[#121212] p-8 rounded-3xl flex flex-col justify-between hover:translate-y-[-4px] transition-all border border-[#22324A]/40 hover:border-[#66FF66]/20 shadow-lg">
+                        <div key={client.id} className="bg-[#0d1117] p-8 rounded-lg flex flex-col justify-between transition-all border border-[#1e293b]/40 hover:border-[#66FF66]/20 shadow-lg">
                             <div>
                                 <div className="flex items-center justify-between mb-6">
                                     <div className={`p-2 rounded-lg ${client.status === 'qualified' ? 'bg-green-600/10 text-green-600' : 'bg-red-600/10 text-red-600'}`}>
@@ -1589,7 +1631,7 @@ const App: React.FC = () => {
                                   </div>
                                 </div>
                             </div>
-                            <button onClick={() => setViewingTranscriptClient(client)} className="w-full bg-[#22324A]/40 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#66FF66] hover:text-[#121212] transition-all border border-[#22324A]/30">
+                            <button onClick={() => setViewingTranscriptClient(client)} className="w-full bg-[#1e293b]/40 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#66FF66] hover:text-[#0d1117] transition-all border border-[#1e293b]/30">
                                 <DocumentTextIcon className="w-4 h-4" /> Analyze Transcript
                             </button>
                         </div>
@@ -1652,30 +1694,32 @@ const App: React.FC = () => {
                   onAcceptProtocol={() => setShowPopiaModal(true)}
                   onLoadTeam={() => console.log('Loading team...')}
                   onShowInfo={() => setShowDashboardInfo(true)}
+                  wsConnected={wsConnected}
+                  ledgerStatus={ledgerStatus}
                 />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-12">
-                  <div className="lg:col-span-2 bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40">
+                  <div className="lg:col-span-2 bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40">
                     <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
                       <WifiIcon className="w-6 h-6 text-[#66FF66]" /> Network Vitals
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="bg-black/40 p-6 rounded-2xl border border-[#22324A]/40">
+                      <div className="bg-black/40 p-6 rounded-md border border-[#1e293b]/40">
                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Latency (Ping)</span>
                         <div className="text-3xl font-black text-[#66FF66]">24<span className="text-xs ml-1">ms</span></div>
                       </div>
-                      <div className="bg-black/40 p-6 rounded-2xl border border-[#22324A]/40">
+                      <div className="bg-black/40 p-6 rounded-md border border-[#1e293b]/40">
                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Uplink Speed</span>
                         <div className="text-3xl font-black text-[#66FF66]">150<span className="text-xs ml-1">mbps</span></div>
                       </div>
-                      <div className="bg-black/40 p-6 rounded-2xl border border-[#22324A]/40">
+                      <div className="bg-black/40 p-6 rounded-md border border-[#1e293b]/40">
                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Stability</span>
                         <div className="text-3xl font-black text-[#66FF66]">99.9<span className="text-xs ml-1">%</span></div>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40">
+                  <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40">
                     <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-8">API Stability</h3>
                     <div className="space-y-4">
                       {['Twilio', 'Azure', 'Gemini'].map(api => (
@@ -1741,10 +1785,10 @@ const App: React.FC = () => {
 
             <div className="space-y-12">
               {/* COMPANY & CALL GUIDE */}
-              <div className="bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40">
+              <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[#00D9FF]/10 flex items-center justify-center text-[#00D9FF] border border-[#00D9FF]/20">
+                    <div className="w-12 h-12 rounded-md bg-[#00D9FF]/10 flex items-center justify-center text-[#00D9FF] border border-[#00D9FF]/20">
                       <MegaphoneIcon className="w-6 h-6" />
                     </div>
                     <div>
@@ -1754,15 +1798,15 @@ const App: React.FC = () => {
                   </div>
                   {editingCompanyConfig ? (
                     <div className="flex gap-2">
-                      <button onClick={saveCompanyConfig} className="flex items-center gap-2 px-5 py-3 bg-[#39FF88] text-[#0B0F1A] rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all">
+                      <button onClick={saveCompanyConfig} className="flex items-center gap-2 px-5 py-3 bg-[#39FF88] text-[#020617] rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
                         <CheckBadgeIcon className="w-4 h-4" /> Save
                       </button>
-                      <button onClick={() => setEditingCompanyConfig(false)} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-slate-400 border border-[#22324A]/40 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">
+                      <button onClick={() => setEditingCompanyConfig(false)} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-slate-400 border border-[#1e293b]/40 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">
                         <XMarkIcon className="w-4 h-4" /> Cancel
                       </button>
                     </div>
                   ) : (
-                    <button onClick={() => { setEditingCompanyConfig(true); setCompanyDraft({ ...companyConfig }); }} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-[#00D9FF] border border-[#00D9FF]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#00D9FF] hover:text-[#0B0F1A] transition-all">
+                    <button onClick={() => { setEditingCompanyConfig(true); setCompanyDraft({ ...companyConfig }); }} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-[#00D9FF] border border-[#00D9FF]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#00D9FF] hover:text-[#020617] transition-all">
                       <AdjustmentsHorizontalIcon className="w-4 h-4" /> Edit
                     </button>
                   )}
@@ -1777,13 +1821,13 @@ const App: React.FC = () => {
                     { label: 'Parameters to Collect', key: 'parameters', span: true }
                   ].map((item) => (
                     <div key={item.key} className={item.span ? 'md:col-span-2' : ''}>
-                      <div className="bg-black/40 rounded-2xl p-6 border border-[#22324A]/40 hover:border-[#00D9FF]/20 transition-all">
+                      <div className="bg-black/40 rounded-md p-6 border border-[#1e293b]/40 hover:border-[#00D9FF]/20 transition-all">
                         <span className="text-[9px] font-black text-[#00D9FF] uppercase tracking-widest bg-[#00D9FF]/10 px-3 py-1 rounded-full inline-block mb-4">{item.label}</span>
                         {editingCompanyConfig ? (
                           <textarea
                             value={companyDraft[item.key] || ''}
                             onChange={(e) => setCompanyDraft(prev => ({ ...prev, [item.key]: e.target.value }))}
-                            className="w-full bg-[#0B0F1A] border border-[#22324A]/60 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono focus:ring-1 focus:ring-[#00D9FF] outline-none resize-none h-24"
+                            className="w-full bg-[#020617] border border-[#1e293b]/60 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono focus:ring-1 focus:ring-[#00D9FF] outline-none resize-none h-24"
                           />
                         ) : (
                           <p className="text-sm text-slate-400 leading-relaxed font-medium">
@@ -1798,10 +1842,10 @@ const App: React.FC = () => {
 
               {/* PER-LANGUAGE PROTOCOLS */}
               {Object.entries(languageProtocols).map(([lang, protocols]) => (
-                <div key={lang} className="bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40">
+                <div key={lang} className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] border border-[#66FF66]/20">
+                      <div className="w-12 h-12 rounded-md bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] border border-[#66FF66]/20">
                         <LanguageIcon className="w-6 h-6" />
                       </div>
                       <div>
@@ -1811,15 +1855,15 @@ const App: React.FC = () => {
                     </div>
                     {editingProtocolLang === lang ? (
                       <div className="flex gap-2">
-                        <button onClick={() => saveProtocol(lang)} className="flex items-center gap-2 px-5 py-3 bg-[#39FF88] text-[#0B0F1A] rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all">
+                        <button onClick={() => saveProtocol(lang)} className="flex items-center gap-2 px-5 py-3 bg-[#39FF88] text-[#020617] rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
                           <CheckBadgeIcon className="w-4 h-4" /> Save
                         </button>
-                        <button onClick={() => setEditingProtocolLang(null)} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-slate-400 border border-[#22324A]/40 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">
+                        <button onClick={() => setEditingProtocolLang(null)} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-slate-400 border border-[#1e293b]/40 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">
                           <XMarkIcon className="w-4 h-4" /> Cancel
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => { setEditingProtocolLang(lang); setProtocolDraft({ ...(protocols as any) }); }} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#66FF66] hover:text-[#0B0F1A] transition-all">
+                      <button onClick={() => { setEditingProtocolLang(lang); setProtocolDraft({ ...(protocols as any) }); }} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#66FF66] hover:text-[#020617] transition-all">
                         <AdjustmentsHorizontalIcon className="w-4 h-4" /> Edit
                       </button>
                     )}
@@ -1832,13 +1876,13 @@ const App: React.FC = () => {
                       { label: 'Closing Statement', key: 'closing' },
                       { label: 'Signal Switch', key: 'switch' }
                     ].map((item) => (
-                      <div key={item.key} className="bg-black/40 rounded-2xl p-6 border border-[#22324A]/40 group hover:border-[#66FF66]/30 transition-all">
+                      <div key={item.key} className="bg-black/40 rounded-md p-6 border border-[#1e293b]/40 group hover:border-[#66FF66]/30 transition-all">
                         <span className="text-[9px] font-black text-[#66FF66] uppercase tracking-widest bg-[#66FF66]/10 px-3 py-1 rounded-full inline-block mb-4">{item.label}</span>
                         {editingProtocolLang === lang ? (
                           <textarea
                             value={(protocolDraft as any)[item.key] || ''}
                             onChange={(e) => setProtocolDraft(prev => ({ ...prev, [item.key]: e.target.value }))}
-                            className="w-full bg-[#0B0F1A] border border-[#22324A]/60 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono focus:ring-1 focus:ring-[#66FF66] outline-none resize-none h-24"
+                            className="w-full bg-[#020617] border border-[#1e293b]/60 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono focus:ring-1 focus:ring-[#66FF66] outline-none resize-none h-24"
                           />
                         ) : (
                           <p className="text-sm text-slate-400 leading-relaxed font-mono italic">
@@ -1851,7 +1895,7 @@ const App: React.FC = () => {
                 </div>
               ))}
               
-              <div className="bg-[#121212] p-8 rounded-[2rem] border border-[#22324A]/40 border-dashed flex flex-col items-center justify-center text-slate-600 group hover:border-[#66FF66]/30 transition-all cursor-pointer">
+              <div className="bg-[#0d1117] p-8 rounded-lg border border-[#1e293b]/40 border-dashed flex flex-col items-center justify-center text-slate-600 group hover:border-[#66FF66]/30 transition-all cursor-pointer">
                 <PlusIcon className="w-12 h-12 mb-4 group-hover:text-[#66FF66] transition-colors" />
                 <span className="text-xs font-black uppercase tracking-widest">Add Custom Protocol</span>
               </div>
@@ -1905,23 +1949,23 @@ const App: React.FC = () => {
             </header>
 
             <div className="max-w-2xl space-y-8">
-              <div className="bg-[#121212] p-10 rounded-[2.5rem] border border-[#22324A]/40">
+              <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40">
                 <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
                   <CpuChipIcon className="w-6 h-6 text-[#66FF66]" /> Neural Hub Control
                 </h3>
                 <div className="space-y-6">
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mb-4">Core Endpoint</label>
-                    <input type="text" value={backendUrl} onChange={(e) => saveBackendUrl(e.target.value)} className="w-full bg-black/40 border border-[#22324A]/40 rounded-xl px-6 py-4 text-[#66FF66] font-mono text-xs focus:ring-1 focus:ring-[#66FF66] outline-none transition-all" />
+                    <input type="text" value={backendUrl} onChange={(e) => saveBackendUrl(e.target.value)} className="w-full bg-black/40 border border-[#1e293b]/40 rounded-xl px-6 py-4 text-[#66FF66] font-mono text-xs focus:ring-1 focus:ring-[#66FF66] outline-none transition-all" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <button onClick={() => checkBackendHealth()} disabled={backendStatus === 'loading'} className="bg-[#22324A] text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#22324A]/80 transition-all disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2">
+                    <button onClick={() => checkBackendHealth()} disabled={backendStatus === 'loading'} className="bg-[#1e293b] text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#1e293b]/80 transition-all disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2">
                       {backendStatus === 'loading' ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Checking...</> : 'Reboot Server'}
                     </button>
-                    <button onClick={() => { console.log('Recalibrating Neural Hub...'); checkBackendHealth(); }} disabled={backendStatus === 'loading'} className="bg-[#66FF66] text-[#121212] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:scale-105 transition-all font-orbitron disabled:opacity-50 disabled:cursor-wait disabled:hover:scale-100 flex items-center justify-center gap-2">
+                    <button onClick={() => { console.log('Recalibrating Neural Hub...'); checkBackendHealth(); }} disabled={backendStatus === 'loading'} className="bg-[#66FF66] text-[#0d1117] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all font-orbitron disabled:opacity-50 disabled:cursor-wait disabled:hover:scale-100 flex items-center justify-center gap-2">
                       {backendStatus === 'loading' ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Working...</> : 'Recalibrate'}
                     </button>
-                    <button onClick={resetBackendUrlToDefault} className="col-span-2 bg-[#22324A]/30 text-[#66FF66] border border-[#66FF66]/20 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#66FF66]/10 transition-all">
+                    <button onClick={resetBackendUrlToDefault} className="col-span-2 bg-[#1e293b]/30 text-[#66FF66] border border-[#66FF66]/20 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#66FF66]/10 transition-all">
                       Reset to Default Endpoint
                     </button>
                     <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="col-span-2 bg-red-600/10 text-red-600 border border-red-600/20 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-red-600 hover:text-white transition-all">
@@ -1931,7 +1975,7 @@ const App: React.FC = () => {
                 </div>
               </div>
               
-              <div className="bg-red-500/5 border border-red-500/20 p-8 rounded-[2rem]">
+              <div className="bg-red-500/5 border border-red-500/20 p-8 rounded-lg">
                 <div className="flex items-center gap-4 mb-4">
                   <ShieldExclamationIcon className="w-8 h-8 text-red-500" />
                   <h4 className="text-xl font-black text-white uppercase tracking-tighter">Danger Zone</h4>
@@ -1945,17 +1989,17 @@ const App: React.FC = () => {
 
         {/* MODAL: SESSION ANALYTICS */}
         {viewingTranscriptClient && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-[#0A0C10]/95 backdrop-blur-xl animate-fade-in">
-             <div className="bg-[#121212] w-full max-w-3xl rounded-[2rem] border border-[#22324A]/40 flex flex-col h-[85vh] shadow-2xl relative">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-[#020617]/95 backdrop-blur-xl animate-fade-in">
+             <div className="bg-[#0d1117] w-full max-w-3xl rounded-lg border border-[#1e293b]/40 flex flex-col h-[85vh] shadow-2xl relative">
                 <button onClick={() => setViewingTranscriptClient(null)} className="absolute top-8 right-8 text-slate-500 hover:text-[#66FF66] transition-colors"><XMarkIcon className="w-8 h-8" /></button>
-                <div className="p-12 border-b border-[#22324A]/30">
+                <div className="p-12 border-b border-[#1e293b]/30">
                    <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Session Audit</h2>
                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-2">{viewingTranscriptClient.name} {viewingTranscriptClient.surname} • {viewingTranscriptClient.language.toUpperCase()}</p>
                 </div>
                 <div className="flex-1 overflow-y-auto p-12 space-y-6 scrollbar-hide">
                     {viewingTranscriptClient.transcript?.map((t: TranscriptionEntry, i: number) => (
                         <div key={i} className={`flex ${t.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[85%] p-6 rounded-2xl ${t.role === 'user' ? 'bg-[#66FF66]/5 text-[#66FF66] border border-[#66FF66]/20 shadow-lg shadow-[#66FF66]/5 rounded-tr-none' : 'bg-[#22324A]/20 text-slate-300 border border-[#22324A]/30 rounded-tl-none'}`}>
+                            <div className={`max-w-[85%] p-6 rounded-md ${t.role === 'user' ? 'bg-[#66FF66]/5 text-[#66FF66] border border-[#66FF66]/20 shadow-lg shadow-[#66FF66]/5 rounded-tr-none' : 'bg-[#1e293b]/20 text-slate-300 border border-[#1e293b]/30 rounded-tl-none'}`}>
                                 <p className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-2">{t.role === 'user' ? 'Remote Signal' : 'AI Node'}</p>
                                 <p className="text-base leading-relaxed font-medium">{t.text}</p>
                             </div>
@@ -1963,8 +2007,8 @@ const App: React.FC = () => {
                     ))}
                     {!viewingTranscriptClient.transcript && <div className="text-center py-20 opacity-30 italic uppercase tracking-widest">No transcript data found</div>}
                 </div>
-                <div className="p-12 border-t border-[#22324A]/30 flex justify-end">
-                   <button onClick={() => setViewingTranscriptClient(null)} className="bg-[#22324A] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#22324A]/80 transition-all">Close Log</button>
+                <div className="p-12 border-t border-[#1e293b]/30 flex justify-end">
+                   <button onClick={() => setViewingTranscriptClient(null)} className="bg-[#1e293b] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#1e293b]/80 transition-all">Close Log</button>
                 </div>
              </div>
           </div>
@@ -1972,8 +2016,8 @@ const App: React.FC = () => {
 
         {/* MODAL: POPIA POLICY */}
         {showPopiaModal && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-[#0A0C10]/95 backdrop-blur-xl animate-fade-in overflow-y-auto">
-             <div className="bg-[#121212] w-full max-w-4xl rounded-[2rem] border border-[#22324A]/40 flex flex-col shadow-2xl relative my-auto max-h-[90vh]">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-[#020617]/95 backdrop-blur-xl animate-fade-in overflow-y-auto">
+             <div className="bg-[#0d1117] w-full max-w-4xl rounded-lg border border-[#1e293b]/40 flex flex-col shadow-2xl relative my-auto max-h-[90vh]">
                 {isProtocolAccepted && (
                   <button 
                     onClick={() => setShowPopiaModal(false)} 
@@ -1983,7 +2027,7 @@ const App: React.FC = () => {
                   </button>
                 )}
                 
-                <div className="p-12 border-b border-[#22324A]/30 shrink-0">
+                <div className="p-12 border-b border-[#1e293b]/30 shrink-0">
                    <div className="flex items-center gap-4 mb-4">
                       <ShieldCheckIcon className="w-10 h-10 text-[#66FF66]" />
                       <h2 className="text-4xl font-black text-white uppercase tracking-tighter">POPIA Compliance Protocol</h2>
@@ -2011,7 +2055,7 @@ const App: React.FC = () => {
                           { title: "Security Safeguards", text: "You must implement technical and organisational measures to prevent loss, damage, or unauthorised access to data." },
                           { title: "Data Subject Participation", text: "Individuals have the right to access their information and request corrections or deletions." }
                         ].map((item, idx) => (
-                          <div key={idx} className="bg-[#22324A]/10 border border-[#22324A]/30 p-5 rounded-2xl">
+                          <div key={idx} className="bg-[#1e293b]/10 border border-[#1e293b]/30 p-5 rounded-md">
                              <h4 className="font-black text-white text-[11px] uppercase tracking-widest mb-2 flex items-center gap-2">
                                <span className="text-[#66FF66] font-mono">{idx + 1}.</span> {item.title}
                              </h4>
@@ -2022,7 +2066,7 @@ const App: React.FC = () => {
                     </section>
 
                     {/* Section 2: Implementation Steps */}
-                    <section className="bg-white/5 p-8 rounded-[2rem] border border-[#22324A]/30">
+                    <section className="bg-white/5 p-8 rounded-lg border border-[#1e293b]/30">
                       <div className="flex items-center gap-3 mb-6">
                         <AcademicCapIcon className="w-6 h-6 text-[#66FF66]" />
                         <h3 className="text-xl font-black text-white uppercase tracking-widest">Practical Implementation Steps</h3>
@@ -2036,7 +2080,7 @@ const App: React.FC = () => {
                           { title: "Secure Third-Party Agreements", desc: "Ensure any \"Operators\" (service providers) you share data with also comply with POPIA standards." }
                         ].map((item, idx) => (
                           <li key={idx} className="flex gap-4 group">
-                             <div className="shrink-0 w-8 h-8 rounded-lg bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] font-mono text-xs group-hover:bg-[#66FF66] group-hover:text-[#121212] transition-all">
+                             <div className="shrink-0 w-8 h-8 rounded-lg bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] font-mono text-xs group-hover:bg-[#66FF66] group-hover:text-[#0d1117] transition-all">
                                0{idx + 1}
                              </div>
                              <div>
@@ -2060,7 +2104,7 @@ const App: React.FC = () => {
                           { term: "Data Subject", def: "The person (or juristic entity like a company) to whom the information relates." },
                           { term: "Responsible Party", def: "The entity that determines why and how personal information is processed." }
                         ].map((item, idx) => (
-                          <div key={idx} className="flex flex-col md:flex-row gap-2 md:gap-6 border-b border-[#22324A]/20 pb-4">
+                          <div key={idx} className="flex flex-col md:flex-row gap-2 md:gap-6 border-b border-[#1e293b]/20 pb-4">
                              <span className="font-black text-white text-[10px] uppercase tracking-widest w-48 shrink-0">{item.term}</span>
                              <p className="text-xs text-slate-500">{item.def}</p>
                           </div>
@@ -2068,7 +2112,7 @@ const App: React.FC = () => {
                       </div>
                     </section>
 
-                    <footer className="pt-8 border-t border-[#22324A]/20">
+                    <footer className="pt-8 border-t border-[#1e293b]/20">
                        <p className="text-slate-600 text-[10px] leading-relaxed italic mb-4">
                          For detailed legal guidance, you can refer to the official POPI Act document or the Information Regulator’s Guidance Notes. Would you like a specific checklist for small businesses or more information on registering your Information Officer?
                        </p>
@@ -2080,10 +2124,10 @@ const App: React.FC = () => {
                        </div>
                     </footer>
                 </div>
-                <div className="p-12 border-t border-[#22324A]/30 flex justify-end shrink-0">
+                <div className="p-12 border-t border-[#1e293b]/30 flex justify-end shrink-0">
                    <button 
                      onClick={handleAcceptProtocol} 
-                     className="bg-[#66FF66] text-[#121212] px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:shadow-[0_0_20px_rgba(102,255,102,0.4)] transition-all font-orbitron"
+                     className="bg-[#66FF66] text-[#0d1117] px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:shadow-[0_0_20px_rgba(102,255,102,0.4)] transition-all font-orbitron"
                    >
                      Protocol Accepted
                    </button>

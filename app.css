@@ -51,6 +51,109 @@ body {
     background: rgba(102, 255, 102, 0.3);
 }
 
+/* ═══ INDUSTRIAL SIDEBAR BUTTONS (Broadcast Console Grade) ═══ */
+.sidebar-btn-3d {
+  background: #05070a;
+  border: 1px solid #161b22;
+  border-top: 1px solid #21262d;
+  color: #8b949e;
+  padding: 12px 16px;
+  margin: 4px 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 1.5rem;
+  text-align: left;
+  transition: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.sidebar-btn-3d:hover {
+  color: #c9d1d9;
+  border-color: #30363d;
+}
+
+.sidebar-btn-3d.active {
+  background: #0d1117;
+  color: #39ff88;
+  border: 1px solid #39ff88;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
+  transform: translateY(1px);
+}
+
+.sidebar-btn-3d.active::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  width: 5px;
+  height: 5px;
+  background: #39ff88;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #39ff88;
+}
+
+.sidebar-btn-3d:disabled {
+  opacity: 0.15;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ═══ 3-LAYER RECESSED MODULE (Black → Blue → Black) ═══ */
+.content-module-layered {
+  background: #020617;
+  padding: 2px;
+  background-clip: content-box;
+  border: 1px solid #1e293b;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 1);
+  border-radius: 8px;
+}
+
+.content-module-layered > * {
+  background: #0a0c12;
+  border: 1px solid #161b22;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+}
+
+/* ═══ MILLED METAL ACTION BUTTONS ═══ */
+.signal-trigger-pro {
+  background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 3px 0 #000;
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 10px 20px;
+  font-weight: 600;
+  transition: none;
+}
+
+.signal-trigger-pro:hover {
+  color: #fff;
+  border-color: #484f58;
+}
+
+.signal-trigger-pro:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #000;
+  background: #020617;
+}
+
+/* ═══ SURFACE TEXTURE (Matte Carbon Grain) ═══ */
+.surface-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
 @keyframes subtle-pulse {
     0%, 100% { opacity: 0.8; }
     50% { opacity: 1; }
