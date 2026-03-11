@@ -718,6 +718,10 @@ const App: React.FC = () => {
   const [showBackendInfo, setShowBackendInfo] = useState(false);
   
   const [callDuration, setCallDuration] = useState(0);
+  const callDurationRef = useRef(0);
+  const [completedDurations, setCompletedDurations] = useState<number[]>([]);
+  const prevClientsRef = useRef<Map<string, string>>(new Map());
+  const [updatedRows, setUpdatedRows] = useState<Set<string>>(new Set());
   const [detectedLanguage, setDetectedLanguage] = useState<string>("");
   const [testPhone, setTestPhone] = useState('');
   const [testLang, setTestLang] = useState<Language>(Language.ZULU);
@@ -874,6 +878,9 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [backendUrl]);
 
+  // Keep ref in sync so isCalling effect can read it reliably
+  useEffect(() => { callDurationRef.current = callDuration; }, [callDuration]);
+
   useEffect(() => {
     let timer: number;
     if (isCalling) {
@@ -881,6 +888,8 @@ const App: React.FC = () => {
         setCallDuration(prev => prev + 1);
       }, 1000);
     } else {
+      const dur = callDurationRef.current;
+      if (dur > 0) setCompletedDurations(prev => [...prev, dur]);
       setCallDuration(0);
     }
     return () => clearInterval(timer);
@@ -1105,6 +1114,26 @@ const App: React.FC = () => {
 
   const archiveClients = useMemo(() => {
     return clients.filter(c => c.status === 'qualified' || c.status === 'failed');
+  }, [clients]);
+
+  const avgResponseTime = useMemo(() => {
+    if (completedDurations.length === 0) return null;
+    const sum = completedDurations.reduce((a, b) => a + b, 0);
+    return Math.round(sum / completedDurations.length);
+  }, [completedDurations]);
+
+  // Row ripple: detect which client statuses changed between renders
+  useEffect(() => {
+    const prev = prevClientsRef.current;
+    const changed = new Set<string>();
+    clients.forEach(c => {
+      if (prev.has(c.id) && prev.get(c.id) !== c.status) changed.add(c.id);
+    });
+    prevClientsRef.current = new Map(clients.map(c => [c.id, c.status]));
+    if (changed.size > 0) {
+      setUpdatedRows(changed);
+      setTimeout(() => setUpdatedRows(new Set()), 900);
+    }
   }, [clients]);
 
   return (
@@ -1332,6 +1361,13 @@ const App: React.FC = () => {
                       : '—'}
                   </span>
                 </div>
+                <span className="pipeline-stats__sep" />
+                <div className="pipeline-stats__item">
+                  <span className="pipeline-stats__label">AVG_RESPONSE</span>
+                  <span className="pipeline-stats__val">
+                    {avgResponseTime !== null ? formatDuration(avgResponseTime) : '—'}
+                  </span>
+                </div>
               </div>
 
               {/* Pipeline Live Node Map */}
@@ -1440,7 +1476,7 @@ const App: React.FC = () => {
                     </thead>
                     <tbody>
                       {pipelineClients.map((c: any) => (
-                        <tr key={c.id} className="border-t border-white/5 hover:bg-white/5 transition">
+                        <tr key={c.id} className={`border-t border-white/5 hover:bg-white/5 transition${updatedRows.has(c.id) ? ' row-updated' : ''}`}>
                           <td className="p-4 font-bold uppercase text-xs text-white">
                             {c.name} {c.surname}
                           </td>
