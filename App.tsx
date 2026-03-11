@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Client, CallConfig, Language, TranscriptionEntry } from './types';
 import { clientService } from './services/clientService';
 import { Os3HubMark } from './Os3HubMark';
@@ -83,6 +83,55 @@ const getDefaultBackendUrl = () => {
   const isLocalhost =
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   return isLocalhost ? 'http://localhost:3000' : 'https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net';
+};
+
+/* ── Header Activity Stream ── */
+const ACTIVITY_MESSAGES = [
+  'OS³ GRID CONTROL // MZANZI NODE',
+  'PIPELINE_SYNC ··· OK',
+  'NODE ZA-GP ··· ACTIVE',
+  'LEDGER_WRITE ··· STANDBY',
+  'NEURAL_CORE ··· NOMINAL',
+  'PROTOCOL_ENGINE ··· READY',
+  'UPLINK_TELEMETRY ··· STREAMING',
+];
+const ActivityStream: React.FC<{
+  backendStatus: string;
+  isCalling: boolean;
+  isSyncing: boolean;
+  activeThreads: number;
+}> = ({ backendStatus, isCalling, isSyncing, activeThreads }) => {
+  const [idx, setIdx] = useState(0);
+  const [fade, setFade] = useState(true);
+
+  const liveMessages = useMemo(() => {
+    const msgs = [...ACTIVITY_MESSAGES];
+    if (isCalling) msgs.push('LIVE_SESSION ··· TRANSMITTING');
+    if (isSyncing) msgs.push('INBOX_SYNC ··· IN_PROGRESS');
+    if (activeThreads > 0) msgs.push(`ACTIVE_THREADS ··· ${activeThreads}`);
+    if (backendStatus !== 'connected') msgs.push('UPLINK ··· SEVERED');
+    return msgs;
+  }, [isCalling, isSyncing, activeThreads, backendStatus]);
+
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setIdx(prev => (prev + 1) % liveMessages.length);
+        setFade(true);
+      }, 300);
+    }, 4000);
+    return () => clearInterval(tick);
+  }, [liveMessages.length]);
+
+  const current = liveMessages[idx % liveMessages.length];
+
+  return (
+    <div className="activity-stream hidden sm:flex items-center gap-2 overflow-hidden max-w-[340px]">
+      <span className="activity-stream__dot" />
+      <span className={`activity-stream__text ${fade ? 'activity-stream__text--visible' : ''}`}>{current}</span>
+    </div>
+  );
 };
 
 const NeuralConnectivityMatrix: React.FC<{ 
@@ -1004,9 +1053,7 @@ const App: React.FC = () => {
           <Os3HubMark size="sm" />
           <span className="hidden sm:inline font-black text-sm uppercase tracking-tight">JB³Ai</span>
         </div>
-        <div className="text-[#8b949e] font-medium text-[11px] sm:text-[13px] tracking-[0.08em] uppercase">
-          OS³ GRID CONTROL <span className="text-[#484f58]">//</span> MZANZI NODE
-        </div>
+        <ActivityStream backendStatus={backendStatus} isCalling={isCalling} isSyncing={isSyncing} activeThreads={activeThreads} />
         <div className="flex items-center gap-2.5">
           <span className={`os3-heartbeat ${backendStatus === 'connected' ? '' : backendStatus === 'loading' ? 'os3-heartbeat--amber' : 'os3-heartbeat--red'}`} />
           <span className={`text-[11px] font-medium tracking-wider ${
@@ -1177,6 +1224,60 @@ const App: React.FC = () => {
                   );
                 })}
               </div>
+
+              {/* Pipeline Live Node Map */}
+              <div className="node-map mb-4">
+                <div className="node-map__header">
+                  <SignalIcon className="w-3.5 h-3.5 text-[#39ff88]" />
+                  <span>LIVE NODE MAP</span>
+                </div>
+                <svg viewBox="0 0 700 140" className="node-map__svg" xmlns="http://www.w3.org/2000/svg">
+                  {/* Paths */}
+                  <line x1="130" y1="70" x2="250" y2="40" className="node-map__link node-map__link--active" />
+                  <line x1="130" y1="70" x2="250" y2="100" className="node-map__link node-map__link--active" />
+                  <line x1="250" y1="40" x2="410" y2="70" className="node-map__link node-map__link--active" />
+                  <line x1="250" y1="100" x2="410" y2="70" className="node-map__link node-map__link--active" />
+                  <line x1="410" y1="70" x2="570" y2="40" className={`node-map__link ${isCalling ? 'node-map__link--live' : 'node-map__link--idle'}`} />
+                  <line x1="410" y1="70" x2="570" y2="100" className={`node-map__link ${pipelineClients.length > 0 ? 'node-map__link--active' : 'node-map__link--idle'}`} />
+
+                  {/* Node: INBOX */}
+                  <circle cx="80" cy="70" r="16" className={`node-map__node ${backendStatus === 'connected' ? 'node-map__node--online' : 'node-map__node--offline'}`} />
+                  <text x="80" y="74" className="node-map__label">INB</text>
+                  <text x="80" y="104" className="node-map__sublabel">INBOX</text>
+
+                  {/* Node: ZA-GP-PTA */}
+                  <circle cx="250" cy="40" r="14" className="node-map__node node-map__node--online" />
+                  <text x="250" y="44" className="node-map__label">PTA</text>
+                  <text x="250" y="18" className="node-map__sublabel">ZA-GP-PTA</text>
+
+                  {/* Node: ZA-GP-JHB */}
+                  <circle cx="250" cy="100" r="14" className="node-map__node node-map__node--online" />
+                  <text x="250" y="104" className="node-map__label">JHB</text>
+                  <text x="250" y="128" className="node-map__sublabel">ZA-GP-JHB</text>
+
+                  {/* Node: PIPELINE */}
+                  <circle cx="410" cy="70" r="18" className={`node-map__node ${pipelineClients.length > 0 ? 'node-map__node--active' : 'node-map__node--online'}`} />
+                  <text x="410" y="74" className="node-map__label">PL</text>
+                  <text x="410" y="106" className="node-map__sublabel">PIPELINE</text>
+
+                  {/* Node: LIVE TERMINAL */}
+                  <circle cx="570" cy="40" r="14" className={`node-map__node ${isCalling ? 'node-map__node--live' : 'node-map__node--online'}`} />
+                  <text x="570" y="44" className="node-map__label">LT</text>
+                  <text x="570" y="18" className="node-map__sublabel">TERMINAL</text>
+
+                  {/* Node: ARCHIVE */}
+                  <circle cx="570" cy="100" r="14" className={`node-map__node ${archiveClients.length > 0 ? 'node-map__node--active' : 'node-map__node--online'}`} />
+                  <text x="570" y="104" className="node-map__label">AR</text>
+                  <text x="570" y="128" className="node-map__sublabel">ARCHIVE</text>
+
+                  {/* Stats */}
+                  <text x="660" y="44" className="node-map__stat">{pipelineClients.length}</text>
+                  <text x="660" y="58" className="node-map__sublabel">QUEUE</text>
+                  <text x="660" y="100" className="node-map__stat">{archiveClients.length}</text>
+                  <text x="660" y="114" className="node-map__sublabel">DONE</text>
+                </svg>
+              </div>
+
               {pipelineClients.length === 0 ? (
                 <div className="p-20 text-center text-slate-600 font-orbitron text-xs">
                   NO_LEADS_IN_PIPELINE. SYNC_FROM_INBOX_TO_INITIALIZE.
