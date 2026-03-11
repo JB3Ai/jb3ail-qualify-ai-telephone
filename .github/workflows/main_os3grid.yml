@@ -31,6 +31,8 @@ jobs:
           echo "Server compiled to dist-server/ ✓"
 
       - name: Write production .env from secrets
+        env:
+          GOOGLE_KEY_JSON_DATA: ${{ secrets.GOOGLE_KEY_JSON_DATA }}
         run: |
           cat > .env << 'EOF'
           NODE_ENV=production
@@ -40,7 +42,7 @@ jobs:
           AZURE_OPENAI_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT=https://os3gridopenai.openai.azure.com/
           AZURE_OPENAI_DEPLOYMENT=${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
-          AZURE_OPENAI_API_VERSION=2024-05-01-preview
+          AZURE_OPENAI_API_VERSION=2025-01-01-preview
           SPEECH_KEY=${{ secrets.SPEECH_KEY }}
           SPEECH_REGION=southafricanorth
           AZURE_AI_SERVICES_ENDPOINT=https://southafricanorth.api.cognitive.microsoft.com/
@@ -51,8 +53,10 @@ jobs:
           TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
           GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          GOOGLE_KEY_JSON_DATA=${{ secrets.GOOGLE_KEY_JSON_DATA }}
+          SPREADSHEET_ID=1e4ZanBSWWDYkp-ww79vVl3SQZt294Zfhi7dvAkWKaN4
           EOF
+          # Write GOOGLE_KEY_JSON_DATA via env var to safely handle multi-line JSON
+          printf 'GOOGLE_KEY_JSON_DATA=%s\n' "$GOOGLE_KEY_JSON_DATA" >> .env
 
       - name: Prepare lean deployment package
         run: |
