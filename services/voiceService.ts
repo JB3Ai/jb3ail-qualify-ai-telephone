@@ -69,15 +69,22 @@ const PRONUNCIATION_ALIASES_BY_LANGUAGE: Record<string, Array<{ term: string; al
   ],
 };
 
-// Per-language SSML prosody overrides — deepens pitch and slows rate for Nguni languages
-// to avoid the "clinical" Azure default and produce authentic chest-voice resonance.
-const PROSODY_BY_LANGUAGE: Record<string, { rate: string; pitch?: string }> = {
-  'xh-za':  { pitch: '-10%', rate: '-5%' }, // Xhosa: force chest-voice chest resonance
-  'zu-za':  { pitch: '-5%',  rate: '-5%' }, // Zulu: same Nguni treatment
-  'nso-za': { rate: '-5%' },               // Sepedi: slightly slower
-  'af-za':  { rate: '-5%' },               // Afrikaans: slightly slower
+// Per-language SSML prosody overrides — "Ubuntu Resonance" profile.
+// pitch:   lowers fundamental frequency for chest-voice authenticity in Nguni languages
+// contour: models the tonal arc of flowing speech (rise-sustain-fall) to prevent clipping
+// rate:    slight reduction prevents hyper-articulation common in Azure neural defaults
+type ProsodyConfig = { rate: string; pitch?: string; contour?: string };
+
+// Nguni contour: flat open → slight dip → gentle rise → natural close
+const NGUNI_CONTOUR = '(0%, +0Hz) (20%, -2Hz) (80%, +1Hz) (100%, -3Hz)';
+
+const PROSODY_BY_LANGUAGE: Record<string, ProsodyConfig> = {
+  'xh-za':  { pitch: '-12%', rate: '-5%', contour: NGUNI_CONTOUR }, // Xhosa: deepest Ubuntu Resonance
+  'zu-za':  { pitch: '-5%',  rate: '-5%', contour: NGUNI_CONTOUR }, // Zulu: Hlonipha tonal profile
+  'nso-za': { rate: '-5%',  contour: NGUNI_CONTOUR },               // Sepedi: softer Nguni arc
+  'af-za':  { rate: '-5%' },                                        // Afrikaans: friendly cadence, no tonal arc
 };
-const DEFAULT_PROSODY: { rate: string; pitch?: string } = { rate: '-3%' };
+const DEFAULT_PROSODY: ProsodyConfig = { rate: '-3%' };
 
 function normalizeLanguage(language?: string): string {
   return (language || '').trim().toLowerCase();
@@ -128,8 +135,9 @@ function buildSsmlDocument(text: string, locale: string, voiceName: string, lang
   const body = buildSsmlText(text, language);
   const prosody = PROSODY_BY_LANGUAGE[normalizeLanguage(language)] ?? DEFAULT_PROSODY;
   const prosodyAttrs = [
-    prosody.rate  ? `rate='${prosody.rate}'`   : '',
-    prosody.pitch ? `pitch='${prosody.pitch}'` : '',
+    prosody.rate    ? `rate='${prosody.rate}'`         : '',
+    prosody.pitch   ? `pitch='${prosody.pitch}'`       : '',
+    prosody.contour ? `contour="${prosody.contour}"` : '',
   ].filter(Boolean).join(' ');
   return `<speak version='1.0' xml:lang='${locale}'><voice xml:lang='${locale}' name='${voiceName}'><prosody ${prosodyAttrs}>${body}</prosody></voice></speak>`;
 }
