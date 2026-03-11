@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Client, CallConfig, Language, TranscriptionEntry } from './types';
 import { clientService } from './services/clientService';
+import { Os3HubMark } from './Os3HubMark';
+import { CallArchive } from './CallArchive';
 import { 
   PhoneIcon, 
   PhoneXMarkIcon,
@@ -946,12 +948,7 @@ const App: React.FC = () => {
       {/* === OS³ COMMAND BAR === */}
       <header className="h-14 bg-[#0d1117] border-b border-[#1e293b] flex items-center justify-between px-5 shrink-0" style={{ letterSpacing: '.04em', fontSize: '13px' }}>
         <div className="font-semibold text-[#c9d1d9] flex items-center gap-3">
-          <div className="os3-hub-mark" style={{ width: 36, height: 36, borderRadius: 10 }}>
-            <div className="os3-hub-mark__inner" style={{ width: 24, height: 24, borderRadius: 7 }}>
-              <span className="os3-hub-mark__glyph" style={{ fontSize: 10 }}>&gt;_</span>
-            </div>
-            <span className="os3-hub-mark__status" style={{ width: 4, height: 4, right: 4, bottom: 4 }} />
-          </div>
+          <Os3HubMark size="sm" />
           <span className="hidden sm:inline font-black text-sm uppercase tracking-tight">JB³Ai</span>
         </div>
         <div className="text-[#8b949e] font-medium text-[11px] sm:text-[13px] tracking-[0.08em] uppercase">
@@ -974,12 +971,7 @@ const App: React.FC = () => {
 
         {/* OS³ Hub Mark — sidebar header */}
         <div className="p-4 sm:p-5 flex items-center justify-center lg:justify-start gap-4">
-          <div className="os3-hub-mark">
-            <div className="os3-hub-mark__inner">
-              <span className="os3-hub-mark__glyph">&gt;_</span>
-            </div>
-            <span className="os3-hub-mark__status" />
-          </div>
+          <Os3HubMark />
           <div className="hidden lg:block">
             <h2 className="font-black text-[15px] tracking-tight uppercase leading-none text-[#c9d1d9]">JB³Ai <span className="text-[#39ff88]">OS³</span></h2>
             <p className="text-[9px] font-mono text-[#484f58] uppercase tracking-widest mt-1">Grid Control</p>
@@ -1608,80 +1600,13 @@ const App: React.FC = () => {
                     { step: '04', title: 'POPIA Audit Export', desc: 'Download structured records for compliance auditing.' }
                   ]}
                 />
-                <section className="archive-module">
-                  <header className="archive-header">
-                    <div className="archive-title">
-                      <span className="step-tag">06</span>
-                      <div>
-                        <h2>CALL ARCHIVE // LEDGER_VAULT</h2>
-                        <p>SECURE TRANSCRIPTS, METADATA, AUDIT EXPORTS</p>
-                      </div>
-                    </div>
-                    <div className="vault-stats">
-                      <span>SECURE_RECORDS: {archiveClients.length}</span>
-                      <span className="vault-lock">POPIA VALID</span>
-                      <button onClick={() => setShowArchiveInfo(true)} className="i-button-pro" style={{ width: 36, height: 36, borderRadius: 8 }} title="Archive Info">
-                        <InformationCircleIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </header>
-
-                  <div className="archive-grid">
-                    <aside className="record-list">
-                      {archiveClients.map((client, idx) => (
-                        <button
-                          key={client.id}
-                          className={`archive-card ${selectedArchiveSignal?.id === client.id ? 'active-vault' : ''}`}
-                          onClick={() => setSelectedArchiveSignal(client)}
-                        >
-                          <div className="card-top">
-                            <span className="sig-id">SIG-{String(9900 + idx).padStart(4, '0')}</span>
-                            <span className={`sig-badge ${client.status === 'qualified' ? 'qualified' : 'failed'}`}>{client.status === 'qualified' ? 'QUALIFIED' : 'FAILED'}</span>
-                          </div>
-                          <div className="card-body">
-                            <strong className="sig-name">{client.name} {client.surname}</strong>
-                            <span className="sig-meta">{client.language.toUpperCase()} &bull; {client.phone} &bull; {client.signup_date || '—'}</span>
-                          </div>
-                        </button>
-                      ))}
-                      {archiveClients.length === 0 && (
-                        <div className="empty-vault" style={{ padding: '60px 0' }}>
-                          <InboxStackIcon className="w-10 h-10 mx-auto mb-3 text-[#1e293b]" />
-                          <span>NO_SIGNALS_ARCHIVED</span>
-                        </div>
-                      )}
-                    </aside>
-
-                    <section className="inspection-pane">
-                      {selectedArchiveSignal ? (
-                        <>
-                          <div className="view-header">ARTIFACT_DATA: SIG-{String(9900 + archiveClients.findIndex(c => c.id === selectedArchiveSignal.id)).padStart(4, '0')}</div>
-                          <div className="transcript-box">
-                            {selectedArchiveSignal.transcript?.map((t: TranscriptionEntry, i: number) => (
-                              <p key={i}><b>[{t.role === 'assistant' ? 'ZANDI' : 'USER'}]</b> {t.text}</p>
-                            ))}
-                            {!selectedArchiveSignal.transcript && <p style={{ color: '#484f58', fontStyle: 'italic' }}>No transcript data recorded.</p>}
-                          </div>
-                          <div className="json-metadata">
-                            <pre>{JSON.stringify({
-                              name: `${selectedArchiveSignal.name} ${selectedArchiveSignal.surname}`,
-                              status: selectedArchiveSignal.status,
-                              language: selectedArchiveSignal.language,
-                              phone: selectedArchiveSignal.phone,
-                              popia_consent: "YES",
-                              node_path: `${selectedArchiveSignal.language.toUpperCase()}-MZANZI`
-                            }, null, 2)}</pre>
-                          </div>
-                          <button className="signal-trigger-pro" style={{ marginTop: 18, width: '100%' }} onClick={() => setViewingTranscriptClient(selectedArchiveSignal)}>
-                            DOWNLOAD_FOR_POPIA_AUDIT
-                          </button>
-                        </>
-                      ) : (
-                        <div className="empty-vault">SELECT_SIGNAL_FOR_INSPECTION</div>
-                      )}
-                    </section>
-                  </div>
-                </section>
+                <CallArchive
+                  archiveClients={archiveClients}
+                  selectedSignal={selectedArchiveSignal}
+                  onSelectSignal={setSelectedArchiveSignal}
+                  onDownload={setViewingTranscriptClient}
+                  onShowInfo={() => setShowArchiveInfo(true)}
+                />
              </div>
         )}
 
