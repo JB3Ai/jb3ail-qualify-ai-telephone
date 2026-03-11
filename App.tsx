@@ -282,6 +282,29 @@ const NeuralConnectivityMatrix: React.FC<{
           );
         })}
       </div>
+
+      {/* Service Dependency Chain */}
+      <div className="dep-chain">
+        <div className="dep-chain__title">SERVICE DEPENDENCY CHAIN</div>
+        <div className="dep-chain__nodes">
+          {([
+            { id: 'TWILIO_GATEWAY',      status: wsConnected ? 'ONLINE' : (backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE'),   ok: backendStatus === 'connected' },
+            { id: 'VOICE_ROUTER',        status: backendStatus === 'connected' ? 'ROUTING' : 'OFFLINE',                             ok: backendStatus === 'connected' },
+            { id: 'AZURE_NEURAL',        status: backendStatus === 'connected' ? 'ONLINE'  : 'OFFLINE',                             ok: backendStatus === 'connected' },
+            { id: 'GEMINI_LOGIC',        status: backendStatus === 'connected' ? 'ONLINE'  : 'OFFLINE',                             ok: backendStatus === 'connected' },
+            { id: 'INTELLIGENCE_LEDGER', status: ledgerStatus === 'SYNCING' ? 'WRITING'    : (backendStatus === 'connected' ? 'READY' : 'OFFLINE'), ok: backendStatus === 'connected' },
+          ] as {id:string;status:string;ok:boolean}[]).map((node, i, arr) => (
+            <React.Fragment key={node.id}>
+              <div className="dep-chain__node">
+                <span className={`dep-chain__dot ${node.ok ? 'dep-chain__dot--on' : 'dep-chain__dot--off'}`} />
+                <span className="dep-chain__name">{node.id}</span>
+                <span className={`dep-chain__status ${node.ok ? 'dep-chain__status--on' : 'dep-chain__status--off'}`}>{node.status}</span>
+              </div>
+              {i < arr.length - 1 && <div className="dep-chain__connector">│</div>}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
@@ -1279,6 +1302,38 @@ const App: React.FC = () => {
                 })}
               </div>
 
+              {/* Pipeline Stats Bar */}
+              <div className="pipeline-stats">
+                <div className="pipeline-stats__item">
+                  <span className="pipeline-stats__label">QUEUE</span>
+                  <span className="pipeline-stats__val">{pipelineClients.length}</span>
+                </div>
+                <span className="pipeline-stats__sep" />
+                <div className="pipeline-stats__item">
+                  <span className="pipeline-stats__label">ACTIVE_CALLS</span>
+                  <span className={isCalling ? 'pipeline-stats__val--live' : 'pipeline-stats__val'}>{isCalling ? '1' : '0'}</span>
+                </div>
+                <span className="pipeline-stats__sep" />
+                <div className="pipeline-stats__item">
+                  <span className="pipeline-stats__label">QUALIFIED</span>
+                  <span className="pipeline-stats__val--ok">{archiveClients.filter((c: any) => c.status === 'qualified').length}</span>
+                </div>
+                <span className="pipeline-stats__sep" />
+                <div className="pipeline-stats__item">
+                  <span className="pipeline-stats__label">FAILED</span>
+                  <span className="pipeline-stats__val--err">{archiveClients.filter((c: any) => c.status === 'failed').length}</span>
+                </div>
+                <span className="pipeline-stats__sep" />
+                <div className="pipeline-stats__item">
+                  <span className="pipeline-stats__label">SUCCESS_RATE</span>
+                  <span className={archiveClients.length > 0 ? 'pipeline-stats__val--ok' : 'pipeline-stats__val'}>
+                    {archiveClients.length > 0
+                      ? `${Math.round((archiveClients.filter((c: any) => c.status === 'qualified').length / archiveClients.length) * 100)}%`
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+
               {/* Pipeline Live Node Map */}
               <div className="node-map mb-4">
                 <div className="node-map__header">
@@ -1286,13 +1341,46 @@ const App: React.FC = () => {
                   <span>LIVE NODE MAP</span>
                 </div>
                 <svg viewBox="0 0 700 140" className="node-map__svg" xmlns="http://www.w3.org/2000/svg">
-                  {/* Paths */}
-                  <line x1="130" y1="70" x2="250" y2="40" className="node-map__link node-map__link--active" />
-                  <line x1="130" y1="70" x2="250" y2="100" className="node-map__link node-map__link--active" />
-                  <line x1="250" y1="40" x2="410" y2="70" className="node-map__link node-map__link--active" />
-                  <line x1="250" y1="100" x2="410" y2="70" className="node-map__link node-map__link--active" />
-                  <line x1="410" y1="70" x2="570" y2="40" className={`node-map__link ${isCalling ? 'node-map__link--live' : 'node-map__link--idle'}`} />
-                  <line x1="410" y1="70" x2="570" y2="100" className={`node-map__link ${pipelineClients.length > 0 ? 'node-map__link--active' : 'node-map__link--idle'}`} />
+                  <defs>
+                    <path id="p-inb-pta" d="M 130 70 L 250 40" />
+                    <path id="p-inb-jhb" d="M 130 70 L 250 100" />
+                    <path id="p-pta-pl"  d="M 250 40 L 410 70" />
+                    <path id="p-jhb-pl"  d="M 250 100 L 410 70" />
+                    <path id="p-pl-lt"   d="M 410 70 L 570 40" />
+                    <path id="p-pl-ar"   d="M 410 70 L 570 100" />
+                  </defs>
+
+                  {/* Links */}
+                  <use href="#p-inb-pta" className="node-map__link node-map__link--active" />
+                  <use href="#p-inb-jhb" className="node-map__link node-map__link--active" />
+                  <use href="#p-pta-pl"  className="node-map__link node-map__link--active" />
+                  <use href="#p-jhb-pl"  className="node-map__link node-map__link--active" />
+                  <use href="#p-pl-lt"   className={`node-map__link ${isCalling ? 'node-map__link--live' : 'node-map__link--idle'}`} />
+                  <use href="#p-pl-ar"   className={`node-map__link ${pipelineClients.length > 0 ? 'node-map__link--active' : 'node-map__link--idle'}`} />
+
+                  {/* Traveling signal pulses */}
+                  <circle r="2.5" className="node-map__pulse">
+                    <animateMotion dur="2.4s" repeatCount="indefinite" begin="0s"><mpath href="#p-inb-pta" /></animateMotion>
+                  </circle>
+                  <circle r="2.5" className="node-map__pulse">
+                    <animateMotion dur="2.4s" repeatCount="indefinite" begin="0.9s"><mpath href="#p-inb-jhb" /></animateMotion>
+                  </circle>
+                  <circle r="2.5" className="node-map__pulse">
+                    <animateMotion dur="2s" repeatCount="indefinite" begin="0.4s"><mpath href="#p-pta-pl" /></animateMotion>
+                  </circle>
+                  <circle r="2.5" className="node-map__pulse">
+                    <animateMotion dur="2s" repeatCount="indefinite" begin="1.3s"><mpath href="#p-jhb-pl" /></animateMotion>
+                  </circle>
+                  {isCalling && (
+                    <circle r="3.5" className="node-map__pulse node-map__pulse--live">
+                      <animateMotion dur="1.1s" repeatCount="indefinite" begin="0s"><mpath href="#p-pl-lt" /></animateMotion>
+                    </circle>
+                  )}
+                  {pipelineClients.length > 0 && (
+                    <circle r="2.5" className="node-map__pulse">
+                      <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.6s"><mpath href="#p-pl-ar" /></animateMotion>
+                    </circle>
+                  )}
 
                   {/* Node: INBOX */}
                   <circle cx="80" cy="70" r="16" className={`node-map__node ${backendStatus === 'connected' ? 'node-map__node--online' : 'node-map__node--offline'}`} />
