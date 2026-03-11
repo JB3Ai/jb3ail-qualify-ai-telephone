@@ -42,9 +42,84 @@ const app = express();
 const server = createServer(app);
 const PORT = Number(process.env.PORT) || 3000;
 
-// Initialize WebSocket Server for live terminal uplink
-const wss = new WebSocketServer({ server });
+// Initialize WebSocket Server for live terminal uplink + Twilio Media Streams
+const wss = new WebSocketServer({ server, path: '/ws' });
 let wsClients: WebSocket[] = [];
+
+// Separate WebSocket server for Twilio Media Streams (Node 08: Backend Stream Logic)
+const twilioWss = new WebSocketServer({ server, path: '/media-stream' });
+
+// ── CHUNK_SIZE_MS: 320ms at 8kHz mu-law = 2560 bytes per chunk ────────────────
+// This matches Twilio's preferred inbound chunk size and minimises Jitter Buffer
+// artefacts on SA networks while staying well under the 24ms latency target.
+const CHUNK_SIZE_MS = 320;
+const MULAW_SAMPLE_RATE = 8000;
+const CHUNK_SIZE_BYTES = Math.floor((MULAW_SAMPLE_RATE * CHUNK_SIZE_MS) / 1000); // 2560
+
+twilioWss.on('connection', (socket, req) => {
+  let streamSid: string | null = null;
+  broadcastLog('INFO', `📡 TWILIO_MEDIA_STREAM_CONNECTED: ${req.socket.remoteAddress}`);
+
+  socket.on('message', async (raw) => {
+    try {
+      const msg = JSON.parse(raw.toString());
+
+      if (msg.event === 'start') {
+        streamSid = msg.start?.streamSid ?? null;
+        const callSid = msg.start?.callSid ?? 'unknown';
+        broadcastLog('INFO', `▶️  STREAM_START: sid=${streamSid} call=${callSid}`);
+      }
+
+      if (msg.event === 'stop') {
+        broadcastLog('INFO', `⏹️  STREAM_STOP: sid=${streamSid}`);
+        streamSid = null;
+      }
+
+    } catch (err: any) {
+      broadcastLog('WARN', `STREAM_PARSE_ERROR: ${err?.message}`);
+    }
+  });
+
+  socket.on('close', () => {
+    broadcastLog('INFO', `🔌 TWILIO_MEDIA_STREAM_CLOSED: sid=${streamSid}`);
+  });
+});
+
+/**
+ * Streams a mu-law audio buffer back to Twilio in 320ms chunks.
+ * Each chunk is base64-encoded and sent as a Twilio media event.
+ * Telemetry is broadcast to the Live Terminal (Node 05) per chunk.
+ */
+async function streamAudioToTwilio(socket: WebSocket, streamSid: string, audioBuffer: Uint8Array): Promise<void> {
+  return new Promise((resolve) => {
+    let offset = 0;
+
+    function sendNextChunk() {
+      if (socket.readyState !== WebSocket.OPEN || offset >= audioBuffer.length) {
+        resolve();
+        return;
+      }
+
+      const chunk = audioBuffer.slice(offset, offset + CHUNK_SIZE_BYTES);
+      offset += CHUNK_SIZE_BYTES;
+
+      const payload = Buffer.from(chunk).toString('base64');
+      socket.write(JSON.stringify({
+        event: 'media',
+        streamSid,
+        media: { payload },
+      }));
+
+      // Telemetry to Node 05 (Live Terminal)
+      broadcastLog('INFO', `UPLINK_BUFFER_SENT: ${CHUNK_SIZE_MS}ms`);
+
+      // Schedule next chunk at the playback rate to avoid flooding the buffer
+      setTimeout(sendNextChunk, CHUNK_SIZE_MS);
+    }
+
+    sendNextChunk();
+  });
+}
 
 wss.on('connection', (ws) => {
   wsClients.push(ws);
@@ -66,6 +141,7 @@ function broadcastLog(type: 'INFO' | 'WARN' | 'ERROR' | 'SYSTEM', message: strin
   });
 }
 
+// Twilio WebSocket live client alias (used by streamAudioToTwilio)
 function resolveFrontendDistDir() {
   const candidates = [
     path.join(process.cwd(), 'dist'),
