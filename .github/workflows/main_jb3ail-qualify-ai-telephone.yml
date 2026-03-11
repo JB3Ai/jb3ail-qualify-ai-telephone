@@ -58,6 +58,7 @@ jobs:
           GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           SPREADSHEET_ID=1e4ZanBSWWDYkp-ww79vVl3SQZt294Zfhi7dvAkWKaN4
+          GAS_WEBHOOK_URL=https://script.google.com/macros/s/AKfycbyJmcD72710eViHqNsCrVZk8N7erDoXE7qNsUisAVKMC78F661NP8RtM_sOPDaCOFUh/exec
           EOF
           printf 'GOOGLE_KEY_JSON_DATA=%s\n' "$GOOGLE_KEY_JSON_DATA" >> .env
 

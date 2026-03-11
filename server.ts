@@ -240,110 +240,113 @@ const getGoogleAuth = async (forceRefresh = false) => {
   const activeCalls = new Map<string, ActiveCall>();
 
   // Support both GET and POST for easier debugging/testing
-  app.all(['/api/clients/sync-sheets', '/api/clients/sync-sheets/'], async (req, res) => {
-    console.log(`📥 [${req.method}] Importing Signal: Syncing Sheets (Source: 12bR...dO5g)`);
-    
-    try {
-      const auth = await getGoogleAuth();
-      const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() as any });
-      
-      console.log(`📡 Fetching data from Google Sheets range: ${RANGE}...`);
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: RANGE,
-      });
-
-      const rows = response.data.values || [];
-      const allLeads: any[] = [];
-      const source = RANGE.split('!')[0];
-      
-      rows.forEach((row: any[]) => {
-        // Name (col B / index 1) and Phone (col C / index 2) are required; skip header echoes
-        const name = (row[1] || '').trim();
-        const phone = (row[2] || '').trim();
-        if (name && phone && name !== 'First_Name') {
-          allLeads.push({
-            id: `L-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            name,
-            surname: '',
-            phone,
-            language: (row[3] || 'en-ZA') as Language,
-            status: 'READY_FOR_EXECUTION',
-            source: source,
-            area: (row[4] || 'Imported').trim(),
-            signup_date: new Date().toISOString(),
-            collected_data: {}
-          });
-        }
-      });
-
-      console.log(`✅ Processed ${allLeads.length} leads from sheets.`);
-
-      // If no leads found (e.g. API failed or empty), provide a fallback for demo
-      if (allLeads.length === 0) {
-        console.log('⚠️ No leads found in sheets, using fallback lead.');
-        allLeads.push({
-          id: `L-${Date.now()}`,
-          name: 'Thabo',
-          surname: 'Mokoena',
-          phone: '+27820000001',
-          language: 'zu-ZA' as Language,
+  // Shared row-parser for both GAS and Sheets API paths
+  const parseSheetRows = (rows: any[][]): any[] => {
+    const source = RANGE.split('!')[0];
+    const leads: any[] = [];
+    rows.forEach((row: any[]) => {
+      const name = (row[1] || '').trim();
+      const phone = (row[2] || '').trim();
+      if (name && phone && name !== 'First_Name') {
+        leads.push({
+          id: `L-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name,
+          surname: '',
+          phone,
+          language: (row[3] || 'en-ZA') as Language,
           status: 'READY_FOR_EXECUTION',
-          source: 'MZANZI_ENGINE',
-          area: 'Gauteng',
+          source,
+          area: (row[4] || 'Imported').trim(),
           signup_date: new Date().toISOString(),
           collected_data: {}
         });
       }
+    });
+    return leads;
+  };
 
-      // Add leads to client service
-      allLeads.forEach(lead => clientService.importClients([lead]));
+  app.all(['/api/clients/sync-sheets', '/api/clients/sync-sheets/'], async (req, res) => {
+    console.log(`📥 [${req.method}] Importing Signal: Syncing Sheets`);
+    const GAS_URL = process.env.GAS_WEBHOOK_URL;
+    let allLeads: any[] = [];
+    let syncSource = '';
 
-      res.json({ 
-        success: true, 
-        message: `Successfully synced ${allLeads.length} leads from ${RANGE}.`, 
-        leads: allLeads 
-      });
-    } catch (error: any) {
-      console.error('❌ Sheet Sync Error:', error.message);
-      // log the raw rows if available for debugging
-      if ((error as any).response?.data?.values) {
-        console.warn('🚨 Raw sheet rows that caused failure:', (error as any).response.data.values);
+    // ── PRIMARY: Google Apps Script web app (no service-account auth needed) ──
+    if (GAS_URL) {
+      try {
+        console.log('📡 GAS PRIMARY: fetching leads via Apps Script webhook...');
+        const gasRes = await fetch(GAS_URL);
+        if (!gasRes.ok) throw new Error(`GAS responded ${gasRes.status}`);
+        const gasData = await gasRes.json() as any;
+        // GAS can return { rows: [[...], ...] } or [[...], ...] directly
+        const rows: any[][] = Array.isArray(gasData) ? gasData : (gasData.rows || gasData.values || []);
+        allLeads = parseSheetRows(rows);
+        syncSource = 'GAS_WEBHOOK';
+        console.log(`✅ GAS PRIMARY: ${allLeads.length} leads fetched.`);
+      } catch (gasErr: any) {
+        console.warn(`⚠️ GAS PRIMARY failed (${gasErr.message}), falling back to Sheets API...`);
+        broadcastLog('WARN', `GAS_PRIMARY_FAILED: ${gasErr.message} — trying Sheets API fallback`);
       }
-      
-      // Fallback lead for demo purposes if API fails or auth fails
-      const fallbackLead = {
+    }
+
+    // ── SECONDARY: Sheets API (service-account) ──
+    if (allLeads.length === 0) {
+      try {
+        console.log('📡 SHEETS API SECONDARY: fetching leads via service account...');
+        const auth = await getGoogleAuth();
+        const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() as any });
+        const response = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: RANGE });
+        allLeads = parseSheetRows(response.data.values || []);
+        syncSource = 'SHEETS_API';
+        console.log(`✅ SHEETS API SECONDARY: ${allLeads.length} leads fetched.`);
+      } catch (apiErr: any) {
+        console.error('❌ SHEETS API SECONDARY also failed:', apiErr.message);
+        // Both paths failed — return structured error with demo fallback
+        const fallbackLead = {
+          id: `L-${Date.now()}`,
+          name: 'Thabo (Demo)',
+          surname: 'Mokoena',
+          phone: '+27820000001',
+          language: 'zu-ZA' as Language,
+          status: 'READY_FOR_EXECUTION' as const,
+          source: 'FALLBACK',
+          area: 'Demo Area',
+          signup_date: new Date().toISOString(),
+          collected_data: {}
+        };
+        clientService.importClients([fallbackLead]);
+        return res.status(200).json({
+          success: false,
+          message: `Lead injection sequence failed. Reason: ${apiErr.message}`,
+          leads: [fallbackLead],
+          error: apiErr.message
+        });
+      }
+    }
+
+    // Empty sheet — inject demo sentinel
+    if (allLeads.length === 0) {
+      allLeads.push({
         id: `L-${Date.now()}`,
-        name: 'Thabo (Demo)',
+        name: 'Thabo',
         surname: 'Mokoena',
         phone: '+27820000001',
         language: 'zu-ZA' as Language,
-        status: 'READY_FOR_EXECUTION' as const,
-        source: 'FALLBACK',
-        area: 'Demo Area',
+        status: 'READY_FOR_EXECUTION',
+        source: 'MZANZI_ENGINE',
+        area: 'Gauteng',
         signup_date: new Date().toISOString(),
         collected_data: {}
-      };
-      
-      try {
-        clientService.importClients([fallbackLead]);
-      } catch (e) {
-        console.error('⚠️ Could not import fallback lead:', e);
-      }
-      
-      const isApiDisabled = error.message.includes('googleapis.com') || error.message.includes('disabled');
-      
-      // Use 200 status even on error to prevent platform's HTML 403/500 overrides
-      res.status(200).json({ 
-        success: false, 
-        message: isApiDisabled 
-          ? `Google Sheets API is disabled. Please enable it in the Google Cloud Console: ${error.message}`
-          : `Lead injection sequence failed. Reason: ${error.message === 'AUTH_FAILED' ? 'Google Auth Unavailable' : error.message}`, 
-        leads: [fallbackLead],
-        error: error.message,
-        isApiDisabled
       });
     }
+
+    allLeads.forEach(lead => clientService.importClients([lead]));
+    res.json({
+      success: true,
+      message: `Successfully synced ${allLeads.length} leads via ${syncSource}.`,
+      leads: allLeads,
+      syncSource
+    });
   });
 
 // 1.3 Active Lead List
