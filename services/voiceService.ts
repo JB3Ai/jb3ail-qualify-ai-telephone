@@ -5,7 +5,7 @@ const DEFAULT_VOICE_NAME = 'en-ZA-LeahNeural';
 const VOICE_CANDIDATES_BY_LANGUAGE: Record<string, string[]> = {
   'en-za': ['en-ZA-LeahNeural', 'en-ZA-LukeNeural', 'en-GB-SoniaNeural', 'en-US-AvaMultilingualNeural'],
   'zu-za': ['zu-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-US-AndrewMultilingualNeural', 'en-ZA-LeahNeural'],
-  'xh-za': ['xh-ZA-LukhoNeural', 'en-US-AvaMultilingualNeural', 'en-ZA-LeahNeural'],
+  'xh-za': ['xh-ZA-ThandoNeural', 'xh-ZA-AyandaNeural', 'en-US-AvaMultilingualNeural', 'en-ZA-LeahNeural'],
   'af-za': ['af-ZA-AdriNeural', 'af-ZA-WillemNeural', 'en-ZA-LeahNeural'],
   'nso-za': ['zu-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-US-AndrewMultilingualNeural', 'en-ZA-LeahNeural'],
   'pt-pt': ['pt-PT-RaquelNeural', 'pt-PT-DuarteNeural', 'en-US-AvaMultilingualNeural'],
@@ -69,6 +69,16 @@ const PRONUNCIATION_ALIASES_BY_LANGUAGE: Record<string, Array<{ term: string; al
   ],
 };
 
+// Per-language SSML prosody overrides — deepens pitch and slows rate for Nguni languages
+// to avoid the "clinical" Azure default and produce authentic chest-voice resonance.
+const PROSODY_BY_LANGUAGE: Record<string, { rate: string; pitch?: string }> = {
+  'xh-za':  { pitch: '-10%', rate: '-5%' }, // Xhosa: force chest-voice chest resonance
+  'zu-za':  { pitch: '-5%',  rate: '-5%' }, // Zulu: same Nguni treatment
+  'nso-za': { rate: '-5%' },               // Sepedi: slightly slower
+  'af-za':  { rate: '-5%' },               // Afrikaans: slightly slower
+};
+const DEFAULT_PROSODY: { rate: string; pitch?: string } = { rate: '-3%' };
+
 function normalizeLanguage(language?: string): string {
   return (language || '').trim().toLowerCase();
 }
@@ -116,7 +126,12 @@ function buildSsmlText(text: string, language?: string): string {
 
 function buildSsmlDocument(text: string, locale: string, voiceName: string, language?: string): string {
   const body = buildSsmlText(text, language);
-  return `<speak version='1.0' xml:lang='${locale}'><voice xml:lang='${locale}' name='${voiceName}'><prosody rate='-3%'>${body}</prosody></voice></speak>`;
+  const prosody = PROSODY_BY_LANGUAGE[normalizeLanguage(language)] ?? DEFAULT_PROSODY;
+  const prosodyAttrs = [
+    prosody.rate  ? `rate='${prosody.rate}'`   : '',
+    prosody.pitch ? `pitch='${prosody.pitch}'` : '',
+  ].filter(Boolean).join(' ');
+  return `<speak version='1.0' xml:lang='${locale}'><voice xml:lang='${locale}' name='${voiceName}'><prosody ${prosodyAttrs}>${body}</prosody></voice></speak>`;
 }
 
 function escapeXml(value: string): string {
@@ -128,9 +143,9 @@ function escapeXml(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
-async function synthesizeWavViaRest(text: string, key: string, region: string, voiceName: string, locale: string): Promise<Uint8Array> {
+async function synthesizeWavViaRest(text: string, key: string, region: string, voiceName: string, locale: string, language?: string): Promise<Uint8Array> {
   const endpoint = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
-  const ssml = buildSsmlDocument(text, locale, voiceName, locale);
+  const ssml = buildSsmlDocument(text, locale, voiceName, language);
 
   const response = await axios.post<ArrayBuffer>(endpoint, ssml, {
     responseType: 'arraybuffer',
@@ -224,7 +239,7 @@ export const voiceService = {
       let lastMessage = 'Azure Speech REST synthesis failed';
       for (const voiceName of voiceCandidates) {
         try {
-          return await synthesizeWavViaRest(inputText, speechKey, speechRegion, voiceName, locale);
+          return await synthesizeWavViaRest(inputText, speechKey, speechRegion, voiceName, locale, options?.language);
         } catch (error: any) {
           const status = error?.response?.status;
           const details = error?.response?.data ? Buffer.from(error.response.data).toString('utf8') : '';
