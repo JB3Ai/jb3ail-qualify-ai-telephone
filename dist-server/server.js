@@ -145,9 +145,14 @@ const getGoogleAuth = async (forceRefresh = false) => {
         if (process.env.GOOGLE_KEY_JSON_DATA) {
             const credentials = JSON.parse(process.env.GOOGLE_KEY_JSON_DATA);
             cachedAuth = new googleapis_1.google.auth.GoogleAuth({ credentials, scopes });
+            console.log('✅ Google Auth initialized from GOOGLE_KEY_JSON_DATA env var');
+        }
+        else if (require('fs').existsSync('./google-key.json')) {
+            cachedAuth = new googleapis_1.google.auth.GoogleAuth({ keyFile: './google-key.json', scopes });
+            console.log('✅ Google Auth initialized from google-key.json file');
         }
         else {
-            cachedAuth = new googleapis_1.google.auth.GoogleAuth({ keyFile: './google-key.json', scopes });
+            throw new Error('Google credentials missing. Set GOOGLE_KEY_JSON_DATA env var (production) or provide google-key.json (local dev).');
         }
         // Test the client to ensure it's functional
         await cachedAuth.getClient();
@@ -155,7 +160,9 @@ const getGoogleAuth = async (forceRefresh = false) => {
     }
     catch (e) {
         cachedAuth = null;
-        throw new Error(`Auto-Recovery Failed: ${e instanceof Error ? e.message : 'Unknown Auth Error'}`);
+        const msg = e instanceof Error ? e.message : 'Unknown Auth Error';
+        broadcastLog('ERROR', `GOOGLE_AUTH_FAILED: ${msg}`);
+        throw new Error(`Google Auth Failed: ${msg}`);
     }
 };
 // 1.2 Lead Injection / Sheet Sync
@@ -377,7 +384,7 @@ app.all('/voice-handler', async (req, res) => {
             language: protocol.speechLang,
             speechTimeout: 'auto'
         });
-        gather.play(`https://${domain}/audio-stream?text=${encodeURIComponent(welcomeText)}`);
+        gather.play(`https://${domain}/audio-stream?text=${encodeURIComponent(welcomeText)}&lang=${encodeURIComponent(lang)}`);
         twiml.redirect('/voice-handler');
         res.type('text/xml');
         res.send(twiml.toString());
@@ -432,7 +439,7 @@ app.all('/handle-response', async (req, res) => {
         });
         // Strip JSON contract from spoken response
         const spokenResponse = aiResponse.replace(/\{[\s\S]*"status"\s*:[\s\S]*\}/, '').trim();
-        twiml.play(`https://${domain}/audio-stream?text=${encodeURIComponent(spokenResponse)}`);
+        twiml.play(`https://${domain}/audio-stream?text=${encodeURIComponent(spokenResponse)}&lang=${encodeURIComponent(callLang)}`);
         twiml.hangup();
     }
     else {
@@ -444,7 +451,7 @@ app.all('/handle-response', async (req, res) => {
             language: gatherProtocol.speechLang
         });
         // Audio still streams through voiceService (Azure TTS)
-        gather.play(`https://${domain}/audio-stream?text=${encodeURIComponent(aiResponse)}`);
+        gather.play(`https://${domain}/audio-stream?text=${encodeURIComponent(aiResponse)}&lang=${encodeURIComponent(callLangForGather)}`);
     }
     res.type('text/xml');
     res.send(twiml.toString());
@@ -527,15 +534,15 @@ async function logCallToIntelligenceLedger(phone, status, aiOutput, callSid, att
 // 5. AUDIO STREAMER
 app.get('/audio-stream', async (req, res) => {
     const text = req.query.text;
+    const language = req.query.lang;
     if (!text)
         return res.sendStatus(400);
     try {
-        const audioBuffer = await voiceService_1.voiceService.generateAudio(text);
+        const audioBuffer = await voiceService_1.voiceService.generateAudio(text, { language });
         res.set({
             'Content-Type': 'audio/basic',
             'Content-Length': audioBuffer.length
         });
-        // Fix: Use Buffer.from to wrap the Uint8Array for binary transmission in Express
         res.send(buffer_1.Buffer.from(audioBuffer));
     }
     catch (err) {

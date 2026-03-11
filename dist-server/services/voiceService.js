@@ -45,7 +45,7 @@ const VOICE_CANDIDATES_BY_LANGUAGE = {
     'zu-za': ['zu-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-US-AndrewMultilingualNeural', 'en-ZA-LeahNeural'],
     'xh-za': ['xh-ZA-LukhoNeural', 'en-US-AvaMultilingualNeural', 'en-ZA-LeahNeural'],
     'af-za': ['af-ZA-AdriNeural', 'af-ZA-WillemNeural', 'en-ZA-LeahNeural'],
-    'nso-za': ['en-US-AvaMultilingualNeural', 'en-US-AndrewMultilingualNeural', 'en-ZA-LeahNeural', 'en-ZA-LukeNeural'],
+    'nso-za': ['zu-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-US-AndrewMultilingualNeural', 'en-ZA-LeahNeural'],
     'pt-pt': ['pt-PT-RaquelNeural', 'pt-PT-DuarteNeural', 'en-US-AvaMultilingualNeural'],
     'el-gr': ['el-GR-AthinaNeural', 'el-GR-NestorasNeural', 'en-US-AvaMultilingualNeural'],
     'zh-cn': ['zh-CN-XiaoxiaoNeural', 'zh-CN-YunxiNeural', 'en-US-AvaMultilingualNeural'],

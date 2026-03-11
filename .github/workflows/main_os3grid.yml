@@ -51,6 +51,7 @@ jobs:
           TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
           GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
           VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          GOOGLE_KEY_JSON_DATA=${{ secrets.GOOGLE_KEY_JSON_DATA }}
           EOF
 
       - name: Prepare lean deployment package
