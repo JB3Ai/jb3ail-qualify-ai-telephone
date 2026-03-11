@@ -780,6 +780,42 @@ async function startServer() {
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 JB³Ai Neural Hub Backend running on port ${PORT}`);
   });
+
+  // ── Node 08: Pre-Flight Warm-Up ─────────────────────────────────────────
+  // Keeps the SA North (Johannesburg) Azure Speech node and Google Sheets
+  // connection alive every 4 minutes so the first real call doesn't hit a
+  // cold-start penalty. Uses a single-space synthesis (1 billable character)
+  // to refresh the Speech SDK connection without audible output.
+  const WARMUP_INTERVAL_MS = 4 * 60 * 1000; // 4 minutes
+
+  async function warmUpConnections() {
+    // 1. Azure Speech silent ping — synthesizes a single space to tickle the
+    //    SA North TTS node without generating usable audio or spending quota.
+    if (process.env.SPEECH_KEY && process.env.SPEECH_REGION) {
+      try {
+        await voiceService.generateAudio(' ', { allowFallback: false });
+        broadcastLog('SYSTEM', '[SYS] UPLINK_WARM_HEARTBEAT_SUCCESS');
+      } catch {
+        broadcastLog('WARN', '[SYS] UPLINK_WARM_HEARTBEAT_SKIPPED');
+      }
+    }
+
+    // 2. Google Sheets poke — re-validates the auth token and refreshes the
+    //    cached credential so the Intelligence Ledger never stalls mid-call.
+    try {
+      const auth = await getGoogleAuth();
+      const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() as any });
+      const spreadsheetId = process.env.SPREADSHEET_ID || '1e4ZanBSWWDYkp-ww79vVl3SQZt294Zfhi7dvAkWKaN4';
+      await sheets.spreadsheets.get({ spreadsheetId, fields: 'spreadsheetId' });
+      broadcastLog('SYSTEM', '[SYS] LEDGER_WARM_HEARTBEAT_SUCCESS');
+    } catch {
+      broadcastLog('WARN', '[SYS] LEDGER_WARM_HEARTBEAT_SKIPPED');
+    }
+  }
+
+  // Run once immediately on startup, then on schedule
+  warmUpConnections().catch(() => {});
+  setInterval(() => warmUpConnections().catch(() => {}), WARMUP_INTERVAL_MS);
 }
 
 startServer().catch((err) => {
