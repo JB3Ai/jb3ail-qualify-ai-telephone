@@ -253,6 +253,43 @@ body {
     font-family: 'Inter', sans-serif;
 }
 
+/* ── Telemetry Strip ── */
+.telemetry-strip {
+  height: 28px;
+  background: #05070c;
+  border-top: 1px solid #1e293b;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #484f58;
+  flex-shrink: 0;
+  margin-top: 12px;
+}
+.telemetry-strip__item {
+  flex-shrink: 0;
+  font-weight: 700;
+}
+.telemetry-strip__sep {
+  width: 1px;
+  height: 12px;
+  background: #1e293b;
+  margin: 0 18px;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+.telemetry-strip__val     { color: #6b7280; }
+.telemetry-strip__val--ok { color: #39ff88; }
+.telemetry-strip__val--hi { color: #c9d1d9; font-weight: 800; }
+.telemetry-strip__val--live { color: #00d9ff; animation: os3Pulse 2s ease-in-out infinite; }
+.telemetry-strip__val--err  { color: #ef4444; }
+
 /* ── Activity Stream (Header) ── */
 .activity-stream {
   background: #0a0f18;

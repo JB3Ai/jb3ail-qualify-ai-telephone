@@ -85,6 +85,46 @@ const getDefaultBackendUrl = () => {
   return isLocalhost ? 'http://localhost:3000' : 'https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net';
 };
 
+/* ── Telemetry Strip ── */
+const TelemetryStrip: React.FC<{
+  backendStatus: string;
+  pipelineCount: number;
+  activeSignals: number;
+  archiveCount: number;
+  isCalling: boolean;
+  latencyMs: number | null;
+}> = ({ backendStatus, pipelineCount, activeSignals, archiveCount, isCalling, latencyMs }) => {
+  const [uptime, setUptime] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setUptime(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const fmtUptime = (s: number) => {
+    const h = String(Math.floor(s / 3600)).padStart(2, '0');
+    const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+    const sec = String(s % 60).padStart(2, '0');
+    return `${h}:${m}:${sec}`;
+  };
+  const online = backendStatus === 'connected';
+  const Sep = () => <span className="telemetry-strip__sep" />;
+  return (
+    <div className="telemetry-strip">
+      <span className="telemetry-strip__item">PIPELINE_QUEUE<span className={pipelineCount > 0 ? 'telemetry-strip__val--hi' : 'telemetry-strip__val'}>:{pipelineCount}</span></span>
+      <Sep />
+      <span className="telemetry-strip__item">ACTIVE_SIGNALS<span className={activeSignals > 0 || isCalling ? 'telemetry-strip__val--live' : 'telemetry-strip__val'}>:{activeSignals}</span></span>
+      <Sep />
+      <span className="telemetry-strip__item">TERMINAL_LINK<span className={online ? 'telemetry-strip__val--ok' : 'telemetry-strip__val--err'}>{online ? ':OK' : ':SEVERED'}</span></span>
+      <Sep />
+      <span className="telemetry-strip__item">ARCHIVE<span className={archiveCount > 0 ? 'telemetry-strip__val--hi' : 'telemetry-strip__val'}>:{archiveCount}_RECORDS</span></span>
+      <Sep />
+      <span className="telemetry-strip__item">NODE_HEALTH<span className={online ? 'telemetry-strip__val--ok' : 'telemetry-strip__val--err'}>{online ? ':100%' : ':DEGRADED'}</span></span>
+      <Sep />
+      <span className="telemetry-strip__item">UPTIME<span className="telemetry-strip__val--ok">:{fmtUptime(uptime)}</span></span>
+      {latencyMs !== null && (<><Sep /><span className="telemetry-strip__item">RTT<span className="telemetry-strip__val--ok">:{latencyMs}ms</span></span></>)}
+    </div>
+  );
+};
+
 /* ── Header Activity Stream ── */
 const ACTIVITY_MESSAGES = [
   'OS³ GRID CONTROL // MZANZI NODE',
@@ -1125,13 +1165,11 @@ const App: React.FC = () => {
 
       {/* --- MAIN CONTENT --- */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        
-        {/* 🚀 MAIN CONTENT ZONE */}
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden flex flex-col content-module-layered">
-          
-          {/* 🖥️ THE HUD (Active Protocol Screen) */}
-          {['DATA_INBOX', 'PIPELINE', 'LIVE_TERMINAL', 'DASHBOARD'].includes(activeTab) && (
-            <div className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-xl sm:rounded-[18px] border bg-opacity-10 backdrop-blur-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 transition-all duration-500 shadow-lg ${
+
+        {/* 🖥️ THE HUD (Active Protocol Screen) */}
+        {['DATA_INBOX', 'PIPELINE', 'LIVE_TERMINAL', 'DASHBOARD'].includes(activeTab) && (
+          <div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 shrink-0">
+            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-[18px] border bg-opacity-10 backdrop-blur-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 transition-all duration-500 shadow-lg ${
               protocolMode === 'local' ? 'border-[#39FF88]/30 bg-[#39FF88]/5 text-[#39FF88]' : 'border-[#00D9FF]/30 bg-[#00D9FF]/5 text-[#00D9FF]'
             }`}>
               <div className="flex items-center gap-4">
@@ -1150,8 +1188,24 @@ const App: React.FC = () => {
                 <span className="font-orbitron text-sm font-bold uppercase">{language}</span>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
+        {/* ── TELEMETRY STRIP ── */}
+        {['DATA_INBOX', 'PIPELINE', 'LIVE_TERMINAL', 'DASHBOARD'].includes(activeTab) && (
+          <TelemetryStrip
+            backendStatus={backendStatus}
+            pipelineCount={pipelineClients.length}
+            activeSignals={pipelineClients.filter((c: any) => c.status === 'signal_sent').length}
+            archiveCount={archiveClients.length}
+            isCalling={isCalling}
+            latencyMs={latencyMs}
+          />
+        )}
+
+        {/* 🚀 MAIN CONTENT ZONE */}
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden flex flex-col content-module-layered">
+          
           {/* TAB: PIPELINE */}
           {activeTab === 'PIPELINE' && (
             <div className="space-y-4 animate-fadeIn relative flex-1 flex flex-col overflow-hidden">
