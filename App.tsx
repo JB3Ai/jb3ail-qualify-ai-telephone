@@ -1225,7 +1225,7 @@ const App: React.FC = () => {
       
       {/* === OS³ COMMAND BAR === */}
       <header className="h-14 bg-[#0d1117] border-b border-[#1e293b] flex items-center justify-between px-5 shrink-0" style={{ letterSpacing: '.04em', fontSize: '13px' }}>
-        <div className="font-semibold text-[#c9d1d9] flex items-center gap-3">
+        <div className="font-semibold text-[#c9d1d9] flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('PIPELINE')}>
           <Os3HubMark size="sm" />
           <span className="hidden sm:inline font-black text-sm uppercase tracking-tight">JB³Ai</span>
         </div>
