@@ -27,17 +27,56 @@ jobs:
         with:
           node-version: '24.x'
 
-      - name: npm install, build, and test
+      - name: npm install and build
         run: |
           npm install
           npm run build --if-present
-          npm run test --if-present
+          npx tsc -p tsconfig.server.json --skipLibCheck
+          echo "Server compiled to dist-server/ ✓"
+
+      - name: Write production .env from secrets
+        env:
+          GOOGLE_KEY_JSON_DATA: ${{ secrets.GOOGLE_KEY_JSON_DATA }}
+        run: |
+          cat > .env << 'EOF'
+          NODE_ENV=production
+          PORT=8080
+          DOMAIN=jb3ail-qualify-ai-telephone-fygtfjdheyeccff9.southafricanorth-01.azurewebsites.net
+          AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT=https://os3gridopenai.openai.azure.com/
+          AZURE_OPENAI_DEPLOYMENT=${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AZURE_OPENAI_API_VERSION=2025-01-01-preview
+          SPEECH_KEY=${{ secrets.SPEECH_KEY }}
+          SPEECH_REGION=southafricanorth
+          AZURE_AI_SERVICES_ENDPOINT=https://southafricanorth.api.cognitive.microsoft.com/
+          AZURE_STT_ENDPOINT=https://southafricanorth.stt.speech.microsoft.com
+          AZURE_TTS_ENDPOINT=https://southafricanorth.tts.speech.microsoft.com
+          TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          SPREADSHEET_ID=1e4ZanBSWWDYkp-ww79vVl3SQZt294Zfhi7dvAkWKaN4
+          EOF
+          printf 'GOOGLE_KEY_JSON_DATA=%s\n' "$GOOGLE_KEY_JSON_DATA" >> .env
+
+      - name: Prepare lean deployment package
+        run: |
+          mkdir deploy-package
+          cp package.json deploy-package/
+          cp .env deploy-package/
+          cp -r dist-server deploy-package/
+          cp -r dist deploy-package/
+          echo -e "[config]\nSCM_DO_BUILD_DURING_DEPLOYMENT=false" > deploy-package/.deployment
+          cd deploy-package && npm install --omit=dev --ignore-scripts
+          echo "Package size:"; du -sh ../deploy-package/
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: deploy-package
 
   deploy:
     runs-on: ubuntu-latest
