@@ -1,0 +1,20 @@
+{
+  "protocol": "MZANZI_STIMULUS_CHECK",
+  "sequences": [
+    {
+      "node": "ZU-ZA",
+      "voice": "Thando",
+      "text": "<speak version='1.0' xml:lang='zu-ZA'><voice name='zu-ZA-ThandoNeural'><prosody pitch='-5%' rate='-5%'>Sawubona! Ngikhuluma no-Jonathan? Ngifuna ukukusiza ngendaba ye-solar namuhla.</prosody></voice></speak>"
+    },
+    {
+      "node": "NSO-ZA",
+      "voice": "Thando",
+      "text": "<speak version='1.0' xml:lang='nso-ZA'><voice name='zu-ZA-ThandoNeural'><prosody pitch='-15%' rate='-8%'>Dumela! Ke founela go go tsebisa ka ga Mzanzi Solar. A o na le nako e nnyane?</prosody></voice></speak>"
+    },
+    {
+      "node": "EN-ZA",
+      "voice": "Luke",
+      "text": "<speak version='1.0' xml:lang='en-ZA'><voice name='en-ZA-LukeNeural'><prosody pitch='-2%'>Hi there! It's Zandi here. I noticed you're looking to bypass load-shedding with a 5kW system.</prosody></voice></speak>"
+    }
+  ]
+}

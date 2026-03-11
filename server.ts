@@ -418,6 +418,36 @@ const LANGUAGE_PROTOCOLS: Record<string, { greeting: string; speechLang: string;
     speechLang: 'en-ZA',
     personality: 'Executive, tactical, and high-speed clarity.',
     languageName: 'English'
+  },
+  'xh-ZA': {
+    greeting: 'Molo! NdinguZandi wakwa-Mzansi Solutions. Ndingakhe ndithethe nomnini-ndlu?',
+    speechLang: 'xh-ZA',
+    personality: 'Respectful, deliberate, with Eastern Cape clarity and Ubuntu warmth.',
+    languageName: 'isiXhosa'
+  },
+  'nso-ZA': {
+    greeting: 'Dumela! Ke Zandi go tšwa go Mzansi Solutions. Na ke bolela le mong wa ntlo?',
+    speechLang: 'nso-ZA',
+    personality: 'Warm, measured, and community-oriented in Sepedi tradition.',
+    languageName: 'Sepedi'
+  },
+  'pt-PT': {
+    greeting: 'Olá! Aqui é a Zandi da Mzansi Solutions. Estou a falar com o proprietário da casa?',
+    speechLang: 'pt-PT',
+    personality: 'Professional, warm, and articulate in Portuguese.',
+    languageName: 'Portuguese'
+  },
+  'el-GR': {
+    greeting: 'Γεια σας! Είμαι η Zandi από τη Mzansi Solutions. Μιλώ με τον ιδιοκτήτη του σπιτιού;',
+    speechLang: 'el-GR',
+    personality: 'Authoritative, precise, and courteous in Greek.',
+    languageName: 'Greek'
+  },
+  'zh-CN': {
+    greeting: '您好！我是Mzansi Solutions的Zandi。请问我是在和房屋业主通话吗？',
+    speechLang: 'zh-CN',
+    personality: 'Efficient, technically precise, and respectful in Mandarin.',
+    languageName: 'Mandarin Chinese'
   }
 };
 

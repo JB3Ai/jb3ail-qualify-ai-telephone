@@ -728,6 +728,8 @@ const App: React.FC = () => {
   const [isInternalCall, setIsInternalCall] = useState(false);
   const [internalInput, setInternalInput] = useState('');
   const [isInternalSending, setIsInternalSending] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   // Editable Run Protocol state
   const [languageProtocols, setLanguageProtocols] = useState<Record<string, { greeting: string; objection: string; closing: string; switch: string }>>(() => {
@@ -1005,6 +1007,8 @@ const App: React.FC = () => {
   };
 
   const endCall = () => {
+    recognitionRef.current?.stop();
+    setIsListening(false);
     setIsCalling(false);
     setIsInternalCall(false);
     setActiveClient(null);
@@ -1013,9 +1017,9 @@ const App: React.FC = () => {
     setIsInternalSending(false);
   };
 
-  const handleInternalSend = async () => {
-    if (!internalInput.trim() || isInternalSending || !isInternalCall) return;
-    const text = internalInput.trim();
+  const handleInternalSend = async (directText?: string) => {
+    const text = (directText || internalInput).trim();
+    if (!text || isInternalSending || !isInternalCall) return;
     setInternalInput('');
     setIsInternalSending(true);
     setTranscriptions(prev => [...prev, { role: 'user', text, timestamp: Date.now() }]);
@@ -1040,6 +1044,38 @@ const App: React.FC = () => {
     } finally {
       setIsInternalSending(false);
     }
+  };
+
+  const toggleMic = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = activeClient?.language || Language.ENGLISH;
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0]?.[0]?.transcript;
+      if (transcript) {
+        setInternalInput(transcript);
+        handleInternalSend(transcript);
+      }
+    };
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+    };
+    recognition.onend = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
   };
 
   const runNeuralTest = async () => {
@@ -1723,7 +1759,8 @@ const App: React.FC = () => {
                                 className="flex-1 h-12 bg-black/40 rounded-xl border border-[#66FF66]/30 px-6 text-[#66FF66] text-xs font-mono focus:outline-none focus:border-[#66FF66]/70 placeholder:text-slate-600 disabled:opacity-50"
                               />
                               <button
-                                onClick={handleInternalSend}
+                                id="neural-send-btn"
+                                onClick={() => handleInternalSend()}
                                 disabled={isInternalSending || !internalInput.trim()}
                                 className="h-12 px-6 bg-[#66FF66]/10 hover:bg-[#66FF66]/20 border border-[#66FF66]/30 rounded-xl text-[#66FF66] text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
                               >
@@ -1736,9 +1773,17 @@ const App: React.FC = () => {
                             </div>
                           )}
                           <div className="flex items-center gap-3">
-                            <MicrophoneIcon className="w-5 h-5 text-[#66FF66] animate-pulse" />
+                            <button
+                              onClick={toggleMic}
+                              disabled={!isInternalCall || isInternalSending}
+                              className={`p-2 rounded-lg transition-all ${isListening ? 'bg-red-500/20 border border-red-500/50' : 'bg-[#66FF66]/10 border border-[#66FF66]/30 hover:bg-[#66FF66]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                              title={isListening ? 'Stop listening' : 'Start voice input'}
+                            >
+                              <MicrophoneIcon className={`w-5 h-5 ${isListening ? 'text-red-400 animate-pulse' : 'text-[#66FF66]'}`} />
+                            </button>
                             <SpeakerWaveIcon className={`w-5 h-5 ${isInternalCall ? 'text-[#66FF66] animate-bounce' : 'text-slate-500 opacity-50'}`} />
-                            {isInternalCall && <span className="text-[8px] font-black text-[#66FF66] uppercase tracking-widest">Speakerphone Active</span>}
+                            {isListening && <span className="text-[8px] font-black text-red-400 uppercase tracking-widest animate-pulse">Listening...</span>}
+                            {!isListening && isInternalCall && <span className="text-[8px] font-black text-[#66FF66] uppercase tracking-widest">Speakerphone Active</span>}
                           </div>
                       </div>
                     </div>
