@@ -400,21 +400,24 @@ app.all('/make-call', async (req, res) => {
 });
 
 // ─── ZANDI RUN PROTOCOL ─── Language-Aware Greeting & System Prompt ───
-const LANGUAGE_PROTOCOLS: Record<string, { greeting: string; speechLang: string; personality: string }> = {
+const LANGUAGE_PROTOCOLS: Record<string, { greeting: string; speechLang: string; personality: string; languageName: string }> = {
   'zu-ZA': {
     greeting: 'Sawubona! Ngu-Zandi lapha, ngisuka e-Mzansi Solutions. Ngingakhuluma nomninikhaya?',
     speechLang: 'zu-ZA',
-    personality: 'Warm, respectful, community-focused tone rooted in Ubuntu spirit.'
+    personality: 'Warm, respectful, community-focused tone rooted in Ubuntu spirit.',
+    languageName: 'isiZulu'
   },
   'af-ZA': {
     greeting: 'Goeiedag! Dit is Zandi van Mzansi Solutions. Praat ek met die huiseienaar?',
     speechLang: 'af-ZA',
-    personality: 'Direct, efficient, and professional execution.'
+    personality: 'Direct, efficient, and professional execution.',
+    languageName: 'Afrikaans'
   },
   'en-ZA': {
     greeting: 'Hello! This is Zandi from Mzansi Solutions. Am I speaking with the homeowner?',
     speechLang: 'en-ZA',
-    personality: 'Executive, tactical, and high-speed clarity.'
+    personality: 'Executive, tactical, and high-speed clarity.',
+    languageName: 'English'
   }
 };
 
@@ -456,7 +459,10 @@ When the call is complete (qualified or failed), your FINAL message must end wit
 
 function buildSystemPrompt(language: string): string {
   const protocol = LANGUAGE_PROTOCOLS[language] || LANGUAGE_PROTOCOLS['en-ZA'];
-  return `${BASE_SYSTEM_PROMPT}\n=== LANGUAGE NODE: ${language} ===\nPersonality: ${protocol.personality}\nGreet the caller in this language style.`;
+  const langDirective = protocol.languageName !== 'English'
+    ? `\n=== MANDATORY LANGUAGE DIRECTIVE ===\nYou MUST respond ENTIRELY in ${protocol.languageName}. Every word of every response must be in ${protocol.languageName}. Do NOT switch to English under any circumstances, even if the caller speaks English. The ONLY exception is the final JSON output contract block which remains in English keys.`
+    : '';
+  return `${BASE_SYSTEM_PROMPT}\n=== LANGUAGE NODE: ${language} ===\nPersonality: ${protocol.personality}${langDirective}\nGreet the caller in this language style.`;
 }
 
 // 3. VOICE HANDLER
