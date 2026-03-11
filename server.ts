@@ -104,7 +104,7 @@ async function streamAudioToTwilio(socket: WebSocket, streamSid: string, audioBu
       offset += CHUNK_SIZE_BYTES;
 
       const payload = Buffer.from(chunk).toString('base64');
-      socket.write(JSON.stringify({
+      socket.send(JSON.stringify({
         event: 'media',
         streamSid,
         media: { payload },

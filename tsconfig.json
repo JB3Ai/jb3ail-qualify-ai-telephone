@@ -14,5 +14,6 @@
     "allowJs": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["**/*"]
+  "include": ["**/*"],
+  "exclude": ["server.ts", "services/**", "dist/**", "dist-server/**", "node_modules/**"]
 }
