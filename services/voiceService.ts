@@ -1,16 +1,26 @@
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
 import axios from 'axios';
 
-const DEFAULT_VOICE_NAME = 'en-ZA-LeahNeural';
+const DEFAULT_VOICE_NAME = 'en-ZA-LukeNeural';
 const VOICE_CANDIDATES_BY_LANGUAGE: Record<string, string[]> = {
-  'en-za': ['en-ZA-LeahNeural', 'en-ZA-LukeNeural', 'en-GB-SoniaNeural', 'en-US-AvaMultilingualNeural'],
-  'zu-za': ['zu-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-US-AndrewMultilingualNeural', 'en-ZA-LeahNeural'],
-  'xh-za': ['xh-ZA-ThandoNeural', 'xh-ZA-AyandaNeural', 'en-US-AvaMultilingualNeural', 'en-ZA-LeahNeural'],
-  'af-za': ['af-ZA-AdriNeural', 'af-ZA-WillemNeural', 'en-ZA-LeahNeural'],
-  'nso-za': ['zu-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-US-AndrewMultilingualNeural', 'en-ZA-LeahNeural'],
-  'pt-pt': ['pt-PT-RaquelNeural', 'pt-PT-DuarteNeural', 'en-US-AvaMultilingualNeural'],
-  'el-gr': ['el-GR-AthinaNeural', 'el-GR-NestorasNeural', 'en-US-AvaMultilingualNeural'],
-  'zh-cn': ['zh-CN-XiaoxiaoNeural', 'zh-CN-YunxiNeural', 'en-US-AvaMultilingualNeural'],
+  // en-ZA: Luke (Executive/Pretoria-Standard) → Leah fallback
+  'en-za':  ['en-ZA-LukeNeural', 'en-ZA-LeahNeural', 'en-US-AvaMultilingualNeural'],
+  // zu-ZA: Thando (Ubuntu resonance, native Nguni)
+  'zu-za':  ['zu-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-ZA-LukeNeural'],
+  // xh-ZA: Ayanda primary (Eastern Cape clarity) → Thando secondary
+  'xh-za':  ['xh-ZA-AyandaNeural', 'xh-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-ZA-LukeNeural'],
+  // af-ZA: Adri (clear, neighborly)
+  'af-za':  ['af-ZA-AdriNeural', 'af-ZA-WillemNeural', 'en-ZA-LukeNeural'],
+  // nso-ZA: no native Azure voice — zu-ZA-Thando is the closest Nguni/Sotho approximation
+  'nso-za': ['zu-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-ZA-LukeNeural'],
+  // pt-BR: Antonio (trade/business professional) — Brazilian Portuguese has better neural coverage
+  'pt-br':  ['pt-BR-AntonioNeural', 'pt-PT-RaquelNeural', 'en-US-AvaMultilingualNeural'],
+  // pt-PT kept as fallback locale key
+  'pt-pt':  ['pt-PT-RaquelNeural', 'pt-BR-AntonioNeural', 'en-US-AvaMultilingualNeural'],
+  // el-GR: Nestoras primary (authoritative, fast articulation)
+  'el-gr':  ['el-GR-NestorasNeural', 'el-GR-AthinaNeural', 'en-US-AvaMultilingualNeural'],
+  // zh-CN: Yunxi primary (technical Mandarin, optimized speed)
+  'zh-cn':  ['zh-CN-YunxiNeural', 'zh-CN-XiaoxiaoNeural', 'en-US-AvaMultilingualNeural'],
 };
 
 const PRONUNCIATION_ALIASES_BY_LANGUAGE: Record<string, Array<{ term: string; alias: string }>> = {
@@ -67,6 +77,10 @@ const PRONUNCIATION_ALIASES_BY_LANGUAGE: Record<string, Array<{ term: string; al
     { term: 'Mzansi', alias: 'M-zahn-see' },
     { term: 'JB3Ai', alias: 'J B three A I' },
   ],
+  'pt-br': [
+    { term: 'Mzansi', alias: 'M-zahn-see' },
+    { term: 'JB3Ai', alias: 'J B three A I' },
+  ],
 };
 
 // Per-language SSML prosody overrides — "Ubuntu Resonance" profile.
@@ -79,10 +93,11 @@ type ProsodyConfig = { rate: string; pitch?: string; contour?: string };
 const NGUNI_CONTOUR = '(0%, +0Hz) (20%, -2Hz) (80%, +1Hz) (100%, -3Hz)';
 
 const PROSODY_BY_LANGUAGE: Record<string, ProsodyConfig> = {
-  'xh-za':  { pitch: '-12%', rate: '-5%', contour: NGUNI_CONTOUR }, // Xhosa: deepest Ubuntu Resonance
-  'zu-za':  { pitch: '-5%',  rate: '-5%', contour: NGUNI_CONTOUR }, // Zulu: Hlonipha tonal profile
-  'nso-za': { rate: '-5%',  contour: NGUNI_CONTOUR },               // Sepedi: softer Nguni arc
-  'af-za':  { rate: '-5%' },                                        // Afrikaans: friendly cadence, no tonal arc
+  'xh-za':  { pitch: '-12%', rate: '-5%', contour: NGUNI_CONTOUR }, // Xhosa/Ayanda: deepest Ubuntu Resonance
+  'zu-za':  { pitch: '-5%',  rate: '-5%', contour: NGUNI_CONTOUR }, // Zulu/Thando: Hlonipha tonal profile
+  'nso-za': { pitch: '-15%', rate: '-5%', contour: NGUNI_CONTOUR }, // Sepedi: calibrated for Sotho-Tswana tonal shifts
+  'af-za':  { rate: '-3%' },                                        // Afrikaans/Adri: direct, clear, no tonal arc
+  'zh-cn':  { rate: '+2%' },                                        // Mandarin/Yunxi: faster rate for technical clarity
 };
 const DEFAULT_PROSODY: ProsodyConfig = { rate: '-3%' };
 
@@ -175,8 +190,10 @@ async function synthesizeMuLawViaSdk(text: string, key: string, region: string, 
   speechConfig.speechSynthesisOutputFormat = sdk.SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw;
   // Allow longer silence before cutting off — critical for Xhosa/Zulu mid-sentence pauses
   speechConfig.setProperty(sdk.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, '5000');
-  // Allow postback latency headroom for Zulu tonal pauses
-  speechConfig.setProperty(sdk.PropertyId.SpeechServiceResponse_PostbackTimeoutMs, '1200');
+  // Extend segmentation silence window — accommodates Zulu/Xhosa tonal pause patterns
+  speechConfig.setProperty(sdk.PropertyId.Speech_SegmentationSilenceTimeoutMs, '1200');
+  // Start synthesis at first natural pause (comma/breath) — reduces first-byte latency
+  speechConfig.setProperty(sdk.PropertyId.SpeechServiceResponse_RequestSentenceBoundary, 'false');
   const synthesizer = new sdk.SpeechSynthesizer(speechConfig);
   const ssml = buildSsmlDocument(text, locale, voiceName, language);
 
