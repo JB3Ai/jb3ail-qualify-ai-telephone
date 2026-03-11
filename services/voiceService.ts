@@ -173,6 +173,10 @@ async function synthesizeMuLawViaSdk(text: string, key: string, region: string, 
   const speechConfig = sdk.SpeechConfig.fromSubscription(key, region);
   speechConfig.speechSynthesisVoiceName = voiceName;
   speechConfig.speechSynthesisOutputFormat = sdk.SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw;
+  // Allow longer silence before cutting off — critical for Xhosa/Zulu mid-sentence pauses
+  speechConfig.setProperty(sdk.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, '5000');
+  // Allow postback latency headroom for Zulu tonal pauses
+  speechConfig.setProperty(sdk.PropertyId.SpeechServiceResponse_PostbackTimeoutMs, '1200');
   const synthesizer = new sdk.SpeechSynthesizer(speechConfig);
   const ssml = buildSsmlDocument(text, locale, voiceName, language);
 
