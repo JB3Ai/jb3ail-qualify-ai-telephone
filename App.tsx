@@ -940,58 +940,60 @@ const App: React.FC = () => {
   }, [clients]);
 
   return (
-    <div className="h-screen flex flex-row bg-[#020617] text-slate-100 font-sans overflow-hidden selection:bg-[#66FF66]/30 surface-grain">
+    <div className="h-screen flex flex-col bg-[#020617] text-slate-100 font-sans overflow-hidden selection:bg-[#66FF66]/30 surface-grain">
+      
+      {/* === OS³ COMMAND BAR === */}
+      <header className="h-14 bg-[#0d1117] border-b border-[#1e293b] flex items-center justify-between px-5 shrink-0" style={{ letterSpacing: '.04em', fontSize: '13px' }}>
+        <div className="font-semibold text-[#c9d1d9] flex items-center gap-3">
+          <div className="w-7 h-7 bg-[#66FF66] rounded-lg flex items-center justify-center text-[#0d1117]">
+            <CommandLineIcon className="w-4 h-4" />
+          </div>
+          <span className="hidden sm:inline font-black text-sm uppercase tracking-tight">JB³Ai</span>
+        </div>
+        <div className="text-[#8b949e] font-medium text-[11px] sm:text-[13px] tracking-[0.08em] uppercase">
+          OS³ GRID CONTROL <span className="text-[#484f58]">//</span> MZANZI NODE
+        </div>
+        <div className="flex items-center gap-2.5">
+          <span className={`os3-heartbeat ${backendStatus === 'connected' ? '' : backendStatus === 'loading' ? 'os3-heartbeat--amber' : 'os3-heartbeat--red'}`} />
+          <span className={`text-[11px] font-medium tracking-wider ${
+            backendStatus === 'connected' ? 'text-[#39ff88]' : backendStatus === 'loading' ? 'text-[#f59e0b]' : 'text-[#ef4444]'
+          }`}>
+            {backendStatus === 'connected' ? 'Uplink Established' : backendStatus === 'loading' ? 'Connecting...' : 'Uplink Severed'}
+          </span>
+        </div>
+      </header>
+
+      <div className="flex-1 flex flex-row overflow-hidden">
       
       {/* --- SIDEBAR --- */}
-      <nav className="w-16 sm:w-20 lg:w-72 bg-[#0f172a] border-r border-[#1e293b] flex flex-col shrink-0 surface-grain">
-        <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center lg:justify-start gap-4">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#66FF66] rounded-xl flex items-center justify-center text-[#0d1117] shadow-[0_0_15px_rgba(102,255,102,0.4)] transition-all">
-            <CommandLineIcon className="w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-          <div className="hidden lg:block">
-            <h2 className="font-black text-lg tracking-tighter uppercase leading-none">JB³Ai <span className="text-[#66FF66]">Neural Hub</span></h2>
-            <p className="text-[9px] font-black text-[#39FF88] uppercase tracking-widest mt-1">Mzanzi OS Grid</p>
-          </div>
-        </div>
+      <nav className="w-16 sm:w-20 lg:w-64 bg-[#0f172a] border-r border-[#1e293b] flex flex-col shrink-0 surface-grain">
         
         <div className="flex-1 px-2 sm:px-4 space-y-1 py-4 sm:py-6 overflow-y-auto scrollbar-hide">
-          {/* WHO */}
+          {/* WHO — Entities entering the system */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-2 pb-2 hidden lg:block">Who</p>
-          <NavItem active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="02 · Data Inbox" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'PIPELINE'} onClick={() => setActiveTab('PIPELINE')} icon={<ListBulletIcon className="w-5 h-5" />} label="03 · Pipeline" disabled={!isProtocolAccepted} />
+          <NavItem active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="Data Inbox" disabled={!isProtocolAccepted} />
+          <NavItem active={activeTab === 'PIPELINE'} onClick={() => setActiveTab('PIPELINE')} icon={<ListBulletIcon className="w-5 h-5" />} label="Pipeline" disabled={!isProtocolAccepted} />
 
-          {/* WHAT */}
+          {/* WHAT — Active system operations */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">What</p>
-          <NavItem active={activeTab === 'RUN_PROTOCOL'} onClick={() => setActiveTab('RUN_PROTOCOL')} icon={<BeakerIcon className="w-5 h-5" />} label="04 · Run Protocol" disabled={!isProtocolAccepted} />
+          <NavItem active={activeTab === 'RUN_PROTOCOL'} onClick={() => setActiveTab('RUN_PROTOCOL')} icon={<BeakerIcon className="w-5 h-5" />} label="Run Protocol" disabled={!isProtocolAccepted} />
+          <NavItem active={activeTab === 'LIVE_TERMINAL'} onClick={() => setActiveTab('LIVE_TERMINAL')} icon={<CommandLineIcon className="w-5 h-5" />} label="Live Terminal" disabled={!isProtocolAccepted} />
 
-          {/* HOW */}
+          {/* HOW — System infrastructure */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">How</p>
-          <NavItem active={activeTab === 'LIVE_TERMINAL'} onClick={() => setActiveTab('LIVE_TERMINAL')} icon={<CommandLineIcon className="w-5 h-5" />} label="05 · Live Terminal" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="06 · Call Archive" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="07 · Config Hub" />
-          <NavItem active={activeTab === 'BACKEND_SETTINGS'} onClick={() => setActiveTab('BACKEND_SETTINGS')} icon={<CpuChipIcon className="w-5 h-5" />} label="08 · Backend Settings" />
+          <NavItem active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={!isProtocolAccepted} />
+          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<AdjustmentsHorizontalIcon className="w-5 h-5" />} label="Config" />
+          <NavItem active={activeTab === 'BACKEND_SETTINGS'} onClick={() => setActiveTab('BACKEND_SETTINGS')} icon={<CpuChipIcon className="w-5 h-5" />} label="Backend Settings" />
+        </div>
           
-          <div className="mt-8 px-4">
-            <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-4">Security</p>
+        <div className="p-3 sm:p-4 mt-auto border-t border-[#1e293b]/30">
+          <div className="flex items-center gap-3 px-2">
             <button 
               onClick={() => setShowPopiaModal(true)}
-              className="flex items-center gap-3 text-slate-500 hover:text-[#66FF66] text-[10px] font-bold uppercase tracking-wider mb-3 transition-colors w-full text-left"
+              className="flex items-center gap-2 text-slate-600 hover:text-[#39ff88] text-[10px] font-medium uppercase tracking-wider transition-colors"
             >
-                <ShieldCheckIcon className="w-4 h-4" /> POPIA Valid
+                <ShieldCheckIcon className="w-3.5 h-3.5" /> POPIA
             </button>
-          </div>
-        </div>
-
-        <div className="p-4 sm:p-6 lg:p-8 mt-auto border-t border-[#1e293b]/30">
-          <div className="bg-[#1e293b]/10 rounded-xl p-3 sm:p-4 border border-[#1e293b]/20 mb-4">
-             <div className="flex items-center gap-3 mb-2">
-                <div className={`w-2 h-2 rounded-full ${backendStatus === 'connected' ? 'bg-[#39FF88] shadow-[0_0_12px_#39FF88]' : 'bg-red-500 shadow-[0_0_12px_#ef4444]'}`} style={backendStatus === 'connected' ? { animation: 'pulse 1.5s infinite' } : {}}></div>
-                <span className={`text-[9px] font-black uppercase tracking-widest ${backendStatus === 'connected' ? 'text-[#39FF88] drop-shadow-[0_0_8px_rgba(57,255,136,0.4)]' : 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`}>
-                  {backendStatus === 'connected' ? 'Uplink Established' : 'Uplink Severed'}
-                </span>
-             </div>
-             <p className="text-[9px] text-slate-600 font-mono tracking-tighter">v3.4.1-stable-mzanzi</p>
-             <p className="text-[8px] text-slate-700 font-mono tracking-tighter mt-1">POPIA VALID</p>
           </div>
         </div>
       </nav>
@@ -2138,6 +2140,17 @@ const App: React.FC = () => {
 
         </div>
       </main>
+
+      </div>{/* end flex-row wrapper */}
+
+      {/* === OS³ FOOTER STRIP === */}
+      <footer className="h-9 bg-[#0d1117] border-t border-[#1e293b] flex items-center justify-between px-5 shrink-0 text-[11px] text-[#484f58] font-mono tracking-wide">
+        <span>v3.4.1-stable-mzanzi</span>
+        <span className="flex items-center gap-1.5">
+          <ShieldCheckIcon className="w-3 h-3 text-[#39ff88]/60" />
+          <span className="text-[#8b949e]">POPIA Valid</span>
+        </span>
+      </footer>
 
       <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none; }

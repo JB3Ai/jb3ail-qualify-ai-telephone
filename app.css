@@ -8,6 +8,19 @@
     --ui-graphite: #121212;
     --ui-soft-grey: #E6E6E6;
     --accent-green: #66FF66;
+
+    /* OS³ Industrial Design System */
+    --os3-bg-void: #020617;
+    --os3-bg-shell: #0d1117;
+    --os3-bg-panel: #0f172a;
+    --os3-border-soft: #1e293b;
+    --os3-border-hard: #30363d;
+    --os3-text-main: #c9d1d9;
+    --os3-text-dim: #8b949e;
+    --os3-text-soft: #484f58;
+    --os3-signal-green: #39ff88;
+    --os3-signal-amber: #f59e0b;
+    --os3-signal-red: #ef4444;
 }
 
 body {
@@ -161,6 +174,30 @@ body {
 
 .animate-subtle-pulse {
     animation: subtle-pulse 4s infinite ease-in-out;
+}
+
+/* OS³ Heartbeat Pulse */
+@keyframes os3Pulse {
+    0% { opacity: .4; transform: scale(.9); }
+    50% { opacity: 1; transform: scale(1.05); }
+    100% { opacity: .4; transform: scale(.9); }
+}
+
+.os3-heartbeat {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--os3-signal-green);
+    animation: os3Pulse 1.8s infinite;
+}
+
+.os3-heartbeat--amber {
+    background: var(--os3-signal-amber);
+}
+
+.os3-heartbeat--red {
+    background: var(--os3-signal-red);
+    animation: none;
 }
 
 .font-orbitron {
