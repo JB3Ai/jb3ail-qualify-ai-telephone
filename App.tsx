@@ -93,12 +93,30 @@ const NeuralConnectivityMatrix: React.FC<{
   onShowInfo: () => void;
   wsConnected?: boolean;
   ledgerStatus?: string;
-}> = ({ backendStatus, isProtocolAccepted, onAcceptProtocol, onLoadTeam, onShowInfo, wsConnected, ledgerStatus }) => {
-  const statusItems = [
-    { name: 'Twilio Gateway', status: wsConnected ? 'ONLINE' : (backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE') },
-    { name: 'Azure Neural', status: backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE' },
-    { name: 'Intelligence Ledger', status: ledgerStatus === 'SYNCING' ? 'SYNCING' : (backendStatus === 'connected' ? 'READY' : 'OFFLINE') },
-    { name: 'Google Cloud ADC', status: backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE' },
+  latencyMs?: number | null;
+}> = ({ backendStatus, isProtocolAccepted, onAcceptProtocol, onLoadTeam, onShowInfo, wsConnected, ledgerStatus, latencyMs }) => {
+  const latencyDisplay = latencyMs != null ? `${latencyMs}ms` : '—';
+  const monitorCards = [
+    {
+      name: 'Twilio Gateway',
+      status: wsConnected ? 'ONLINE' : (backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE'),
+      href: 'https://console.twilio.com/'
+    },
+    {
+      name: 'Azure Neural',
+      status: backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE',
+      href: 'https://portal.azure.com/'
+    },
+    {
+      name: 'Intelligence Ledger',
+      status: ledgerStatus === 'SYNCING' ? 'SYNCING' : (backendStatus === 'connected' ? 'READY' : 'OFFLINE'),
+      href: 'https://docs.google.com/spreadsheets/d/1e4ZanBSWWDYkp-ww79vVl3SQZt294Zfhi7dvAkWKaN4/edit'
+    },
+    {
+      name: 'Google Cloud ADC',
+      status: backendStatus === 'connected' ? 'ONLINE' : 'OFFLINE',
+      href: 'https://console.cloud.google.com/'
+    },
   ];
 
   return (
@@ -135,21 +153,45 @@ const NeuralConnectivityMatrix: React.FC<{
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statusItems.map((item) => (
-          <div key={item.name} className="bg-[#1A2333] p-8 rounded-lg border border-[#1e293b]/40 group hover:border-[#39FF88]/30 transition-all">
-            <div className="flex justify-between items-start mb-6">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-orbitron">{item.name}</span>
-              <div className={`w-2 h-2 rounded-full ${item.status === 'ONLINE' ? 'bg-[#39FF88] animate-pulse shadow-[0_0_10px_#39FF88]' : 'bg-red-500'}`}></div>
+        {monitorCards.map((card) => {
+          const cardInner = (
+            <>
+              <div className="flex justify-between items-start mb-6">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-orbitron flex items-center gap-1.5">
+                  {card.name}
+                  {card.href && <ArrowTopRightOnSquareIcon className="w-3 h-3 opacity-40 group-hover:opacity-100 transition-opacity" />}
+                </span>
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${card.status === 'ONLINE' || card.status === 'READY' ? 'bg-[#39FF88] animate-pulse shadow-[0_0_10px_#39FF88]' : card.status === 'SYNCING' ? 'bg-[#FFD700] animate-pulse' : 'bg-red-500'}`}></div>
+              </div>
+              <div className="text-2xl font-black text-white tracking-tighter font-orbitron">
+                {card.status}
+              </div>
+              <div className="mt-4 pt-4 border-t border-[#1e293b]/20 flex items-center justify-between">
+                <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest font-inter">{card.status === 'SYNCING' ? 'Active' : 'Latency'}</span>
+                <span className={`text-[10px] font-mono font-bold ${card.status === 'SYNCING' ? 'text-[#FFD700] animate-pulse' : 'text-[#39FF88]'}`}>{card.status === 'SYNCING' ? 'WRITING...' : latencyDisplay}</span>
+              </div>
+            </>
+          );
+
+          if (card.href) {
+            return (
+              <a
+                key={card.name}
+                href={card.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="monitor-card monitor-card--clickable group bg-[#1A2333] p-8 rounded-lg border border-[#1e293b]/40 block no-underline"
+              >
+                {cardInner}
+              </a>
+            );
+          }
+          return (
+            <div key={card.name} className="monitor-card monitor-card--disabled group bg-[#1A2333] p-8 rounded-lg border border-[#1e293b]/40">
+              {cardInner}
             </div>
-            <div className="text-2xl font-black text-white tracking-tighter font-orbitron">
-              {item.status}
-            </div>
-            <div className="mt-4 pt-4 border-t border-[#1e293b]/20 flex items-center justify-between">
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest font-inter">{item.status === 'SYNCING' ? 'Active' : 'Latency'}</span>
-              <span className={`text-[10px] font-mono font-bold ${item.status === 'SYNCING' ? 'text-[#FFD700] animate-pulse' : 'text-[#39FF88]'}`}>{item.status === 'SYNCING' ? 'WRITING...' : '24ms'}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -658,6 +700,7 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const [ledgerStatus, setLedgerStatus] = useState<string>('IDLE');
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
 
   useEffect(() => {
     const wsUrl = backendUrl.replace(/^http/, 'ws');
@@ -737,25 +780,35 @@ const App: React.FC = () => {
 
   const checkBackendHealth = async (urlOverride?: string) => {
     const targetUrl = urlOverride || backendUrl;
+    const t0 = performance.now();
     try {
       setBackendStatus('loading');
       const res = await fetch(`${targetUrl}/api/health`, { method: 'GET' });
+      const rtt = Math.round(performance.now() - t0);
       if (!res.ok) {
         setBackendStatus('error');
+        setLatencyMs(null);
         return;
       }
 
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.toLowerCase().includes('application/json')) {
         setBackendStatus('error');
+        setLatencyMs(null);
         return;
       }
 
       const data = await res.json();
-      if (data?.status === 'ok') setBackendStatus('connected');
-      else setBackendStatus('error');
+      if (data?.status === 'ok') {
+        setBackendStatus('connected');
+        setLatencyMs(rtt);
+      } else {
+        setBackendStatus('error');
+        setLatencyMs(null);
+      }
     } catch (e) {
       setBackendStatus('error');
+      setLatencyMs(null);
     }
   };
 
@@ -961,6 +1014,9 @@ const App: React.FC = () => {
           }`}>
             {backendStatus === 'connected' ? 'Uplink Established' : backendStatus === 'loading' ? 'Connecting...' : 'Uplink Severed'}
           </span>
+          {backendStatus === 'connected' && latencyMs !== null && (
+            <span className="text-[10px] font-mono font-bold text-[#39ff88]/70 ml-1 hidden sm:inline">{latencyMs}ms</span>
+          )}
         </div>
       </header>
 
@@ -1012,6 +1068,9 @@ const App: React.FC = () => {
             }`}>
               {backendStatus === 'connected' ? 'Uplink Established' : backendStatus === 'loading' ? 'Connecting...' : 'Uplink Severed'}
             </span>
+            {backendStatus === 'connected' && latencyMs !== null && (
+              <span className="text-[9px] font-mono font-bold text-[#39ff88]/60 hidden lg:inline ml-1">{latencyMs}ms</span>
+            )}
           </div>
           <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v3.4.1-stable-mzanzi</p>
         </div>
@@ -1660,6 +1719,7 @@ const App: React.FC = () => {
                   onShowInfo={() => setShowDashboardInfo(true)}
                   wsConnected={wsConnected}
                   ledgerStatus={ledgerStatus}
+                  latencyMs={latencyMs}
                 />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-12">
@@ -1670,7 +1730,9 @@ const App: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="bg-black/40 p-6 rounded-md border border-[#1e293b]/40">
                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Latency (Ping)</span>
-                        <div className="text-3xl font-black text-[#66FF66]">24<span className="text-xs ml-1">ms</span></div>
+                        <div className="text-3xl font-black text-[#66FF66]">
+                          {latencyMs != null ? latencyMs : '—'}<span className="text-xs ml-1">{latencyMs != null ? 'ms' : ''}</span>
+                        </div>
                       </div>
                       <div className="bg-black/40 p-6 rounded-md border border-[#1e293b]/40">
                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Uplink Speed</span>
