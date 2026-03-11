@@ -105,10 +105,10 @@ const NeuralConnectivityMatrix: React.FC<{
         <div className="flex items-center gap-6">
           <button 
             onClick={onShowInfo}
-            className="w-12 h-12 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/20 rounded-xl flex items-center justify-center hover:bg-[#66FF66]/10 transition-all shadow-[0_0_15px_rgba(102,255,102,0.1)] group"
+            className="i-button-pro"
             title="Dashboard Info"
           >
-            <InformationCircleIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+            <InformationCircleIcon className="w-5 h-5" />
           </button>
           <div>
             <h2 className="text-3xl font-black text-white uppercase tracking-tighter font-orbitron mb-2">Neural Connectivity Matrix</h2>
@@ -305,10 +305,10 @@ const DataInbox: React.FC<{
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <button 
             onClick={() => setShowWorkflowGuide(true)}
-            className="w-12 h-12 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/20 rounded-xl flex items-center justify-center hover:bg-[#66FF66]/10 transition-all shadow-[0_0_15px_rgba(102,255,102,0.1)] group"
+            className="i-button-pro"
             title="Workflow Guide"
           >
-            <InformationCircleIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+            <InformationCircleIcon className="w-5 h-5" />
           </button>
           <button 
             onClick={handleRefreshSheet}
@@ -535,7 +535,7 @@ const NavItem: React.FC<{ active: boolean; onClick: () => void; icon: React.Reac
     disabled={disabled}
     className={`sidebar-btn-3d ${active ? 'active' : ''}`}
   >
-    <div className={`shrink-0 transition-transform ${active ? 'scale-110' : ''}`}>{icon}</div>
+    <div className={`shrink-0 ${active ? 'scale-110' : ''}`}>{icon}</div>
     <span className="font-bold text-[10px] uppercase tracking-[0.2em] hidden lg:block text-left">{label}</span>
     {badge && <span className="absolute top-4 right-4 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[9px] text-white font-black animate-pulse shadow-lg">{badge}</span>}
   </button>
@@ -558,6 +558,7 @@ const App: React.FC = () => {
   const [showLabInfo, setShowLabInfo] = useState(false);
   const [showConfigInfo, setShowConfigInfo] = useState(false);
   const [showArchiveInfo, setShowArchiveInfo] = useState(false);
+  const [selectedArchiveSignal, setSelectedArchiveSignal] = useState<Client | null>(null);
   const [showBackendInfo, setShowBackendInfo] = useState(false);
   
   const [callDuration, setCallDuration] = useState(0);
@@ -945,8 +946,11 @@ const App: React.FC = () => {
       {/* === OS³ COMMAND BAR === */}
       <header className="h-14 bg-[#0d1117] border-b border-[#1e293b] flex items-center justify-between px-5 shrink-0" style={{ letterSpacing: '.04em', fontSize: '13px' }}>
         <div className="font-semibold text-[#c9d1d9] flex items-center gap-3">
-          <div className="w-7 h-7 bg-[#66FF66] rounded-lg flex items-center justify-center text-[#0d1117]">
-            <CommandLineIcon className="w-4 h-4" />
+          <div className="os3-hub-mark" style={{ width: 36, height: 36, borderRadius: 10 }}>
+            <div className="os3-hub-mark__inner" style={{ width: 24, height: 24, borderRadius: 7 }}>
+              <span className="os3-hub-mark__glyph" style={{ fontSize: 10 }}>&gt;_</span>
+            </div>
+            <span className="os3-hub-mark__status" style={{ width: 4, height: 4, right: 4, bottom: 4 }} />
           </div>
           <span className="hidden sm:inline font-black text-sm uppercase tracking-tight">JB³Ai</span>
         </div>
@@ -967,8 +971,22 @@ const App: React.FC = () => {
       
       {/* --- SIDEBAR --- */}
       <nav className="w-16 sm:w-20 lg:w-64 bg-[#0f172a] border-r border-[#1e293b] flex flex-col shrink-0 surface-grain">
+
+        {/* OS³ Hub Mark — sidebar header */}
+        <div className="p-4 sm:p-5 flex items-center justify-center lg:justify-start gap-4">
+          <div className="os3-hub-mark">
+            <div className="os3-hub-mark__inner">
+              <span className="os3-hub-mark__glyph">&gt;_</span>
+            </div>
+            <span className="os3-hub-mark__status" />
+          </div>
+          <div className="hidden lg:block">
+            <h2 className="font-black text-[15px] tracking-tight uppercase leading-none text-[#c9d1d9]">JB³Ai <span className="text-[#39ff88]">OS³</span></h2>
+            <p className="text-[9px] font-mono text-[#484f58] uppercase tracking-widest mt-1">Grid Control</p>
+          </div>
+        </div>
         
-        <div className="flex-1 px-2 sm:px-4 space-y-1 py-4 sm:py-6 overflow-y-auto scrollbar-hide">
+        <div className="flex-1 px-2 sm:px-4 space-y-1 py-2 sm:py-4 overflow-y-auto scrollbar-hide">
           {/* WHO — Entities entering the system */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-2 pb-2 hidden lg:block">Who</p>
           <NavItem active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="Data Inbox" disabled={!isProtocolAccepted} />
@@ -981,20 +999,29 @@ const App: React.FC = () => {
 
           {/* HOW — System infrastructure */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">How</p>
+          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="Hub" />
           <NavItem active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<AdjustmentsHorizontalIcon className="w-5 h-5" />} label="Config" />
-          <NavItem active={activeTab === 'BACKEND_SETTINGS'} onClick={() => setActiveTab('BACKEND_SETTINGS')} icon={<CpuChipIcon className="w-5 h-5" />} label="Backend Settings" />
+          <NavItem active={activeTab === 'BACKEND_SETTINGS'} onClick={() => setActiveTab('BACKEND_SETTINGS')} icon={<AdjustmentsHorizontalIcon className="w-5 h-5" />} label="Config" />
+          <NavItem active={false} onClick={() => {}} icon={<CpuChipIcon className="w-5 h-5" />} label="Backend Settings" disabled={true} />
         </div>
-          
-        <div className="p-3 sm:p-4 mt-auto border-t border-[#1e293b]/30">
-          <div className="flex items-center gap-3 px-2">
-            <button 
-              onClick={() => setShowPopiaModal(true)}
-              className="flex items-center gap-2 text-slate-600 hover:text-[#39ff88] text-[10px] font-medium uppercase tracking-wider transition-colors"
-            >
-                <ShieldCheckIcon className="w-3.5 h-3.5" /> POPIA
-            </button>
+
+        {/* Security + Status + Version */}
+        <div className="mt-auto border-t border-[#1e293b]/30 px-3 sm:px-4 py-3 space-y-3">
+          <button
+            onClick={() => setShowPopiaModal(true)}
+            className="flex items-center gap-2.5 text-slate-600 hover:text-[#39ff88] text-[10px] font-medium uppercase tracking-wider w-full"
+          >
+            <ShieldCheckIcon className="w-3.5 h-3.5" /> <span className="hidden lg:inline">POPIA Valid</span>
+          </button>
+          <div className="flex items-center gap-2.5">
+            <span className={`os3-heartbeat ${backendStatus === 'connected' ? '' : backendStatus === 'loading' ? 'os3-heartbeat--amber' : 'os3-heartbeat--red'}`} />
+            <span className={`text-[9px] font-bold uppercase tracking-widest hidden lg:inline ${
+              backendStatus === 'connected' ? 'text-[#39ff88]' : backendStatus === 'loading' ? 'text-[#f59e0b]' : 'text-[#ef4444]'
+            }`}>
+              {backendStatus === 'connected' ? 'Uplink Established' : backendStatus === 'loading' ? 'Connecting...' : 'Uplink Severed'}
+            </span>
           </div>
+          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v3.4.1-stable-mzanzi</p>
         </div>
       </nav>
 
@@ -1062,10 +1089,10 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => setShowPipelineInfo(true)}
-                    className="w-10 h-10 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/20 rounded-xl flex items-center justify-center hover:bg-[#66FF66]/10 transition-all group"
+                    className="i-button-pro" style={{ width: 40, height: 40 }}
                     title="Pipeline Info"
                   >
-                    <InformationCircleIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <InformationCircleIcon className="w-5 h-5" />
                   </button>
                   <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter font-orbitron">Execution Pipeline</h2>
                 </div>
@@ -1328,10 +1355,10 @@ const App: React.FC = () => {
                     </div>
                     <button 
                       onClick={() => setShowLabInfo(true)}
-                      className="w-12 h-12 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/20 rounded-xl flex items-center justify-center hover:bg-[#66FF66]/10 transition-all shadow-[0_0_15px_rgba(102,255,102,0.1)] group"
+                      className="i-button-pro"
                       title="Lab Info"
                     >
-                      <InformationCircleIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                      <InformationCircleIcon className="w-5 h-5" />
                     </button>
                 </header>
 
@@ -1566,85 +1593,95 @@ const App: React.FC = () => {
             />
         )}
 
-        {/* TAB: CALL ARCHIVE */}
+        {/* TAB: CALL ARCHIVE — LEDGER VAULT */}
         {activeTab === 'CALL_ARCHIVE' && (
-             <div className="flex-1 overflow-y-auto p-6 sm:p-12 lg:p-24 animate-fade-in scrollbar-hide relative">
+             <div className="flex-1 overflow-hidden p-4 sm:p-6 flex flex-col">
                 <InfoOverlay 
                   isOpen={showArchiveInfo}
                   onClose={() => setShowArchiveInfo(false)}
                   title="Intelligence Ledger Guide"
                   icon={<ClipboardDocumentListIcon className="w-6 h-6" />}
                   steps={[
-                    {
-                      step: '01',
-                      title: 'Signal History',
-                      desc: 'Review all previous interactions and their outcomes. This is your permanent record of neural activity.'
-                    },
-                    {
-                      step: '02',
-                      title: 'Transcript Analysis',
-                      desc: 'Click "Analyze Transcript" to view the full dialogue and AI reasoning for each session.'
-                    },
-                    {
-                      step: '03',
-                      title: 'Qualification Status',
-                      desc: 'View whether a lead was qualified or failed based on the AI\'s assessment during the interaction.'
-                    },
-                    {
-                      step: '04',
-                      title: 'Anti-Gravity Signal',
-                      desc: 'Monitor the quality score of each interaction. Higher stars indicate better neural alignment.'
-                    }
+                    { step: '01', title: 'Signal History', desc: 'Review all previous interactions and their outcomes. This is your permanent record of neural activity.' },
+                    { step: '02', title: 'Transcript Analysis', desc: 'Select an archive card to inspect the full transcript and raw JSON metadata.' },
+                    { step: '03', title: 'Qualification Status', desc: 'View whether a lead was qualified or failed based on the AI assessment.' },
+                    { step: '04', title: 'POPIA Audit Export', desc: 'Download structured records for compliance auditing.' }
                   ]}
                 />
-                <header className="mb-8 sm:mb-16 border-b border-[#1e293b]/30 pb-8 sm:pb-12 flex flex-col sm:flex-row justify-between items-start gap-4">
-                    <div>
-                      <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Intelligence Ledger</h1>
-                      <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Build once. Run forever. Full transcripts and signal tracking.</p>
-                    </div>
-                    <button 
-                      onClick={() => setShowArchiveInfo(true)}
-                      className="w-12 h-12 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/20 rounded-xl flex items-center justify-center hover:bg-[#66FF66]/10 transition-all shadow-[0_0_15px_rgba(102,255,102,0.1)] group"
-                      title="Archive Info"
-                    >
-                      <InformationCircleIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                    </button>
-                </header>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {archiveClients.map(client => (
-                        <div key={client.id} className="bg-[#0d1117] p-8 rounded-lg flex flex-col justify-between transition-all border border-[#1e293b]/40 hover:border-[#66FF66]/20 shadow-lg">
-                            <div>
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className={`p-2 rounded-lg ${client.status === 'qualified' ? 'bg-green-600/10 text-green-600' : 'bg-red-600/10 text-red-600'}`}>
-                                        {client.status === 'qualified' ? <CheckBadgeIcon className="w-6 h-6" /> : <XCircleIcon className="w-6 h-6" />}
-                                    </div>
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{client.signup_date}</span>
-                                </div>
-                                <h3 className="text-xl font-black text-white mb-1">{client.name} {client.surname}</h3>
-                                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-4">{getLanguageName(client.language)} Engine • {client.phone}</p>
-                                
-                                <div className="mb-6 flex items-center gap-2">
-                                  <span className="text-[9px] font-black uppercase text-slate-400">Anti-Gravity Signal:</span>
-                                  <div className="flex gap-1">
-                                    {[1,2,3,4,5].map(star => (
-                                      <SparklesIcon key={star} className={`w-3 h-3 ${star <= (client.status === 'qualified' ? 5 : 2) ? 'text-[#66FF66]' : 'text-slate-600'}`} />
-                                    ))}
-                                  </div>
-                                </div>
-                            </div>
-                            <button onClick={() => setViewingTranscriptClient(client)} className="w-full bg-[#1e293b]/40 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#66FF66] hover:text-[#0d1117] transition-all border border-[#1e293b]/30">
-                                <DocumentTextIcon className="w-4 h-4" /> Analyze Transcript
-                            </button>
-                        </div>
-                    ))}
-                    {archiveClients.length === 0 && (
-                      <div className="col-span-full py-32 text-center opacity-30">
-                        <InboxStackIcon className="w-16 h-16 mx-auto mb-4" />
-                        <h2 className="uppercase font-black tracking-widest">Archive Void</h2>
+                <section className="archive-module">
+                  <header className="archive-header">
+                    <div className="archive-title">
+                      <span className="step-tag">06</span>
+                      <div>
+                        <h2>CALL ARCHIVE // LEDGER_VAULT</h2>
+                        <p>SECURE TRANSCRIPTS, METADATA, AUDIT EXPORTS</p>
                       </div>
-                    )}
-                </div>
+                    </div>
+                    <div className="vault-stats">
+                      <span>SECURE_RECORDS: {archiveClients.length}</span>
+                      <span className="vault-lock">POPIA VALID</span>
+                      <button onClick={() => setShowArchiveInfo(true)} className="i-button-pro" style={{ width: 36, height: 36, borderRadius: 8 }} title="Archive Info">
+                        <InformationCircleIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </header>
+
+                  <div className="archive-grid">
+                    <aside className="record-list">
+                      {archiveClients.map((client, idx) => (
+                        <button
+                          key={client.id}
+                          className={`archive-card ${selectedArchiveSignal?.id === client.id ? 'active-vault' : ''}`}
+                          onClick={() => setSelectedArchiveSignal(client)}
+                        >
+                          <div className="card-top">
+                            <span className="sig-id">SIG-{String(9900 + idx).padStart(4, '0')}</span>
+                            <span className={`sig-badge ${client.status === 'qualified' ? 'qualified' : 'failed'}`}>{client.status === 'qualified' ? 'QUALIFIED' : 'FAILED'}</span>
+                          </div>
+                          <div className="card-body">
+                            <strong className="sig-name">{client.name} {client.surname}</strong>
+                            <span className="sig-meta">{client.language.toUpperCase()} &bull; {client.phone} &bull; {client.signup_date || '—'}</span>
+                          </div>
+                        </button>
+                      ))}
+                      {archiveClients.length === 0 && (
+                        <div className="empty-vault" style={{ padding: '60px 0' }}>
+                          <InboxStackIcon className="w-10 h-10 mx-auto mb-3 text-[#1e293b]" />
+                          <span>NO_SIGNALS_ARCHIVED</span>
+                        </div>
+                      )}
+                    </aside>
+
+                    <section className="inspection-pane">
+                      {selectedArchiveSignal ? (
+                        <>
+                          <div className="view-header">ARTIFACT_DATA: SIG-{String(9900 + archiveClients.findIndex(c => c.id === selectedArchiveSignal.id)).padStart(4, '0')}</div>
+                          <div className="transcript-box">
+                            {selectedArchiveSignal.transcript?.map((t: TranscriptionEntry, i: number) => (
+                              <p key={i}><b>[{t.role === 'assistant' ? 'ZANDI' : 'USER'}]</b> {t.text}</p>
+                            ))}
+                            {!selectedArchiveSignal.transcript && <p style={{ color: '#484f58', fontStyle: 'italic' }}>No transcript data recorded.</p>}
+                          </div>
+                          <div className="json-metadata">
+                            <pre>{JSON.stringify({
+                              name: `${selectedArchiveSignal.name} ${selectedArchiveSignal.surname}`,
+                              status: selectedArchiveSignal.status,
+                              language: selectedArchiveSignal.language,
+                              phone: selectedArchiveSignal.phone,
+                              popia_consent: "YES",
+                              node_path: `${selectedArchiveSignal.language.toUpperCase()}-MZANZI`
+                            }, null, 2)}</pre>
+                          </div>
+                          <button className="signal-trigger-pro" style={{ marginTop: 18, width: '100%' }} onClick={() => setViewingTranscriptClient(selectedArchiveSignal)}>
+                            DOWNLOAD_FOR_POPIA_AUDIT
+                          </button>
+                        </>
+                      ) : (
+                        <div className="empty-vault">SELECT_SIGNAL_FOR_INSPECTION</div>
+                      )}
+                    </section>
+                  </div>
+                </section>
              </div>
         )}
 
@@ -1683,10 +1720,10 @@ const App: React.FC = () => {
                   <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter text-glow">Config Hub</h1>
                   <button 
                     onClick={() => setShowConfigInfo(true)}
-                    className="w-12 h-12 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/20 rounded-xl flex items-center justify-center hover:bg-[#66FF66]/10 transition-all shadow-[0_0_15px_rgba(102,255,102,0.1)] group"
+                    className="i-button-pro"
                     title="Config Info"
                   >
-                    <InformationCircleIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                    <InformationCircleIcon className="w-5 h-5" />
                   </button>
                 </div>
 
@@ -1778,10 +1815,10 @@ const App: React.FC = () => {
                 </div>
                 <button 
                   onClick={() => setShowProtocolInfo(true)}
-                  className="w-12 h-12 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/20 rounded-xl flex items-center justify-center hover:bg-[#66FF66]/10 transition-all shadow-[0_0_15px_rgba(102,255,102,0.1)] group"
+                  className="i-button-pro"
                   title="Protocol Info"
                 >
-                  <InformationCircleIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                  <InformationCircleIcon className="w-5 h-5" />
                 </button>
             </header>
 
@@ -1943,10 +1980,10 @@ const App: React.FC = () => {
                 </div>
                 <button 
                   onClick={() => setShowBackendInfo(true)}
-                  className="w-12 h-12 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/20 rounded-xl flex items-center justify-center hover:bg-[#66FF66]/10 transition-all shadow-[0_0_15px_rgba(102,255,102,0.1)] group"
+                  className="i-button-pro"
                   title="Backend Info"
                 >
-                  <InformationCircleIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                  <InformationCircleIcon className="w-5 h-5" />
                 </button>
             </header>
 
