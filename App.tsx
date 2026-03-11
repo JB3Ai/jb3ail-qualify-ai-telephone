@@ -1312,28 +1312,28 @@ const App: React.FC = () => {
               <InfoOverlay 
                 isOpen={showPipelineInfo}
                 onClose={() => setShowPipelineInfo(false)}
-                title="Pipeline Execution Guide"
+                title="03 // Pipeline — Staging Queue"
                 icon={<ListBulletIcon className="w-6 h-6" />}
                 steps={[
                   {
-                    step: '01',
+                    step: 'STAGING',
                     title: 'Signal Queue',
-                    desc: 'View all leads that have been synced and are ready for interaction. These are leads with LOADED status.'
+                    desc: 'Active queue for signals awaiting neural processing and regional node routing. Signals with LOADED status are primed for execution.'
                   },
                   {
-                    step: '02',
-                    title: 'Language Filtering',
-                    desc: 'Use the language filter in the header to focus on specific language groups for targeted execution.'
+                    step: 'ROUTE',
+                    title: 'Language Node Routing',
+                    desc: 'Filter by language to target specific regional nodes. The correct language protocol and voice node are injected automatically at dial time.'
                   },
                   {
-                    step: '03',
+                    step: 'DIAL',
                     title: 'Signal Initialization',
-                    desc: 'Click "DIAL_NOW" to start an AI-driven conversation with a lead. This transitions the signal to ACTIVE.'
+                    desc: 'DIAL_NOW transitions the signal to ACTIVE and hands off to the AI neural core. The system prompt from Node 04 is injected at this point.'
                   },
                   {
-                    step: '04',
-                    title: 'Status Tracking',
-                    desc: 'Monitor the progress of each signal. Once completed, leads move to the Intelligence Ledger archive.'
+                    step: 'LEDGER',
+                    title: 'Ledger Commit',
+                    desc: 'Completed signals are written to the Intelligence Vault (Node 06) with a QUALIFIED or FAILED verdict and full transcript artifact.'
                   }
                 ]}
               />
@@ -1592,28 +1592,28 @@ const App: React.FC = () => {
               <InfoOverlay 
                 isOpen={showLabInfo}
                 onClose={() => setShowLabInfo(false)}
-                title="Neural Lab Guide"
+                title="05 // Live Terminal — Telemetry"
                 icon={<CommandLineIcon className="w-6 h-6" />}
                 steps={[
                   {
-                    step: '01',
-                    title: 'Stimulus Injection',
-                    desc: 'Enter text to test the Audio (Azure) or Logic (Gemini) units. This verifies the core neural pathways.'
+                    step: 'TELEMETRY',
+                    title: '320ms Packet Health',
+                    desc: 'Real-time monitoring of WebSocket uplink stability. UPLINK_BUFFER_SENT: 320ms pulses confirm zero robotic lag — each packet delivered within the human perception threshold.'
                   },
                   {
-                    step: '02',
-                    title: 'Manual Signal Trigger',
-                    desc: 'Dial external numbers or establish internal neural links for direct system-to-system testing.'
+                    step: 'NODE_SWITCH',
+                    title: 'Language Detection Log',
+                    desc: 'The terminal logs NODE_SWITCH events (e.g. EN → ZU) in real-time, proving the AI\'s multi-language pivot intelligence as it adapts mid-stream to the lead.'
                   },
                   {
-                    step: '03',
-                    title: 'Lab Output',
-                    desc: 'Monitor the raw logs and system responses in real-time. This is the heartbeat of the neural core.'
+                    step: 'INTERNAL',
+                    title: 'Internal Neural Link',
+                    desc: 'Establish a speakerphone session directly with the AI core — no Twilio required. Select a language node and test the full Run Protocol in-browser.'
                   },
                   {
-                    step: '04',
+                    step: 'VERIFY',
                     title: 'Logic Verification',
-                    desc: 'Use quick scripts to verify common interaction patterns and ensure protocol alignment.'
+                    desc: 'Use quick scripts to fire pre-loaded language stimulus into the neural core. Confirms protocol alignment before live demo or client handoff.'
                   }
                 ]}
               />
@@ -1998,13 +1998,13 @@ const App: React.FC = () => {
                 <InfoOverlay 
                   isOpen={showArchiveInfo}
                   onClose={() => setShowArchiveInfo(false)}
-                  title="Intelligence Ledger Guide"
+                  title="06 // Intelligence Vault — Signal Archive"
                   icon={<ClipboardDocumentListIcon className="w-6 h-6" />}
                   steps={[
-                    { step: '01', title: 'Signal History', desc: 'Review all previous interactions and their outcomes. This is your permanent record of neural activity.' },
-                    { step: '02', title: 'Transcript Analysis', desc: 'Select an archive card to inspect the full transcript and raw JSON metadata.' },
-                    { step: '03', title: 'Qualification Status', desc: 'View whether a lead was qualified or failed based on the AI assessment.' },
-                    { step: '04', title: 'POPIA Audit Export', desc: 'Download structured records for compliance auditing.' }
+                    { step: 'VAULT', title: 'Signal Artifact Repository', desc: 'Encrypted repository for all signal artifacts, transcripts, and parsed metadata. Every completed call is committed here with a full audit trail and timestamp.' },
+                    { step: 'INSPECT', title: 'Artifact Analysis', desc: 'Select any archive card to inspect the full conversational transcript and the raw JSON output contract from the AI qualification engine.' },
+                    { step: 'VERDICT', title: 'Qualification Verdict', desc: 'Each signal is tagged QUALIFIED or FAILED based on the AI\'s structured output contract. POPIA consent status is recorded against every entry.' },
+                    { step: 'EXPORT', title: 'POPIA Audit Export', desc: 'Download structured records for compliance auditing and CRM ingestion. All exports conform to POPIA 2026 data handling requirements.' }
                   ]}
                 />
                 <CallArchive
@@ -2023,28 +2023,28 @@ const App: React.FC = () => {
                 <InfoOverlay 
                   isOpen={showConfigInfo}
                   onClose={() => setShowConfigInfo(false)}
-                  title="Config Hub Guide"
+                  title="07 // Config Hub — Calibration"
                   icon={<SignalIcon className="w-6 h-6" />}
                   steps={[
                     {
-                      step: '01',
-                      title: 'Network Vitals',
-                      desc: 'Monitor latency, uplink speed, and stability of your connection. Low latency is critical for real-time AI voice.'
+                      step: 'CALIBRATION',
+                      title: 'Acoustic Sensitivity',
+                      desc: 'Global adjustment of acoustic sensitivity and multi-language node toggles. Set VAD Threshold to -32dB to prevent ambient office noise triggering false speech detection during live demos.'
                     },
                     {
-                      step: '02',
-                      title: 'API Stability',
-                      desc: 'Check the health of Twilio, Azure, and Gemini APIs. All bars should be full for stable operations.'
+                      step: 'CADENCE',
+                      title: 'Cadence Gap',
+                      desc: 'Set to 1200ms to allow natural pause time after Zandi speaks. Prevents premature interruption and demonstrates AI patience — a key premium differentiator for clients.'
                     },
                     {
-                      step: '03',
-                      title: 'Neural Matrix',
-                      desc: 'Access the connectivity matrix for high-level system control and team initialization.'
+                      step: 'PHONETIC',
+                      title: 'Phonetic Matrix',
+                      desc: 'Verify active voice nodes before demo: Luke (EN-ZA), Thando (ZU-ZA), Ayanda (XH-ZA). All three nodes must be active for full multi-language capability.'
                     },
                     {
-                      step: '04',
-                      title: 'System Calibration',
-                      desc: 'Ensure all neural pathways are aligned. Use this hub to verify the technical foundation of your lab.'
+                      step: 'API',
+                      title: 'API Node Health',
+                      desc: 'Confirm Twilio, Azure Speech, and Gemini API health indicators are at full strength. All three must be GREEN before live demo or client handoff execution.'
                     }
                   ]}
                 />
@@ -2118,28 +2118,28 @@ const App: React.FC = () => {
             <InfoOverlay 
               isOpen={showProtocolInfo}
               onClose={() => setShowProtocolInfo(false)}
-              title="Run Protocol Guide"
+              title="04 // Run Protocol — Logic Core"
               icon={<BeakerIcon className="w-6 h-6" />}
               steps={[
                 {
-                  step: '01',
-                  title: 'Company & Call Guide',
-                  desc: 'Configure company details, product info, AI personality, and the objectives for the call.'
+                  step: 'LOGIC_CORE',
+                  title: 'Neural Injection Template',
+                  desc: 'The primary instruction set defining the AI\'s intent, tone, and data capture goals. Structure: Context (Industry + Agent ID) → Mission (Variable A & B) → Governance (POPIA) → Handoff (QUALIFIED flag for Ledger).'
                 },
                 {
-                  step: '02',
-                  title: 'Language Protocols',
-                  desc: 'Set the greeting, objection handling, closing, and signal switch phrases for each language.'
+                  step: 'HOT-SWAP',
+                  title: 'Multi-Industry Switching',
+                  desc: 'Inject industry-specific logic in seconds while the core grid infrastructure stays constant. Logistics: Waybill ID. Healthcare: Patient DOB. Financial: Debt-review. Solar: 5kW system interest. Same grid, any vertical.'
                 },
                 {
-                  step: '03',
-                  title: 'Edit Mode',
-                  desc: 'Click the Edit button on any section to modify parameters. Save or Cancel to commit your changes.'
+                  step: 'LANG',
+                  title: 'Language Node Protocols',
+                  desc: 'Configure greeting, objection handling, closing, and signal-switch phrases per language. Zandi pivots instantly when the lead switches language mid-stream (e.g. EN → ZU → XH).'
                 },
                 {
-                  step: '04',
-                  title: 'Persistence',
-                  desc: 'All settings are stored locally and persist across sessions. Reset from Backend Settings if needed.'
+                  step: 'PERSIST',
+                  title: 'Persistence Layer',
+                  desc: 'All protocol settings are stored locally and survive session resets. For a full wipe, use Backend Settings → Node 08 ROOT override.'
                 }
               ]}
             />
@@ -2283,28 +2283,28 @@ const App: React.FC = () => {
             <InfoOverlay 
               isOpen={showBackendInfo}
               onClose={() => setShowBackendInfo(false)}
-              title="System Recalibration Guide"
+              title="08 // Backend Settings — Root Access"
               icon={<CpuChipIcon className="w-6 h-6" />}
               steps={[
                 {
-                  step: '01',
-                  title: 'Core Endpoint',
-                  desc: 'Set the URL for your backend server. This is usually auto-detected but can be manually overridden.'
+                  step: 'ROOT',
+                  title: 'Secure Credential Management',
+                  desc: 'Secure management of cloud credentials and system-wide override protocols. Client onboarding is a 3-step plug-and-play process: API Uplink → Prompt Injection → Ledger Sync.'
                 },
                 {
-                  step: '02',
-                  title: 'Neural Hub Control',
-                  desc: 'Reboot or recalibrate the server to ensure all systems are synced and the Google Sheets bridge is active.'
+                  step: 'API UPLINK',
+                  title: 'Client API Keys',
+                  desc: 'Input the client\'s Twilio and Azure keys for full data ownership and security. Their credentials stay within their own cloud tenancy — zero data leakage to the base grid.'
                 },
                 {
-                  step: '03',
-                  title: 'Danger Zone',
-                  desc: 'Use with caution. Resetting the Neural Hub will wipe all local lead data, transcripts, and configuration settings.'
+                  step: 'INJECT',
+                  title: 'Prompt Injection',
+                  desc: 'Update the Node 04 Run Protocol scenario with client-specific industry logic. The AI adapts to any business process in seconds — no code changes, no redeployment required.'
                 },
                 {
-                  step: '04',
-                  title: 'System Integrity',
-                  desc: 'Regular recalibration is recommended after major sheet updates or when switching between local and international protocols.'
+                  step: 'LEDGER SYNC',
+                  title: 'CRM & Sheet Integration',
+                  desc: 'Connect the client\'s CRM or Google Sheet to the Intelligence Ledger. Qualification results and transcripts flow directly into their existing workflow on every completed signal.'
                 }
               ]}
             />
