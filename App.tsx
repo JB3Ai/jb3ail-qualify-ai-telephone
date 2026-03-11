@@ -1019,7 +1019,7 @@ const App: React.FC = () => {
 
   const handleInternalSend = async (directText?: string) => {
     const text = (directText || internalInput).trim();
-    if (!text || isInternalSending || !isInternalCall) return;
+    if (!text || isInternalSending || !isCalling) return;
     setInternalInput('');
     setIsInternalSending(true);
     setTranscriptions(prev => [...prev, { role: 'user', text, timestamp: Date.now() }]);
@@ -1747,14 +1747,12 @@ const App: React.FC = () => {
                     
                     <div className="p-8 border-t border-[#1e293b]/30 bg-black/10">
                       <div className="flex items-center gap-6">
-                          {isInternalCall ? (
-                            <>
                               <input
                                 type="text"
                                 value={internalInput}
                                 onChange={e => setInternalInput(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleInternalSend()}
-                                placeholder="Enter neural stimulus..."
+                                placeholder={isInternalCall ? 'Enter neural stimulus...' : 'Inject operator message...'}
                                 disabled={isInternalSending}
                                 className="flex-1 h-12 bg-black/40 rounded-xl border border-[#66FF66]/30 px-6 text-[#66FF66] text-xs font-mono focus:outline-none focus:border-[#66FF66]/70 placeholder:text-slate-600 disabled:opacity-50"
                               />
@@ -1766,24 +1764,18 @@ const App: React.FC = () => {
                               >
                                 {isInternalSending ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Send'}
                               </button>
-                            </>
-                          ) : (
-                            <div className="flex-1 h-12 bg-black/40 rounded-xl border border-[#1e293b]/30 flex items-center px-6 text-slate-600 text-xs font-mono italic">
-                              Synchronizing duplex audio buffer...
-                            </div>
-                          )}
                           <div className="flex items-center gap-3">
                             <button
                               onClick={toggleMic}
-                              disabled={!isInternalCall || isInternalSending}
+                              disabled={isInternalSending}
                               className={`p-2 rounded-lg transition-all ${isListening ? 'bg-red-500/20 border border-red-500/50' : 'bg-[#66FF66]/10 border border-[#66FF66]/30 hover:bg-[#66FF66]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}
                               title={isListening ? 'Stop listening' : 'Start voice input'}
                             >
                               <MicrophoneIcon className={`w-5 h-5 ${isListening ? 'text-red-400 animate-pulse' : 'text-[#66FF66]'}`} />
                             </button>
-                            <SpeakerWaveIcon className={`w-5 h-5 ${isInternalCall ? 'text-[#66FF66] animate-bounce' : 'text-slate-500 opacity-50'}`} />
+                            <SpeakerWaveIcon className={`w-5 h-5 ${isCalling ? 'text-[#66FF66] animate-bounce' : 'text-slate-500 opacity-50'}`} />
                             {isListening && <span className="text-[8px] font-black text-red-400 uppercase tracking-widest animate-pulse">Listening...</span>}
-                            {!isListening && isInternalCall && <span className="text-[8px] font-black text-[#66FF66] uppercase tracking-widest">Speakerphone Active</span>}
+                            {!isListening && <span className="text-[8px] font-black text-[#66FF66] uppercase tracking-widest">{isInternalCall ? 'Speakerphone Active' : 'Live Session'}</span>}
                           </div>
                       </div>
                     </div>
