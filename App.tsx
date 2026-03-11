@@ -726,6 +726,8 @@ const App: React.FC = () => {
   const [testPhone, setTestPhone] = useState('');
   const [testLang, setTestLang] = useState<Language>(Language.ZULU);
   const [isInternalCall, setIsInternalCall] = useState(false);
+  const [internalInput, setInternalInput] = useState('');
+  const [isInternalSending, setIsInternalSending] = useState(false);
 
   // Editable Run Protocol state
   const [languageProtocols, setLanguageProtocols] = useState<Record<string, { greeting: string; objection: string; closing: string; switch: string }>>(() => {
@@ -967,7 +969,9 @@ const App: React.FC = () => {
     }
   };
 
-  const handleStartInternalCall = (lang: Language) => {
+  const handleStartInternalCall = async (lang: Language) => {
+    const proto = languageProtocols[lang];
+    const greeting = proto?.greeting || `[INTERNAL LINK ESTABLISHED] Core language set to ${getLanguageName(lang)}. Speakerphone active. Ready for neural stimulus.`;
     setIsInternalCall(true);
     setIsCalling(true);
     setActiveClient({
@@ -983,8 +987,21 @@ const App: React.FC = () => {
     });
     setActiveTab('LIVE_TERMINAL');
     setTranscriptions([
-        { role: 'model', text: `[INTERNAL LINK ESTABLISHED] Core language set to ${getLanguageName(lang)}. Speakerphone active. Ready for neural stimulus.`, timestamp: Date.now() }
+        { role: 'model', text: greeting, timestamp: Date.now() }
     ]);
+    // Play greeting audio through device speaker
+    try {
+      const r = await fetch(`${backendUrl}/api/test-voice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: greeting, language: lang })
+      });
+      const d = await r.json();
+      if (d.audioBase64) {
+        const a = new Audio(`data:audio/wav;base64,${d.audioBase64}`);
+        a.play().catch(() => {});
+      }
+    } catch { /* greeting audio is best-effort */ }
   };
 
   const endCall = () => {
@@ -992,6 +1009,37 @@ const App: React.FC = () => {
     setIsInternalCall(false);
     setActiveClient(null);
     setCallDuration(0);
+    setInternalInput('');
+    setIsInternalSending(false);
+  };
+
+  const handleInternalSend = async () => {
+    if (!internalInput.trim() || isInternalSending || !isInternalCall) return;
+    const text = internalInput.trim();
+    setInternalInput('');
+    setIsInternalSending(true);
+    setTranscriptions(prev => [...prev, { role: 'user', text, timestamp: Date.now() }]);
+    try {
+      const r = await fetch(`${backendUrl}/api/converse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language: activeClient?.language || Language.ENGLISH })
+      });
+      const d = await r.json();
+      if (d.success) {
+        setTranscriptions(prev => [...prev, { role: 'model', text: d.text, timestamp: Date.now() }]);
+        if (d.audioBase64) {
+          const a = new Audio(`data:audio/wav;base64,${d.audioBase64}`);
+          a.play().catch(() => {});
+        }
+      } else {
+        setTranscriptions(prev => [...prev, { role: 'model', text: `[LINK ERROR] ${d.error || 'No response from core'}`, timestamp: Date.now() }]);
+      }
+    } catch (e: any) {
+      setTranscriptions(prev => [...prev, { role: 'model', text: `[LINK ERROR] ${e.message}`, timestamp: Date.now() }]);
+    } finally {
+      setIsInternalSending(false);
+    }
   };
 
   const runNeuralTest = async () => {
@@ -1663,9 +1711,30 @@ const App: React.FC = () => {
                     
                     <div className="p-8 border-t border-[#1e293b]/30 bg-black/10">
                       <div className="flex items-center gap-6">
-                          <div className="flex-1 h-12 bg-black/40 rounded-xl border border-[#1e293b]/30 flex items-center px-6 text-slate-600 text-xs font-mono italic">
-                            Synchronizing duplex audio buffer...
-                          </div>
+                          {isInternalCall ? (
+                            <>
+                              <input
+                                type="text"
+                                value={internalInput}
+                                onChange={e => setInternalInput(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleInternalSend()}
+                                placeholder="Enter neural stimulus..."
+                                disabled={isInternalSending}
+                                className="flex-1 h-12 bg-black/40 rounded-xl border border-[#66FF66]/30 px-6 text-[#66FF66] text-xs font-mono focus:outline-none focus:border-[#66FF66]/70 placeholder:text-slate-600 disabled:opacity-50"
+                              />
+                              <button
+                                onClick={handleInternalSend}
+                                disabled={isInternalSending || !internalInput.trim()}
+                                className="h-12 px-6 bg-[#66FF66]/10 hover:bg-[#66FF66]/20 border border-[#66FF66]/30 rounded-xl text-[#66FF66] text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                              >
+                                {isInternalSending ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Send'}
+                              </button>
+                            </>
+                          ) : (
+                            <div className="flex-1 h-12 bg-black/40 rounded-xl border border-[#1e293b]/30 flex items-center px-6 text-slate-600 text-xs font-mono italic">
+                              Synchronizing duplex audio buffer...
+                            </div>
+                          )}
                           <div className="flex items-center gap-3">
                             <MicrophoneIcon className="w-5 h-5 text-[#66FF66] animate-pulse" />
                             <SpeakerWaveIcon className={`w-5 h-5 ${isInternalCall ? 'text-[#66FF66] animate-bounce' : 'text-slate-500 opacity-50'}`} />

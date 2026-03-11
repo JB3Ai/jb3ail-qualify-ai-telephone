@@ -746,6 +746,36 @@ app.post('/api/test-logic', async (req, res) => {
   }
 });
 
+// 8. INTERNAL NEURAL LINK — Browser-based conversational loop
+// Accepts { text, language }, runs full Zandi protocol (buildSystemPrompt),
+// returns { success, text: spokenText, audioBase64 } for browser Audio playback.
+app.post('/api/converse', async (req, res) => {
+  const { text, language } = req.body;
+  if (!text) return res.status(400).json({ error: 'No text provided' });
+  try {
+    const lang = (language as string) || 'en-ZA';
+    console.log(`🔗 Internal Neural Link [${lang}]: ${text}`);
+    const systemPrompt = buildSystemPrompt(lang);
+    const aiResponse = await aiService.generateResponse(text, systemPrompt);
+
+    // Strip JSON output contract block to get natural-language spoken text
+    let spokenText = aiResponse.replace(/\{[\s\S]*?"status"\s*:\s*"(QUALIFIED|FAILED)"[\s\S]*?\}/g, '').trim();
+    if (!spokenText) {
+      // Pure-JSON response — extract reasoning field for speech
+      try {
+        const parsed = JSON.parse(aiResponse);
+        spokenText = parsed.reasoning || aiResponse;
+      } catch { spokenText = aiResponse; }
+    }
+
+    const audioBuffer = await voiceService.generateAudio(spokenText, { allowFallback: true, format: 'wav', language: lang });
+    res.json({ success: true, text: spokenText, audioBase64: Buffer.from(audioBuffer).toString('base64') });
+  } catch (err: any) {
+    console.error('❌ Internal Neural Link Error:', err);
+    res.status(500).json({ success: false, error: err?.message || 'Converse failed' });
+  }
+});
+
 async function startServer() {
   // Global Error Handler for API routes
   app.use('/api', (err: any, req: any, res: any, next: any) => {
