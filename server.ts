@@ -206,8 +206,8 @@ const getGoogleAuth = async (forceRefresh = false) => {
       const credentials = JSON.parse(process.env.GOOGLE_KEY_JSON_DATA);
       cachedAuth = new google.auth.GoogleAuth({ credentials, scopes });
       console.log('✅ Google Auth initialized from GOOGLE_KEY_JSON_DATA env var');
-    } else if (require('fs').existsSync('./google-key.json')) {
-      cachedAuth = new google.auth.GoogleAuth({ keyFile: './google-key.json', scopes });
+    } else if (require('fs').existsSync(require('path').join(__dirname, '..', 'google-key.json'))) {
+      cachedAuth = new google.auth.GoogleAuth({ keyFile: require('path').join(__dirname, '..', 'google-key.json'), scopes });
       console.log('✅ Google Auth initialized from google-key.json file');
     } else {
       throw new Error(
