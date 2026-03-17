@@ -1563,7 +1563,7 @@ const App: React.FC = () => {
                   NO_LEADS_IN_PIPELINE. SYNC_FROM_INBOX_TO_INITIALIZE.
                 </div>
               ) : (
-                <div className="bg-[#1A2333] rounded-[24px] border border-white/5 overflow-hidden overflow-x-auto flex-1">
+                <div className="bg-[#1A2333] rounded-[24px] border border-white/5 overflow-auto scrollbar-hide flex-1">
                   {/* Desktop table */}
                   <table className="w-full text-left hidden sm:table">
                     <thead className="bg-[#020617] text-[10px] text-[#39FF88] font-orbitron sticky top-0 z-10">
