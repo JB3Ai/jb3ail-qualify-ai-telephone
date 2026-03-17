@@ -79,14 +79,14 @@ const getLanguageName = (lang: string) => {
   return names[code] || lang;
 };
 
-const AZURE_BACKEND_URL = 'https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net';
+const RENDER_BACKEND_URL = 'https://jb3ail-qualify-ai-telephone.onrender.com';
 
 const getDefaultBackendUrl = () => {
-  // VITE_API_BASE_URL set in the host environment dashboard takes highest priority
+  // VITE_API_BASE_URL set in Render's environment dashboard takes highest priority
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL as string;
   const isLocalhost =
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocalhost ? 'http://localhost:3000' : AZURE_BACKEND_URL;
+  return isLocalhost ? 'http://localhost:3000' : RENDER_BACKEND_URL;
 };
 
 /* ── Telemetry Strip ── */
@@ -721,6 +721,7 @@ const App: React.FC = () => {
   const [selectedArchiveSignal, setSelectedArchiveSignal] = useState<Client | null>(null);
   const [showBackendInfo, setShowBackendInfo] = useState(false);
   
+  const [showColdStartToast, setShowColdStartToast] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const callDurationRef = useRef(0);
   const [completedDurations, setCompletedDurations] = useState<number[]>([]);
@@ -942,6 +943,11 @@ const App: React.FC = () => {
   };
 
   const handleStartCall = async (client: Client) => {
+    // Show cold-start notice if backend hasn't confirmed it's awake yet
+    if (backendStatus !== 'connected') {
+      setShowColdStartToast(true);
+      setTimeout(() => setShowColdStartToast(false), 12000);
+    }
     try {
         let response: Response;
         try {
@@ -2574,10 +2580,32 @@ const App: React.FC = () => {
           0%, 100% { transform: scaleY(1); opacity: 0.3; }
           50% { transform: scaleY(1.5); opacity: 1; }
         }
+        @keyframes toast-in { from { opacity: 0; transform: translateY(-16px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .animate-toast-in { animation: toast-in 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .animate-fade-in { animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
         .animate-slide-up { animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
         .animate-waveform { animation: waveform 0.7s infinite ease-in-out; }
       `}</style>
+
+      {/* COLD-START TOAST */}
+      {showColdStartToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-toast-in">
+          <div className="flex items-start gap-4 bg-[#0d1117] border border-[#66FF66]/30 rounded-lg px-6 py-4 shadow-2xl shadow-[#66FF66]/5 max-w-sm">
+            <div className="mt-0.5">
+              <svg className="w-5 h-5 text-[#66FF66] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-[#66FF66] font-black text-xs uppercase tracking-widest mb-1">Neural Engine Spooling Up</p>
+              <p className="text-slate-400 text-xs leading-relaxed">First launch may take ~30 seconds while the system wakes. Your call is queued — stand by.</p>
+            </div>
+            <button onClick={() => setShowColdStartToast(false)} className="text-slate-600 hover:text-slate-300 transition-colors shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
