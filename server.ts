@@ -10,7 +10,6 @@ import { createServer } from 'http';
 import Twilio from 'twilio';
 import cors from 'cors'; // Added CORS for frontend-backend communication
 import { voiceService } from './services/voiceService';
-import { geminiService } from './services/geminiService';
 import { aiService } from './services/azureOpenAiService';
 import { clientService } from './services/clientService';
 import { google } from 'googleapis';
@@ -128,6 +127,56 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     wsClients = wsClients.filter(c => c !== ws);
+  });
+});
+
+// ── /api/twilio/stream — Zero-Latency WebSocket Bridge ───────────────────────
+// Azure TTS → raw mu-law in RAM → base64 → Twilio, no disk I/O
+const streamWss = new WebSocketServer({ server, path: '/api/twilio/stream' });
+
+streamWss.on('connection', (ws) => {
+  let streamSid = '';
+
+  ws.on('message', async (raw) => {
+    try {
+      const msg = JSON.parse(raw.toString());
+
+      if (msg.event === 'start') {
+        streamSid = msg.start?.streamSid ?? '';
+        broadcastLog('INFO', `[STREAM_BRIDGE] Connected: ${streamSid}`);
+      }
+
+      // Inbound caller audio — forward to STT pipeline when ready
+      if (msg.event === 'media') {
+        // const userAudioBase64 = msg.media.payload;
+        // Pass to Azure STT REST endpoint for recognition
+      }
+    } catch (err: any) {
+      broadcastLog('WARN', `[STREAM_BRIDGE] Parse error: ${err?.message}`);
+    }
+  });
+
+  // 🚀 Send synthesised speech back to the active Twilio call
+  const sendAudioToTwilio = async (textToSpeak: string, locale: string) => {
+    try {
+      const audioBuffer = await voiceService.generateAudio(textToSpeak, { format: 'mulaw', language: locale });
+      await streamAudioToTwilio(ws, streamSid, audioBuffer);
+      ws.send(JSON.stringify({
+        event: 'mark',
+        streamSid,
+        mark: { name: 'Mzanzi_Engine_Chunk_Complete' },
+      }));
+      broadcastLog('INFO', `[STREAM_BRIDGE] Audio sent: "${textToSpeak.slice(0, 40)}..."`);
+    } catch (err: any) {
+      broadcastLog('ERROR', `[STREAM_BRIDGE] Synthesis failed: ${err?.message}`);
+    }
+  };
+
+  // Expose sendAudioToTwilio on the socket so call handlers can reference it
+  (ws as any).sendAudioToTwilio = sendAudioToTwilio;
+
+  ws.on('close', () => {
+    broadcastLog('INFO', `[STREAM_BRIDGE] Disconnected: ${streamSid}`);
   });
 });
 
@@ -379,11 +428,19 @@ app.all('/make-call', async (req, res) => {
     // Ensure DOMAIN is set or fallback to APP_URL for the environment
     const domain = process.env.DOMAIN || (process.env.APP_URL ? new URL(process.env.APP_URL).host : `localhost:${PORT}`);
 
+    // Build TwiML that opens a WSS media stream back to this server
+    const twiml = new Twilio.twiml.VoiceResponse();
+    twiml.connect().stream({
+      url: `wss://${domain}/api/twilio/stream`,
+      name: 'Mzanzi_Neural_Stream',
+    });
+
     const call = await getTwilioClient().calls.create({
       to: dialPhone,
       from: process.env.TWILIO_PHONE_NUMBER || '',
-      url: `https://${domain}/voice-handler`,
-      timeout: 60
+      twiml: twiml.toString(),
+      record: true,
+      timeout: 60,
     });
 
     // Track call metadata for Intelligence Ledger (include language for protocol routing)

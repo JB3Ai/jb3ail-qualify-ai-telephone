@@ -1,300 +1,127 @@
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
-import axios from 'axios';
 
-const DEFAULT_VOICE_NAME = 'en-ZA-LukeNeural';
-const VOICE_CANDIDATES_BY_LANGUAGE: Record<string, string[]> = {
-  // en-ZA: Luke (Executive/Pretoria-Standard) → Leah fallback
-  'en-za':  ['en-ZA-LukeNeural', 'en-ZA-LeahNeural', 'en-US-AvaMultilingualNeural'],
-  // zu-ZA: Thando (Ubuntu resonance, native Nguni)
-  'zu-za':  ['zu-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-ZA-LukeNeural'],
-  // xh-ZA: Ayanda primary (Eastern Cape clarity) → Thando secondary
-  'xh-za':  ['xh-ZA-AyandaNeural', 'xh-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-ZA-LukeNeural'],
-  // af-ZA: Adri (clear, neighborly)
-  'af-za':  ['af-ZA-AdriNeural', 'af-ZA-WillemNeural', 'en-ZA-LukeNeural'],
-  // nso-ZA: no native Azure voice — zu-ZA-Thando is the closest Nguni/Sotho approximation
-  'nso-za': ['zu-ZA-ThandoNeural', 'en-US-AvaMultilingualNeural', 'en-ZA-LukeNeural'],
-  // pt-BR: Antonio (trade/business professional) — Brazilian Portuguese has better neural coverage
-  'pt-br':  ['pt-BR-AntonioNeural', 'pt-PT-RaquelNeural', 'en-US-AvaMultilingualNeural'],
-  // pt-PT kept as fallback locale key
-  'pt-pt':  ['pt-PT-RaquelNeural', 'pt-BR-AntonioNeural', 'en-US-AvaMultilingualNeural'],
-  // el-GR: Nestoras primary (authoritative, fast articulation)
-  'el-gr':  ['el-GR-NestorasNeural', 'el-GR-AthinaNeural', 'en-US-AvaMultilingualNeural'],
-  // zh-CN: Yunxi primary (technical Mandarin, optimized speed)
-  'zh-cn':  ['zh-CN-YunxiNeural', 'zh-CN-XiaoxiaoNeural', 'en-US-AvaMultilingualNeural'],
+// Direct BCP-47 → Neural voice mapping. One voice per locale, no fallback chain.
+const PRIMARY_VOICES: Record<string, string> = {
+  'en-za':  'en-ZA-LukeNeural',
+  'zu-za':  'zu-ZA-ThandoNeural',
+  'xh-za':  'xh-ZA-AyandaNeural',
+  'af-za':  'af-ZA-AdriNeural',
+  'nso-za': 'zu-ZA-ThandoNeural',  // closest Nguni approximation for Sepedi
+  'pt-br':  'pt-BR-AntonioNeural',
+  'pt-pt':  'pt-PT-RaquelNeural',
+  'el-gr':  'el-GR-NestorasNeural',
+  'zh-cn':  'zh-CN-YunxiNeural',
 };
 
-const PRONUNCIATION_ALIASES_BY_LANGUAGE: Record<string, Array<{ term: string; alias: string }>> = {
-  'en-za': [
-    { term: 'Mzansi', alias: 'M-zahn-see' },
-    { term: 'Zandi', alias: 'Zahn-dee' },
-    { term: 'JB3Ai', alias: 'J B three A I' },
-    { term: 'POPIA', alias: 'poh-pee-ah' },
-  ],
-  'af-za': [
-    { term: 'Mzansi', alias: 'M-zahn-see' },
-    { term: 'Zandi', alias: 'Zahn-dee' },
-    { term: 'JB3Ai', alias: 'J B three A I' },
-    { term: 'POPIA', alias: 'poh-pee-ah' },
-    { term: 'Goeiedag', alias: 'khoo-yee-dakh' },
-    { term: 'huiseienaar', alias: 'hoys-eye-uh-naar' },
-    { term: 'besonderhede', alias: 'buh-zon-der-hay-duh' },
-    { term: 'verifieer', alias: 'veh-ri-feer' },
-    { term: 'koers', alias: 'koors' },
-    { term: 'bevestiging', alias: 'buh-fes-ti-ghing' },
-    { term: 'Geniet u dag verder', alias: 'guh-neet uu dakh fer-der' },
-    { term: 'sonkrag', alias: 'son-krahkh' },
-    { term: 'Inisialiseer', alias: 'ee-nee-see-ah-lee-seer' },
-  ],
-  'zu-za': [
-    { term: 'Mzansi', alias: 'M-zahn-see' },
-    { term: 'JB3Ai', alias: 'J B three A I' },
-    { term: 'Sawubona', alias: 'sah-woo-boh-nah' },
-    { term: 'Ngiyaxolisa', alias: 'ngee-yah-kho-lee-sah' },
-    { term: 'Ngiyabonga', alias: 'ngee-yah-bon-gah' },
-    { term: 'ngesiZulu', alias: 'ng-geh-see-zoo-loo' },
-  ],
-  'xh-za': [
-    { term: 'Mzansi', alias: 'M-zahn-see' },
-    { term: 'JB3Ai', alias: 'J B three A I' },
-  ],
-  'nso-za': [
-    { term: 'Mzansi', alias: 'M-zahn-see' },
-    { term: 'JB3Ai', alias: 'J B three A I' },
-    { term: 'Dumela', alias: 'doo-meh-lah' },
-    { term: 'tšea', alias: 'tseh-ah' },
-    { term: 'netefatša', alias: 'neh-teh-fah-tsha' },
-    { term: 'dintlha', alias: 'deen-tla' },
-  ],
-  'pt-pt': [
-    { term: 'Mzansi', alias: 'M-zahn-see' },
-    { term: 'JB3Ai', alias: 'J B three A I' },
-  ],
-  'el-gr': [
-    { term: 'Mzansi', alias: 'M-zahn-see' },
-    { term: 'JB3Ai', alias: 'J B three A I' },
-  ],
-  'zh-cn': [
-    { term: 'Mzansi', alias: 'M-zahn-see' },
-    { term: 'JB3Ai', alias: 'J B three A I' },
-  ],
-  'pt-br': [
-    { term: 'Mzansi', alias: 'M-zahn-see' },
-    { term: 'JB3Ai', alias: 'J B three A I' },
-  ],
+// Per-language SSML prosody — zero latency, prevents Azure hyper-articulation on Nguni voices
+const PROSODY: Record<string, { rate: string; pitch?: string }> = {
+  'xh-za':  { pitch: '-12%', rate: '-5%' },
+  'zu-za':  { pitch: '-5%',  rate: '-5%' },
+  'nso-za': { pitch: '-15%', rate: '-5%' },
+  'af-za':  { rate: '-3%' },
+  'zh-cn':  { rate: '+2%' },
 };
+const DEFAULT_PROSODY = { rate: '-3%' };
 
-// Per-language SSML prosody overrides — "Ubuntu Resonance" profile.
-// pitch:   lowers fundamental frequency for chest-voice authenticity in Nguni languages
-// contour: models the tonal arc of flowing speech (rise-sustain-fall) to prevent clipping
-// rate:    slight reduction prevents hyper-articulation common in Azure neural defaults
-type ProsodyConfig = { rate: string; pitch?: string; contour?: string };
-
-// Nguni contour: flat open → slight dip → gentle rise → natural close
-const NGUNI_CONTOUR = '(0%, +0Hz) (20%, -2Hz) (80%, +1Hz) (100%, -3Hz)';
-
-const PROSODY_BY_LANGUAGE: Record<string, ProsodyConfig> = {
-  'xh-za':  { pitch: '-12%', rate: '-5%', contour: NGUNI_CONTOUR }, // Xhosa/Ayanda: deepest Ubuntu Resonance
-  'zu-za':  { pitch: '-5%',  rate: '-5%', contour: NGUNI_CONTOUR }, // Zulu/Thando: Hlonipha tonal profile
-  'nso-za': { pitch: '-15%', rate: '-5%', contour: NGUNI_CONTOUR }, // Sepedi: calibrated for Sotho-Tswana tonal shifts
-  'af-za':  { rate: '-3%' },                                        // Afrikaans/Adri: direct, clear, no tonal arc
-  'zh-cn':  { rate: '+2%' },                                        // Mandarin/Yunxi: faster rate for technical clarity
-};
-const DEFAULT_PROSODY: ProsodyConfig = { rate: '-3%' };
-
-function normalizeLanguage(language?: string): string {
-  return (language || '').trim().toLowerCase();
+function normalizeLocale(locale?: string): string {
+  return (locale || '').trim().toLowerCase();
 }
 
-function resolveVoiceCandidates(language?: string): string[] {
-  const normalized = normalizeLanguage(language);
-  const candidates = VOICE_CANDIDATES_BY_LANGUAGE[normalized] || [DEFAULT_VOICE_NAME];
-  return Array.from(new Set([...candidates, DEFAULT_VOICE_NAME]));
-}
-
-function resolveLocale(language?: string): string {
-  const normalized = normalizeLanguage(language);
+function toBcp47(normalized: string): string {
+  const [lang, region] = normalized.split('-');
+  if (lang && region) return `${lang}-${region.toUpperCase()}`;
   return normalized || 'en-ZA';
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function escapeXml(v: string): string {
+  return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
-function buildSsmlText(text: string, language?: string): string {
-  const normalized = normalizeLanguage(language);
-  const aliases = PRONUNCIATION_ALIASES_BY_LANGUAGE[normalized] || [];
-  if (!aliases.length) {
-    return escapeXml(text);
-  }
-
-  let withTokens = text;
-  const tokenMappings: Array<{ token: string; term: string; alias: string }> = [];
-
-  aliases.forEach((entry, index) => {
-    const token = `__ALIAS_${index}__`;
-    const regex = new RegExp(`\\b${escapeRegExp(entry.term)}\\b`, 'gi');
-    withTokens = withTokens.replace(regex, token);
-    tokenMappings.push({ token, term: entry.term, alias: entry.alias });
-  });
-
-  let escaped = escapeXml(withTokens);
-  tokenMappings.forEach(({ token, term, alias }) => {
-    const replacement = `<sub alias="${escapeXml(alias)}">${escapeXml(term)}</sub>`;
-    escaped = escaped.split(token).join(replacement);
-  });
-
-  return escaped;
+function buildSsml(text: string, voiceName: string, bcp47Locale: string, normalizedLocale: string): string {
+  const p = PROSODY[normalizedLocale] ?? DEFAULT_PROSODY;
+  const attrs = [p.rate ? `rate='${p.rate}'` : '', p.pitch ? `pitch='${p.pitch}'` : '']
+    .filter(Boolean).join(' ');
+  return `<speak version='1.0' xml:lang='${bcp47Locale}'><voice xml:lang='${bcp47Locale}' name='${voiceName}'><prosody ${attrs}>${escapeXml(text)}</prosody></voice></speak>`;
 }
 
-function buildSsmlDocument(text: string, locale: string, voiceName: string, language?: string): string {
-  const body = buildSsmlText(text, language);
-  const prosody = PROSODY_BY_LANGUAGE[normalizeLanguage(language)] ?? DEFAULT_PROSODY;
-  const prosodyAttrs = [
-    prosody.rate    ? `rate='${prosody.rate}'`         : '',
-    prosody.pitch   ? `pitch='${prosody.pitch}'`       : '',
-    prosody.contour ? `contour="${prosody.contour}"` : '',
-  ].filter(Boolean).join(' ');
-  return `<speak version='1.0' xml:lang='${locale}'><voice xml:lang='${locale}' name='${voiceName}'><prosody ${prosodyAttrs}>${body}</prosody></voice></speak>`;
-}
+async function synthesize(text: string, locale: string, outputFormat: sdk.SpeechSynthesisOutputFormat): Promise<Uint8Array> {
+  const key    = (process.env.SPEECH_KEY    || '').trim();
+  const region = (process.env.SPEECH_REGION || '').trim().toLowerCase();
+  if (!key || !region) throw new Error('SPEECH_KEY or SPEECH_REGION missing');
 
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
+  const normalizedLocale = normalizeLocale(locale);
+  const bcp47Locale      = toBcp47(normalizedLocale);
+  const voiceName        = PRIMARY_VOICES[normalizedLocale] ?? PRIMARY_VOICES['en-za'];
 
-async function synthesizeWavViaRest(text: string, key: string, region: string, voiceName: string, locale: string, language?: string): Promise<Uint8Array> {
-  const endpoint = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
-  const ssml = buildSsmlDocument(text, locale, voiceName, language);
-
-  const response = await axios.post<ArrayBuffer>(endpoint, ssml, {
-    responseType: 'arraybuffer',
-    headers: {
-      'Ocp-Apim-Subscription-Key': key,
-      'Content-Type': 'application/ssml+xml',
-      'X-Microsoft-OutputFormat': 'riff-16khz-16bit-mono-pcm',
-      'User-Agent': 'jb3ai-neural-hub',
-    },
-    timeout: 15000,
-  });
-
-  return new Uint8Array(response.data);
-}
-
-async function synthesizeMuLawViaSdk(text: string, key: string, region: string, voiceName: string, locale: string, language?: string): Promise<Uint8Array> {
   const speechConfig = sdk.SpeechConfig.fromSubscription(key, region);
-  speechConfig.speechSynthesisVoiceName = voiceName;
-  speechConfig.speechSynthesisOutputFormat = sdk.SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw;
-  // Allow longer silence before cutting off — critical for Xhosa/Zulu mid-sentence pauses
-  speechConfig.setProperty(sdk.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, '5000');
-  // Extend segmentation silence window — accommodates Zulu/Xhosa tonal pause patterns
-  speechConfig.setProperty(sdk.PropertyId.Speech_SegmentationSilenceTimeoutMs, '1200');
-  // Start synthesis at first natural pause (comma/breath) — reduces first-byte latency
+  speechConfig.speechSynthesisVoiceName    = voiceName;
+  speechConfig.speechSynthesisOutputFormat = outputFormat;
+  // Don't fire sentence-boundary events — reduces per-chunk overhead
   speechConfig.setProperty(sdk.PropertyId.SpeechServiceResponse_RequestSentenceBoundary, 'false');
-  const synthesizer = new sdk.SpeechSynthesizer(speechConfig);
-  const ssml = buildSsmlDocument(text, locale, voiceName, language);
 
-  return new Promise((resolve, reject) => {
+  // null AudioConfig → in-memory buffer, no disk I/O
+  const synthesizer = new sdk.SpeechSynthesizer(speechConfig, null as any);
+  const ssml = buildSsml(text, voiceName, bcp47Locale, normalizedLocale);
+
+  return new Promise<Uint8Array>((resolve, reject) => {
     synthesizer.speakSsmlAsync(
       ssml,
       (result) => {
+        synthesizer.close();
         if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
           resolve(new Uint8Array(result.audioData));
         } else {
-          reject(new Error(result.errorDetails || 'Speech synthesis failed'));
+          reject(new Error(result.errorDetails || 'Synthesis failed'));
         }
-        synthesizer.close();
       },
-      (error) => {
-        synthesizer.close();
-        reject(new Error(String(error)));
-      }
+      (error) => { synthesizer.close(); reject(new Error(String(error))); }
     );
   });
 }
 
-// helper: simple mu-law encoder (input sample in [-1,1])
-function linearToMuLaw(sample: number): number {
+function generateSineFallback(durationSec = 1, sampleRate = 8000, freq = 440): Uint8Array {
   const MU = 255;
-  const sign = sample < 0 ? 1 : 0;
-  let magnitude = Math.min(1, Math.abs(sample));
-  const muLawSample = sign * 0x80 | (Math.log(1 + MU * magnitude) / Math.log(1 + MU) * 0x7F);
-  return muLawSample & 0xFF;
-}
-
-// generate a sine wave fallback in mu-law format
-function generateSineFallback(durationSeconds = 1, sampleRate = 8000, freq = 440): Uint8Array {
-  const length = Math.floor(durationSeconds * sampleRate);
-  const out = new Uint8Array(length);
-  for (let i = 0; i < length; i++) {
-    const t = i / sampleRate;
-    const sample = Math.sin(2 * Math.PI * freq * t);
-    out[i] = linearToMuLaw(sample);
+  const len = Math.floor(durationSec * sampleRate);
+  const out = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    const s = Math.sin(2 * Math.PI * freq * (i / sampleRate));
+    const m = Math.min(1, Math.abs(s));
+    const sign = s < 0 ? 0x80 : 0;
+    out[i] = (sign | Math.round(Math.log(1 + MU * m) / Math.log(1 + MU) * 0x7F)) & 0xFF;
   }
   return out;
 }
 
+// Thin wrapper exported for the /api/twilio/stream WSS bridge
+export async function synthesizeSpeechStream(inputText: string, locale: string): Promise<Uint8Array> {
+  return voiceService.generateAudio(inputText, { format: 'mulaw', language: locale });
+}
+
 export const voiceService = {
-  async generateAudio(text: string, options?: { allowFallback?: boolean; format?: 'mulaw' | 'wav'; language?: string }): Promise<Uint8Array> {
+  async generateAudio(
+    text: string,
+    options?: { allowFallback?: boolean; format?: 'mulaw' | 'wav'; language?: string }
+  ): Promise<Uint8Array> {
     const allowFallback = options?.allowFallback ?? true;
-    const format = options?.format ?? 'mulaw';
-    const locale = resolveLocale(options?.language);
-    const voiceCandidates = resolveVoiceCandidates(options?.language);
     const inputText = text.trim();
-    const speechKey = (process.env.SPEECH_KEY || '').trim();
-    const speechRegion = (process.env.SPEECH_REGION || '').trim().toLowerCase();
 
     if (!inputText) {
-      const message = 'Text is empty';
-      if (!allowFallback) {
-        throw new Error(message);
-      }
+      if (!allowFallback) throw new Error('Text is empty');
       return generateSineFallback();
     }
 
-    if (!speechKey || !speechRegion) {
-      const message = 'SPEECH_KEY or SPEECH_REGION missing';
-      console.warn(`⚠️ ${message}${allowFallback ? ', returning fallback tone' : ''}`);
-      if (!allowFallback) {
-        throw new Error(message);
-      }
+    const outputFormat = (options?.format ?? 'mulaw') === 'wav'
+      ? sdk.SpeechSynthesisOutputFormat.Riff16Khz16BitMonoPcm   // browser playback
+      : sdk.SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw;   // Twilio <Play>
+
+    try {
+      return await synthesize(inputText, options?.language ?? 'en-ZA', outputFormat);
+    } catch (error: any) {
+      const msg = String(error?.message || error);
+      console.error(`⚠️ Speech synthesis failed [${options?.language ?? 'en-ZA'}]: ${msg}`);
+      if (!allowFallback) throw new Error(msg);
       return generateSineFallback();
     }
-
-    if (format === 'wav') {
-      let lastMessage = 'Azure Speech REST synthesis failed';
-      for (const voiceName of voiceCandidates) {
-        try {
-          return await synthesizeWavViaRest(inputText, speechKey, speechRegion, voiceName, locale, options?.language);
-        } catch (error: any) {
-          const status = error?.response?.status;
-          const details = error?.response?.data ? Buffer.from(error.response.data).toString('utf8') : '';
-          lastMessage = `Azure Speech REST synthesis failed${status ? ` (HTTP ${status})` : ''}${details ? `: ${details}` : ''}`;
-        }
-      }
-
-      console.error(lastMessage);
-      if (!allowFallback) {
-        throw new Error(lastMessage);
-      }
-    }
-
-    let lastSdkMessage = 'Speech synthesis failed';
-    for (const voiceName of voiceCandidates) {
-      try {
-        return await synthesizeMuLawViaSdk(inputText, speechKey, speechRegion, voiceName, locale, options?.language);
-      } catch (error: any) {
-        lastSdkMessage = String(error?.message || error || 'Speech synthesis failed');
-      }
-    }
-
-    if (!allowFallback) {
-      throw new Error(lastSdkMessage);
-    }
-
-    return generateSineFallback();
   }
 };
