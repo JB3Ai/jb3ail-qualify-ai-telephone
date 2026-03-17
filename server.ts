@@ -988,7 +988,10 @@ async function startServer() {
     });
   });
 
-  if (process.env.NODE_ENV !== 'production') {
+  // Detect production: Azure sets WEBSITE_SITE_NAME; also check NODE_ENV
+  const isProduction = process.env.NODE_ENV === 'production' || !!process.env.WEBSITE_SITE_NAME;
+
+  if (!isProduction) {
     // Dynamic import of Vite — only in dev mode, keeps production bundle lean
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
@@ -999,13 +1002,14 @@ async function startServer() {
   } else {
     const distDir = resolveFrontendDistDir();
     if (!distDir) {
-      throw new Error('Unable to locate frontend dist directory. Expected dist/index.html.');
+      // Warn but don't crash — API routes still function without the frontend bundle
+      console.warn('[WARN] Frontend dist/ not found. Serving API only.');
+    } else {
+      app.use(express.static(distDir));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distDir, 'index.html'));
+      });
     }
-
-    app.use(express.static(distDir));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distDir, 'index.html'));
-    });
   }
 
   server.listen(PORT, "0.0.0.0", () => {
