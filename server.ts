@@ -136,27 +136,15 @@ const streamWss = new WebSocketServer({ server, path: '/api/twilio/stream' });
 
 streamWss.on('connection', (ws) => {
   let streamSid = '';
+  let callSid   = '';
+  let callLang  = 'en-ZA';
+  let isBusy    = false;
+  let audioChunks: Uint8Array[]             = [];
+  let silenceTimer: ReturnType<typeof setTimeout> | null = null;
+  const SILENCE_MS = 1500; // ms of caller silence before STT is triggered
 
-  ws.on('message', async (raw) => {
-    try {
-      const msg = JSON.parse(raw.toString());
-
-      if (msg.event === 'start') {
-        streamSid = msg.start?.streamSid ?? '';
-        broadcastLog('INFO', `[STREAM_BRIDGE] Connected: ${streamSid}`);
-      }
-
-      // Inbound caller audio — forward to STT pipeline when ready
-      if (msg.event === 'media') {
-        // const userAudioBase64 = msg.media.payload;
-        // Pass to Azure STT REST endpoint for recognition
-      }
-    } catch (err: any) {
-      broadcastLog('WARN', `[STREAM_BRIDGE] Parse error: ${err?.message}`);
-    }
-  });
-
-  // 🚀 Send synthesised speech back to the active Twilio call
+  // ── 1. TTS → Twilio ────────────────────────────────────────────────────────
+  // Declared first so processUtterance can reference it.
   const sendAudioToTwilio = async (textToSpeak: string, locale: string) => {
     try {
       const audioBuffer = await voiceService.generateAudio(textToSpeak, { format: 'mulaw', language: locale });
@@ -172,10 +160,124 @@ streamWss.on('connection', (ws) => {
     }
   };
 
-  // Expose sendAudioToTwilio on the socket so call handlers can reference it
+  // ── 2. Full turn pipeline: STT → AI → TTS ─────────────────────────────────
+  const processUtterance = async () => {
+    if (isBusy || audioChunks.length === 0) return;
+    isBusy = true;
+
+    const combined = Buffer.concat(audioChunks.map(c => Buffer.from(c)));
+    audioChunks = [];
+
+    try {
+      // Convert raw mu-law chunks to a WAV buffer for Azure STT
+      const wavBuffer = muLawToWav(new Uint8Array(combined));
+
+      const speechKey    = (process.env.SPEECH_KEY    || '').trim();
+      const speechRegion = (process.env.SPEECH_REGION || '').trim().toLowerCase();
+      const protocol     = LANGUAGE_PROTOCOLS[callLang] || LANGUAGE_PROTOCOLS['en-ZA'];
+      const sttUrl = `https://${speechRegion}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=${protocol.speechLang}`;
+
+      const sttRes  = await fetch(sttUrl, {
+        method: 'POST',
+        headers: { 'Ocp-Apim-Subscription-Key': speechKey, 'Content-Type': 'audio/wav' },
+        body: wavBuffer,
+      });
+      const sttJson = await sttRes.json() as { RecognitionStatus: string; DisplayText?: string };
+      const userSpeech  = sttJson.RecognitionStatus === 'Success' ? (sttJson.DisplayText || '').trim() : '';
+
+      if (!userSpeech) {
+        broadcastLog('WARN', '[STREAM_BRIDGE] STT: no speech recognised');
+        isBusy = false;
+        return;
+      }
+      broadcastLog('INFO', `[STREAM_BRIDGE] STT: "${userSpeech}"`);
+
+      // Track in activeCalls for Intelligence Ledger
+      if (callSid && activeCalls.has(callSid)) {
+        activeCalls.get(callSid)!.aiConversation.push(`User: ${userSpeech}`);
+      }
+
+      // Azure OpenAI
+      const systemPrompt = buildSystemPrompt(callLang);
+      const aiResponse   = await aiService.generateResponse(userSpeech, systemPrompt);
+
+      if (callSid && activeCalls.has(callSid)) {
+        activeCalls.get(callSid)!.aiConversation.push(`AI: ${aiResponse}`);
+      }
+      broadcastLog('INFO', `[STREAM_BRIDGE] AI: "${aiResponse.slice(0, 80)}"`);
+
+      // Detect call completion (matches /handle-response logic)
+      const completionKeywords = ['verified', 'qualified', 'thank you for your time', 'goodbye', 'have a great day', 'call complete'];
+      let outputContract: { status?: string; reasoning?: string; interest_level?: string; popia_consent?: string } | null = null;
+      const jsonMatch = aiResponse.match(/\{[\s\S]*"status"\s*:\s*"(QUALIFIED|FAILED)"[\s\S]*\}/);
+      if (jsonMatch) { try { outputContract = JSON.parse(jsonMatch[0]); } catch { /* keyword fallback */ } }
+      const isCallComplete = !!outputContract || completionKeywords.some(kw => aiResponse.toLowerCase().includes(kw));
+
+      // Strip JSON contract from spoken output
+      const spokenResponse = aiResponse.replace(/\{[\s\S]*"status"\s*:[\s\S]*\}/, '').trim();
+
+      await sendAudioToTwilio(spokenResponse, callLang);
+
+      if (isCallComplete && callSid) {
+        const callMeta = activeCalls.get(callSid);
+        const status = outputContract?.status || (aiResponse.toLowerCase().includes('qualified') ? 'QUALIFIED' : 'COMPLETED');
+        const ledgerOutput = outputContract
+          ? `${outputContract.reasoning || ''} | Interest: ${outputContract.interest_level || 'N/A'} | POPIA: ${outputContract.popia_consent || 'N/A'}`
+          : callMeta?.aiConversation.join(' | ') || aiResponse;
+        logCallToIntelligenceLedger(callMeta?.phone || '', status, ledgerOutput, callSid)
+          .catch(err => broadcastLog('ERROR', `[STREAM_BRIDGE] Ledger failed: ${err.message}`));
+        ws.close();
+      }
+
+    } catch (err: any) {
+      broadcastLog('ERROR', `[STREAM_BRIDGE] Pipeline error: ${err?.message}`);
+    } finally {
+      isBusy = false;
+    }
+  };
+
+  // ── 3. Message handler ─────────────────────────────────────────────────────
+  ws.on('message', async (raw) => {
+    try {
+      const msg = JSON.parse(raw.toString());
+
+      if (msg.event === 'start') {
+        streamSid  = msg.start?.streamSid ?? '';
+        callSid    = msg.start?.callSid   ?? '';
+        const callMeta = callSid ? activeCalls.get(callSid) : undefined;
+        callLang   = (callMeta as any)?.language || 'en-ZA';
+        broadcastLog('INFO', `[STREAM_BRIDGE] Connected: ${streamSid} lang=${callLang}`);
+
+        // Send language-appropriate greeting immediately
+        const greetProtocol = LANGUAGE_PROTOCOLS[callLang] || LANGUAGE_PROTOCOLS['en-ZA'];
+        if (greetProtocol.greeting) {
+          await sendAudioToTwilio(greetProtocol.greeting, callLang);
+        }
+      }
+
+      if (msg.event === 'media') {
+        if (isBusy) return; // drop inbound while Zandi is speaking
+        audioChunks.push(new Uint8Array(Buffer.from(msg.media.payload, 'base64')));
+        if (silenceTimer) clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(processUtterance, SILENCE_MS);
+      }
+
+      if (msg.event === 'stop') {
+        broadcastLog('INFO', `[STREAM_BRIDGE] Stop: ${streamSid}`);
+        if (silenceTimer) clearTimeout(silenceTimer);
+        await processUtterance();
+      }
+
+    } catch (err: any) {
+      broadcastLog('WARN', `[STREAM_BRIDGE] Parse error: ${err?.message}`);
+    }
+  });
+
+  // Expose for ad-hoc use by other call handlers
   (ws as any).sendAudioToTwilio = sendAudioToTwilio;
 
   ws.on('close', () => {
+    if (silenceTimer) clearTimeout(silenceTimer);
     broadcastLog('INFO', `[STREAM_BRIDGE] Disconnected: ${streamSid}`);
   });
 });
