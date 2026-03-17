@@ -991,7 +991,7 @@ async function startServer() {
   }
 
   server.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 JB³Ai Neural Hub Backend running on port ${PORT}`);
+    console.log(`[MZANZI ENGINE] Live and listening on port ${PORT}`);
   });
 
   // ── Node 08: Pre-Flight Warm-Up ─────────────────────────────────────────

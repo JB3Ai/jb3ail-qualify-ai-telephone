@@ -21,7 +21,7 @@ const PROSODY: Record<string, { rate: string; pitch?: string }> = {
   'af-za':  { rate: '-3%' },
   'zh-cn':  { rate: '+2%' },
 };
-const DEFAULT_PROSODY = { rate: '-3%' };
+const DEFAULT_PROSODY: { rate: string; pitch?: string } = { rate: '-3%' };
 
 function normalizeLocale(locale?: string): string {
   return (locale || '').trim().toLowerCase();
