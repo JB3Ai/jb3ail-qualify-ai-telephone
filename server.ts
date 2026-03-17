@@ -140,9 +140,11 @@ streamWss.on('connection', (ws) => {
   let callLang  = 'en-ZA';
   let isBusy    = false;
 
-  // ── 1. Azure Speech SDK ear: PushStream for raw mu-law frames ─────────────
+  // ── 1. Azure Speech SDK ear: PushStream for 8kHz 16-bit PCM ───────────────
+  // SDK v1.48 does not expose getCompressedFormat/AudioStreamContainerFormat.
+  // Twilio sends 8kHz 8-bit mu-law; we decode to 16-bit PCM before each write.
   const pushStream = sdk.AudioInputStream.createPushStream(
-    sdk.AudioStreamFormat.getCompressedFormat(sdk.AudioStreamContainerFormat.MULAW)
+    sdk.AudioStreamFormat.getWaveFormatPCM(8000, 16, 1)
   );
   const speechCfg = sdk.SpeechConfig.fromSubscription(
     (process.env.SPEECH_KEY    || '').trim(),
@@ -245,8 +247,11 @@ streamWss.on('connection', (ws) => {
 
       if (msg.event === 'media') {
         if (isBusy) return; // don't feed STT while Zandi is speaking
-        const buf = Buffer.from(msg.media.payload, 'base64');
-        pushStream.write(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
+        const mulaw = Buffer.from(msg.media.payload, 'base64');
+        // Decode 8-bit mu-law → 16-bit linear PCM for the push stream
+        const pcm = Buffer.alloc(mulaw.length * 2);
+        for (let i = 0; i < mulaw.length; i++) pcm.writeInt16LE(mulawTo16Bit(mulaw[i]), i * 2);
+        pushStream.write(pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength) as ArrayBuffer);
       }
 
       if (msg.event === 'stop') {
