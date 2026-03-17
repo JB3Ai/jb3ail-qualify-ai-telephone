@@ -39,7 +39,7 @@ const telemetryClient = appInsights.defaultClient ?? null;
 
 const app = express();
 const server = createServer(app);
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 8080;
 
 // Initialize WebSocket Server for live terminal uplink + Twilio Media Streams
 const wss = new WebSocketServer({ server, path: '/ws' });
@@ -297,7 +297,7 @@ function resolveFrontendDistDir() {
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
-  'https://jb3ail-qualify-ai-telephone.onrender.com',
+  'https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net',
 ];
 app.use(cors({
   origin: (origin, callback) => {

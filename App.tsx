@@ -79,14 +79,14 @@ const getLanguageName = (lang: string) => {
   return names[code] || lang;
 };
 
-const RENDER_BACKEND_URL = 'https://jb3ail-qualify-ai-telephone.onrender.com';
+const AZURE_BACKEND_URL = 'https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net';
 
 const getDefaultBackendUrl = () => {
-  // VITE_API_BASE_URL set in Render's environment dashboard takes highest priority
+  // VITE_API_BASE_URL set in the host environment dashboard takes highest priority
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL as string;
   const isLocalhost =
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocalhost ? 'http://localhost:3000' : RENDER_BACKEND_URL;
+  return isLocalhost ? 'http://localhost:3000' : AZURE_BACKEND_URL;
 };
 
 /* ── Telemetry Strip ── */
