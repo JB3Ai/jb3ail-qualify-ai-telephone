@@ -1796,7 +1796,7 @@ const App: React.FC = () => {
               <div className="flex-1 p-6 sm:p-12 lg:p-24 overflow-y-auto scrollbar-hide">
                 <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
-                      <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Neural Lab</h1>
+                      <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Neural Test Lab</h1>
                       <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Signal over Noise. Test the Audio and Logic units.</p>
                     </div>
                     <button 
