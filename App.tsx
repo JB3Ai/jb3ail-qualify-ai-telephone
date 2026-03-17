@@ -320,9 +320,9 @@ const ProtocolHUD: React.FC<{ mode: 'local' | 'intl'; setMode: (mode: 'local' | 
     <div className="flex items-center gap-4">
       <div className={`w-3 h-3 rounded-full animate-pulse ${mode === 'local' ? 'bg-[#39FF88]' : 'bg-[#00D9FF]'}`} />
       <div>
-        <h3 className="font-orbitron text-[10px] tracking-widest opacity-50">SYSTEM_PROTOCOL</h3>
+        <h3 className="font-orbitron text-[10px] tracking-widest opacity-50">JB³Ai_Protocol</h3>
         <p className="font-orbitron text-lg font-black italic text-white">
-          {mode === 'local' ? 'MZANZI_SOUTH' : 'GLOBAL_EXPANSION'}
+          {mode === 'local' ? 'OS MZANZI_CALL_CENTRE  OS³' : 'GLOBAL_EXPANSION'}
         </p>
       </div>
     </div>
@@ -1323,9 +1323,9 @@ const App: React.FC = () => {
                   protocolMode === 'local' ? 'bg-[#39FF88]' : 'bg-[#00D9FF]'
                 }`} />
                 <div>
-                  <h3 className="font-orbitron text-[10px] tracking-[0.3em] opacity-60 uppercase">System_Active_Protocol</h3>
+                  <h3 className="font-orbitron text-[10px] tracking-[0.3em] opacity-60 uppercase">JB³Ai_Protocol</h3>
                   <p className="font-orbitron text-xl font-black italic tracking-tighter">
-                    {protocolMode === 'local' ? 'MZANZI_SOUTH' : 'GLOBAL_EXPANSION'}
+                    {protocolMode === 'local' ? 'OS MZANZI_CALL_CENTRE  OS³' : 'GLOBAL_EXPANSION'}
                   </p>
                 </div>
               </div>
