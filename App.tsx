@@ -1315,12 +1315,20 @@ const App: React.FC = () => {
         {/* 🖥️ THE HUD (Active Protocol Screen) */}
         {['DATA_INBOX', 'PIPELINE', 'LIVE_TERMINAL', 'DASHBOARD'].includes(activeTab) && (
           <div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 shrink-0">
-            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-[18px] border bg-opacity-10 backdrop-blur-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 transition-all duration-500 shadow-lg ${
-              protocolMode === 'local' ? 'border-[#39FF88]/30 bg-[#39FF88]/5 text-[#39FF88]' : 'border-[#00D9FF]/30 bg-[#00D9FF]/5 text-[#00D9FF]'
-            }`}>
+            <div
+              onClick={() => { if (backendStatus !== 'connected') setActiveTab('CONFIG_HUB'); }}
+              className={`p-3 sm:p-4 rounded-xl sm:rounded-[18px] border bg-opacity-10 backdrop-blur-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 transition-all duration-500 shadow-lg ${
+                backendStatus !== 'connected'
+                  ? 'border-[#ef4444]/30 bg-[#ef4444]/5 text-[#ef4444] cursor-pointer hover:bg-[#ef4444]/10'
+                  : protocolMode === 'local'
+                    ? 'border-[#39FF88]/30 bg-[#39FF88]/5 text-[#39FF88]'
+                    : 'border-[#00D9FF]/30 bg-[#00D9FF]/5 text-[#00D9FF]'
+              }`}
+              title={backendStatus !== 'connected' ? 'Uplink Severed — click to diagnose in Config Hub' : undefined}
+            >
               <div className="flex items-center gap-4">
                 <div className={`w-3 h-3 rounded-full animate-pulse shadow-[0_0_10px_currentColor] ${
-                  protocolMode === 'local' ? 'bg-[#39FF88]' : 'bg-[#00D9FF]'
+                  backendStatus !== 'connected' ? 'bg-[#ef4444]' : protocolMode === 'local' ? 'bg-[#39FF88]' : 'bg-[#00D9FF]'
                 }`} />
                 <div>
                   <h3 className="font-orbitron text-[10px] tracking-[0.3em] opacity-60 uppercase">JB³Ai_Protocol</h3>
