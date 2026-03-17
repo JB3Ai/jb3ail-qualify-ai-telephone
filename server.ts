@@ -288,8 +288,21 @@ function resolveFrontendDistDir() {
   return candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html')));
 }
 
-// Enable CORS for all origins
-app.use(cors() as any);
+// Restrict CORS to known frontend origins
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://jb3ail-qualify-ai-telephone.onrender.com',
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (Twilio webhook callbacks, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error(`CORS: origin '${origin}' not allowed`));
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+}) as any);
 app.use(express.json() as any);
 app.use(express.urlencoded({ extended: true }) as any);
 
