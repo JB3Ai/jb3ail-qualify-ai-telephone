@@ -91,6 +91,29 @@ const getDefaultBackendUrl = () => {
 };
 
 /* ── Telemetry Strip ── */
+/* ── Telemetry Ticker (top-of-page phosphor marquee) ── */
+const TelemetryTicker: React.FC<{ isEnabled?: boolean; backendStatus: string }> = ({ isEnabled = true, backendStatus }) => {
+  if (!isEnabled) return null;
+  const online = backendStatus === 'connected';
+  const timestamp = new Date().toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg' });
+  return (
+    <div className="w-full h-6 bg-[#050505] border-b border-[#39ff88]/10 flex items-center overflow-hidden relative pointer-events-none select-none shrink-0">
+      <div className="whitespace-nowrap font-mono text-[10px] tracking-widest uppercase animate-slow-marquee" style={{ color: 'rgba(57,255,136,0.75)' }}>
+        [OS³ SYSTEM_BOOT] INITIALIZING... &nbsp;|
+        &nbsp;TIME: {timestamp} SAST &nbsp;|
+        &nbsp;SERVER: RENDER-CPT-HUB &nbsp;|
+        &nbsp;TERMINAL_LINK: {online ? 'OK' : 'SEVERED'} &nbsp;|
+        &nbsp;TWILIO: {online ? 'OK' : 'CHECK'} &nbsp;|
+        &nbsp;AZURE_SPEECH: {online ? 'ZA-NORTH ONLINE' : 'OFFLINE'} &nbsp;|
+        &nbsp;AI_CORE: {online ? 'READY' : 'STANDBY'} &nbsp;|
+        &nbsp;GOOGLE_SHEETS: SYNCED &nbsp;|
+        &nbsp;ENCRYPTION: ACTIVE &nbsp;|
+        &nbsp;JB³AI_PROTOCOL: NOMINAL &nbsp;|
+      </div>
+    </div>
+  );
+};
+
 const TelemetryStrip: React.FC<{
   backendStatus: string;
   pipelineCount: number;
@@ -1246,7 +1269,10 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col bg-[#020617] text-slate-100 font-sans overflow-hidden selection:bg-[#66FF66]/30 surface-grain">
-      
+
+      {/* === TELEMETRY TICKER === */}
+      <TelemetryTicker backendStatus={backendStatus} />
+
       {/* === OS³ COMMAND BAR === */}
       <header className="h-14 bg-[#0d1117] border-b border-[#1e293b] flex items-center justify-between px-5 shrink-0" style={{ letterSpacing: '.04em', fontSize: '13px' }}>
         <div className="font-semibold text-[#c9d1d9] flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('PIPELINE')}>
