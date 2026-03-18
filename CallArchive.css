@@ -8,7 +8,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
 }
 .archive-header {
   display: flex; justify-content: space-between; align-items: center;

@@ -42,7 +42,8 @@ import {
   ScaleIcon,
   AcademicCapIcon,
   UserGroupIcon,
-  WrenchScrewdriverIcon
+  WrenchScrewdriverIcon,
+  BoltIcon
 } from '@heroicons/react/24/solid';
 
 const DEFAULT_CONFIG: CallConfig = {
@@ -774,7 +775,7 @@ const NavItem: React.FC<{ active: boolean; onClick: () => void; icon: React.Reac
 
 const App: React.FC = () => {
   const [protocolMode, setProtocolMode] = useState<'local' | 'intl'>('local');
-  const [activeTab, setActiveTab] = useState<'HOME' | 'DATA_INBOX' | 'PIPELINE' | 'CALL_ARCHIVE' | 'LIVE_TERMINAL' | 'RUN_PROTOCOL' | 'CONFIG_HUB' | 'BACKEND_SETTINGS' | 'DEMO_SETUP' | 'DASHBOARD'>('HOME');
+  const [activeTab, setActiveTab] = useState<'HOME' | 'DATA_INBOX' | 'PIPELINE' | 'CALL_ARCHIVE' | 'LIVE_TERMINAL' | 'RUN_PROTOCOL' | 'CONFIG_HUB' | 'BACKEND_SETTINGS' | 'DASHBOARD'>('HOME');
   const [clients, setClients] = useState<Client[]>([]);
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [isCalling, setIsCalling] = useState(false);
@@ -792,10 +793,12 @@ const App: React.FC = () => {
   const [selectedArchiveSignal, setSelectedArchiveSignal] = useState<Client | null>(null);
   const [showBackendInfo, setShowBackendInfo] = useState(false);
   const [appMode, setAppMode] = useState<'LOCKED' | 'DEMO' | 'OPERATOR'>(() => (localStorage.getItem('os3_app_mode') as 'LOCKED' | 'DEMO' | 'OPERATOR') || 'LOCKED');
-  const [demoConfig, setDemoConfig] = useState<{ company: string; objective: string; language: string }>({ company: '', objective: 'reception', language: 'auto' });
+  const [demoConfig, setDemoConfig] = useState<{ userName: string; company: string; objective: string; persona: string; language: string }>({ userName: '', company: '', objective: 'reception', persona: 'friendly', language: 'auto' });
   const { showTicker, toggleTicker } = useTerminal();
   
   const [showColdStartToast, setShowColdStartToast] = useState(false);
+  const [preFlightChecks, setPreFlightChecks] = useState({ queueDepth: false, languages: false, hubUplinks: false, protocolRead: false });
+  const allPreFlightCleared = preFlightChecks.queueDepth && preFlightChecks.languages && preFlightChecks.hubUplinks && preFlightChecks.protocolRead;
   const [callDuration, setCallDuration] = useState(0);
   const callDurationRef = useRef(0);
   const [completedDurations, setCompletedDurations] = useState<number[]>([]);
@@ -804,6 +807,7 @@ const App: React.FC = () => {
   const [detectedLanguage, setDetectedLanguage] = useState<string>("");
   const [testPhone, setTestPhone] = useState('');
   const [testLang, setTestLang] = useState<Language>(Language.ZULU);
+  const [outboundLang, setOutboundLang] = useState<Language>(Language.ENGLISH);
   const [isInternalCall, setIsInternalCall] = useState(false);
   const [internalInput, setInternalInput] = useState('');
   const [isInternalSending, setIsInternalSending] = useState(false);
@@ -1315,6 +1319,7 @@ const App: React.FC = () => {
         <div className="font-semibold text-[#c9d1d9] flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('PIPELINE')}>
           <Os3HubMark size="sm" />
           <span className="hidden sm:inline font-black text-sm uppercase tracking-tight">JB³Ai</span>
+          <span className="hidden sm:inline text-[9px] font-mono text-[#484f58] uppercase tracking-widest ml-2">OS³ Grid Control</span>
         </div>
         <VitalsHeader backendStatus={backendStatus} wsConnected={wsConnected} ledgerStatus={ledgerStatus} latencyMs={latencyMs} />
         <div className="flex items-center gap-2.5">
@@ -1329,12 +1334,8 @@ const App: React.FC = () => {
 
         {/* JB³Ai Logo — sidebar header */}
         <div className="p-4 sm:p-5 flex items-center justify-center lg:justify-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0f172a] border border-[#39ff88]/20 shadow-[0_0_10px_rgba(57,255,136,0.1)] shrink-0">
-            <PhoneCall className="h-5 w-5 text-[#39ff88]" />
-          </div>
           <div className="hidden lg:block">
             <h2 className="font-mono font-bold text-[15px] tracking-widest uppercase leading-none text-white">JB³Ai</h2>
-            <p className="text-[9px] font-mono text-[#484f58] uppercase tracking-widest mt-1">OS³ Grid Control</p>
           </div>
         </div>
         
@@ -1359,17 +1360,16 @@ const App: React.FC = () => {
           <NavItem index={8} active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={appMode === 'LOCKED' || !isProtocolAccepted} />
           <NavItem index={9} active={false} onClick={() => {}} icon={<CpuChipIcon className="w-5 h-5" />} label="Backend Settings" disabled={true} />
 
-          {/* DEMO SETUP — 10th Route */}
-          <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">Demo</p>
-          <NavItem index={10} active={activeTab === 'DEMO_SETUP'} onClick={() => setActiveTab('DEMO_SETUP')} icon={<WrenchScrewdriverIcon className="w-5 h-5" />} label="Demo Setup" />
+
         </div>
 
         {/* Security + Status + Version */}
         <div className="mt-auto border-t border-[#1e293b]/30 px-3 sm:px-4 py-3 space-y-3">
           <button
             onClick={() => setShowPopiaModal(true)}
-            className="flex items-center gap-2.5 text-slate-600 hover:text-[#39ff88] text-[10px] font-medium uppercase tracking-wider w-full"
+            className={`flex items-center gap-2.5 text-[10px] font-medium uppercase tracking-wider w-full ${isProtocolAccepted ? 'text-[#00ff00]' : 'text-slate-600 hover:text-[#39ff88]'}`}
           >
+            <div className={`w-2 h-2 rounded-full ${isProtocolAccepted ? 'bg-[#00ff00] shadow-[0_0_6px_#00ff00]' : 'bg-slate-600'}`} />
             <ShieldCheckIcon className="w-3.5 h-3.5" /> <span className="hidden lg:inline">POPIA Valid</span>
           </button>
           <div className="flex items-center gap-2.5">
@@ -1636,6 +1636,72 @@ const App: React.FC = () => {
                 </svg>
               </div>
 
+              {/* === PRE-FLIGHT SIGN-OFF PROCEDURE === */}
+              {pipelineClients.length > 0 && (
+                <div className="bg-[#0d1117] border border-[#00ff00]/20 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center gap-3 mb-1">
+                    <ShieldCheckIcon className="w-5 h-5 text-[#00ff00]" />
+                    <h3 className="text-[11px] font-black text-[#00ff00] uppercase tracking-[0.3em] font-orbitron">Pre-Flight Sign-Off Procedure</h3>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-mono tracking-wide">ALL GATES MUST BE CLEARED BEFORE MASTER EXECUTION IS AUTHORIZED.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { key: 'queueDepth' as const, label: `Confirm Queue Depth — ${pipelineClients.length} Lead${pipelineClients.length !== 1 ? 's' : ''} Loaded` },
+                      { key: 'languages' as const, label: `Confirm Target Languages Selected — ${activeLangs.size} Active` },
+                      { key: 'hubUplinks' as const, label: `Confirm System Hub Uplinks — ${backendStatus === 'connected' ? 'All Green' : 'OFFLINE'}` },
+                      { key: 'protocolRead' as const, label: 'Confirm Operational Protocol Read' },
+                    ].map(({ key, label }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setPreFlightChecks(prev => ({ ...prev, [key]: !prev[key] }))}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all group ${
+                          preFlightChecks[key]
+                            ? 'border-[#00ff00]/50 bg-[#00ff00]/5 shadow-[0_0_12px_rgba(0,255,0,0.08)]'
+                            : 'border-[#1e293b]/50 bg-[#1A2333]/60 hover:border-[#00ff00]/20'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                          preFlightChecks[key]
+                            ? 'border-[#00ff00] bg-[#00ff00] shadow-[0_0_8px_rgba(0,255,0,0.4)]'
+                            : 'border-slate-600 group-hover:border-[#00ff00]/40'
+                        }`}>
+                          {preFlightChecks[key] && (
+                            <svg className="w-3 h-3 text-[#020617]" viewBox="0 0 12 12" fill="none">
+                              <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                          preFlightChecks[key] ? 'text-[#00ff00]' : 'text-slate-400 group-hover:text-slate-300'
+                        }`}>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="pt-2 flex items-center gap-4">
+                    <button
+                      disabled={!allPreFlightCleared || backendStatus !== 'connected'}
+                      onClick={() => {
+                        pipelineClients.forEach((c: any) => handleCall(c.id, c.phone));
+                      }}
+                      className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] font-orbitron transition-all flex items-center gap-3 ${
+                        allPreFlightCleared && backendStatus === 'connected'
+                          ? 'bg-[#00ff00] text-[#020617] shadow-[0_0_24px_rgba(0,255,0,0.3)] hover:shadow-[0_0_36px_rgba(0,255,0,0.45)] cursor-pointer'
+                          : 'bg-[#1A2333] text-slate-600 border border-[#1e293b]/40 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <BoltIcon className="w-4 h-4" />
+                      Initiate Master Execution
+                    </button>
+                    <span className={`text-[9px] font-mono tracking-wider ${
+                      allPreFlightCleared ? 'text-[#00ff00]' : 'text-slate-600'
+                    }`}>
+                      {allPreFlightCleared ? '[ ALL GATES CLEARED ]' : `[ ${Object.values(preFlightChecks).filter(Boolean).length}/4 GATES CLEARED ]`}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {pipelineClients.length === 0 ? (
                 <div className="p-20 text-center text-slate-600 font-orbitron text-xs">
                   NO_LEADS_IN_PIPELINE. SYNC_FROM_INBOX_TO_INITIALIZE.
@@ -1882,8 +1948,8 @@ const App: React.FC = () => {
               <div className="flex-1 p-6 sm:p-12 lg:p-24 overflow-y-auto scrollbar-hide font-mono text-[#66FF66]">
                 <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
-                      <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Neural Test Lab</h1>
-                      <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Signal over Noise. Test the Audio and Logic units.</p>
+                      <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">[ LIVE TERMINAL ]</h1>
+                      <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Internal testing &amp; outbound signal dispatch.</p>
                     </div>
                     <button 
                       onClick={() => setShowLabInfo(true)}
@@ -1894,17 +1960,22 @@ const App: React.FC = () => {
                     </button>
                 </header>
 
-                {/* ─── SYSTEM INITIALIZATION PARAMETERS (BOTH MODES) ─── */}
-                <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 mb-8">
-                  <h2 className="text-xl font-black tracking-widest mb-4 border-b border-[#66FF66]/30 pb-2 flex items-center gap-2 text-white">
-                    <CommandLineIcon className="w-5 h-5 text-[#66FF66]" />
-                    [ SYSTEM_INITIALIZATION_PARAMETERS ]
-                  </h2>
-                  <div className="flex flex-col md:flex-row gap-8">
-                    <div className="flex-1">
-                      <label className="block text-[#66FF66]/70 mb-2 text-[9px] font-black tracking-widest uppercase">
-                        Core Language Selection
-                      </label>
+                {/* ─── LAB + MANUAL SIGNAL — Two-column Grid ─── */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+
+                  {/* DEMO LAB / TESTING LAB (BOTH MODES) */}
+                  <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 shadow-[0_0_15px_rgba(102,255,102,0.05)] flex flex-col">
+                    <div className="flex items-center gap-3 mb-3">
+                      <CpuChipIcon className="w-5 h-5 text-[#66FF66]" />
+                      <h3 className="text-lg font-black text-white tracking-widest">
+                        {appMode === 'DEMO' ? '[ DEMO LAB ]' : '[ TESTING LAB ]'}
+                      </h3>
+                    </div>
+                    <p className="text-[10px] text-[#66FF66]/70 mb-5 leading-relaxed">
+                      Uses your laptop mic &amp; speakers for a local 2-way session with the AI core. No Twilio required — test the full Run Protocol in-browser.
+                    </p>
+                    <div className="mb-4">
+                      <label className="block text-[9px] font-black text-[#66FF66]/60 uppercase tracking-widest mb-2">Core Language</label>
                       <select
                         value={testLang}
                         onChange={(e) => setTestLang(e.target.value as Language)}
@@ -1915,87 +1986,91 @@ const App: React.FC = () => {
                         ))}
                       </select>
                     </div>
-                    {appMode === 'DEMO' && (
-                      <div className="flex-1 border-l border-[#66FF66]/20 pl-8">
-                        <p className="text-[9px] text-[#66FF66]/70 mb-2 font-black tracking-widest uppercase">Active Persona Lock</p>
-                        <p className="text-sm font-black text-white">CORP: {demoConfig?.company || 'UNASSIGNED'}</p>
-                        <p className="text-sm font-black text-white uppercase">OBJ: {demoConfig?.objective || 'UNASSIGNED'}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* ─── INTERNAL LINK + MANUAL SIGNAL — Two-column Grid ─── */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-
-                  {/* INTERNAL NEURAL LINK (BOTH MODES) */}
-                  <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 shadow-[0_0_15px_rgba(102,255,102,0.05)]">
-                    <div className="flex items-center gap-3 mb-2">
-                      <CpuChipIcon className="w-5 h-5 text-[#66FF66]" />
-                      <h3 className="text-lg font-black text-white">Establish Internal Link</h3>
-                    </div>
-                    <p className="text-[10px] text-[#66FF66]/70 mb-6 h-12 leading-relaxed">
-                      Direct connection to the language processing core. Uses local laptop microphone &amp; speakers for real-time 2-way logic verification.
-                    </p>
                     <button
                       onClick={() => handleStartInternalCall(testLang)}
-                      className="w-full flex items-center justify-center gap-3 py-4 font-black tracking-widest border rounded-xl transition-all text-[10px] uppercase bg-[#002200] border-[#66FF66] text-[#66FF66] hover:bg-[#66FF66]/10 shadow-[0_0_20px_rgba(102,255,102,0.2)]"
+                      className="mt-auto w-full flex items-center justify-center gap-3 py-4 font-black tracking-widest border rounded-xl transition-all text-[10px] uppercase bg-[#002200] border-[#66FF66] text-[#66FF66] hover:bg-[#66FF66]/10 shadow-[0_0_20px_rgba(102,255,102,0.2)]"
                     >
                       <SpeakerWaveIcon className="w-5 h-5" />
-                      INITIALIZE_MIC_UPLINK
+                      {appMode === 'DEMO' ? 'Establish Internal Link' : 'Initialize Mic Uplink'}
                     </button>
                   </div>
 
                   {/* MANUAL SIGNAL TRIGGER — OPERATOR ONLY / LOCKED IN DEMO */}
                   {appMode === 'OPERATOR' ? (
-                    <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 shadow-[0_0_15px_rgba(102,255,102,0.05)]">
-                      <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 shadow-[0_0_15px_rgba(102,255,102,0.05)] flex flex-col">
+                      <div className="flex items-center gap-3 mb-3">
                         <PhoneIcon className="w-5 h-5 text-[#00D9FF]" />
-                        <h3 className="text-lg font-black text-white">Manual Signal Trigger</h3>
+                        <h3 className="text-lg font-black text-white tracking-widest">[ MANUAL SIGNAL TRIGGER ]</h3>
                       </div>
-                      <p className="text-[10px] text-[#66FF66]/70 mb-6 h-12 leading-relaxed">
-                        Bypass local routing. Dispatch outbound Twilio signal to custom external telecommunications hardware (cell phone).
+                      <p className="text-[10px] text-[#66FF66]/70 mb-5 leading-relaxed">
+                        Dispatch outbound Twilio signal to an external phone number. Bypasses pipeline routing for ad-hoc testing.
                       </p>
-                      <div className="flex gap-2">
+                      <div className="mb-4">
+                        <label className="block text-[9px] font-black text-[#66FF66]/60 uppercase tracking-widest mb-2">Target Phone Number</label>
                         <input
                           type="text"
                           placeholder="e.g. +27821234567"
                           value={testPhone}
                           onChange={(e) => setTestPhone(e.target.value)}
-                          className="flex-1 bg-[#0a110a] border border-[#66FF66]/30 rounded-xl px-4 py-3 text-white font-mono text-sm outline-none focus:border-[#00D9FF]"
+                          className="w-full bg-[#0a110a] border border-[#66FF66]/30 rounded-xl px-4 py-3 text-white font-mono text-sm outline-none focus:border-[#00D9FF]"
                         />
-                        <button
-                          onClick={() => {
-                            if (!testPhone) return;
-                            handleStartCall({
-                              id: `TEST-${Date.now()}`,
-                              name: 'Test',
-                              surname: 'Subject',
-                              phone: testPhone,
-                              language: testLang,
-                              status: 'pending',
-                              area: 'Test Lab',
-                              signup_date: new Date().toISOString(),
-                              collected_data: {}
-                            });
-                          }}
-                          disabled={!testPhone || backendStatus !== 'connected'}
-                          className="bg-[#00D9FF]/10 border border-[#00D9FF] text-[#00D9FF] px-6 rounded-xl hover:bg-[#00D9FF]/20 flex items-center justify-center disabled:opacity-20 transition-all"
-                        >
-                          <PhoneIcon className="w-5 h-5" />
-                        </button>
                       </div>
+                      <div className="mb-4">
+                        <label className="block text-[9px] font-black text-[#66FF66]/60 uppercase tracking-widest mb-2">Core Language</label>
+                        <select
+                          value={outboundLang}
+                          onChange={(e) => setOutboundLang(e.target.value as Language)}
+                          className="w-full bg-[#0a110a] border border-[#66FF66]/30 rounded-xl px-4 py-3 text-white font-bold text-xs outline-none focus:border-[#00D9FF] appearance-none"
+                        >
+                          {Object.values(Language).map(lang => (
+                            <option key={lang} value={lang} className="bg-[#0d1117]">{getLanguageName(lang)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (!testPhone) return;
+                          handleStartCall({
+                            id: `TEST-${Date.now()}`,
+                            name: 'Test',
+                            surname: 'Subject',
+                            phone: testPhone,
+                            language: outboundLang,
+                            status: 'pending',
+                            area: 'Test Lab',
+                            signup_date: new Date().toISOString(),
+                            collected_data: {}
+                          });
+                        }}
+                        disabled={!testPhone || backendStatus !== 'connected'}
+                        className="mt-auto w-full flex items-center justify-center gap-3 py-4 font-black tracking-widest border rounded-xl transition-all text-[10px] uppercase bg-[#001a33] border-[#00D9FF] text-[#00D9FF] hover:bg-[#00D9FF]/10 shadow-[0_0_20px_rgba(0,217,255,0.15)] disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <PhoneIcon className="w-5 h-5" />
+                        DISPATCH OUTBOUND SIGNAL
+                      </button>
                     </div>
                   ) : (
-                    <div className="bg-[#050505] border border-gray-800 rounded-lg p-6 flex items-center justify-center opacity-50 relative overflow-hidden">
-                      <div className="absolute inset-0 bg-black/60 z-10 flex items-center justify-center">
-                        <span className="bg-black px-4 py-1 border border-gray-600 text-gray-400 text-[9px] font-black tracking-widest rounded-full uppercase">
-                          Feature locked in Demo Mode
+                    <div className="bg-[#050505] border border-slate-800/60 rounded-lg p-6 flex flex-col relative overflow-hidden">
+                      <div className="absolute inset-0 bg-black/70 z-10 flex items-center justify-center">
+                        <span className="bg-black/90 px-5 py-2 border border-slate-700 text-slate-500 text-[9px] font-black tracking-[0.2em] rounded-full uppercase">
+                          Outbound Calling Restricted in Demo Mode
                         </span>
                       </div>
-                      <div>
-                        <h3 className="text-lg font-black text-gray-600 mb-2">Manual Signal Trigger</h3>
-                        <p className="text-[10px] text-gray-600 h-12">Outbound Twilio dialing restricted.</p>
+                      <div className="flex items-center gap-3 mb-3 opacity-30">
+                        <PhoneIcon className="w-5 h-5 text-slate-600" />
+                        <h3 className="text-lg font-black text-slate-600 tracking-widest">[ MANUAL SIGNAL TRIGGER ]</h3>
+                      </div>
+                      <p className="text-[10px] text-slate-700 mb-5 leading-relaxed opacity-30">Dispatch outbound Twilio signal to an external phone number.</p>
+                      <div className="mb-4 opacity-20">
+                        <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Target Phone Number</label>
+                        <div className="w-full bg-[#0a110a] border border-slate-800 rounded-xl px-4 py-3 text-slate-700 font-mono text-sm">+27•••••••••</div>
+                      </div>
+                      <div className="mb-4 opacity-20">
+                        <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Core Language</label>
+                        <div className="w-full bg-[#0a110a] border border-slate-800 rounded-xl px-4 py-3 text-slate-700 font-bold text-xs">English</div>
+                      </div>
+                      <div className="mt-auto w-full py-4 text-center font-black tracking-widest border rounded-xl text-[10px] uppercase bg-[#0a0a0a] border-slate-800 text-slate-700 opacity-20">
+                        DISPATCH OUTBOUND SIGNAL
                       </div>
                     </div>
                   )}
@@ -2009,25 +2084,7 @@ const App: React.FC = () => {
                             <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Neural Stimulus</h3>
                         </div>
                         <div className="bg-black/40 rounded-md p-6 border border-[#1e293b]/40 mb-6">
-                             <div className="flex gap-2 mb-4">
-                                 <button onClick={() => setTestType('speak')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${testType === 'speak' ? 'bg-[#66FF66] text-[#0d1117]' : 'text-slate-500 hover:text-slate-300'}`}>Audio Unit (Azure)</button>
-                                 <button onClick={() => setTestType('ask')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${testType === 'ask' ? 'bg-[#66FF66] text-[#0d1117]' : 'text-slate-500 hover:text-slate-300'}`}>Logic Unit (Gemini)</button>
-                             </div>
-                             <textarea value={testInput} onChange={(e) => setTestInput(e.target.value)} className="w-full bg-transparent border-none text-[#66FF66] text-sm font-mono focus:ring-0 h-32 resize-none" placeholder="Enter stimulus parameters..." />
-                             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                 <div>
-                                   <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Stimulus Language</label>
-                                   <select
-                                     value={testLang}
-                                     onChange={(e) => setTestLang(e.target.value as Language)}
-                                     className="w-full bg-black/40 border border-[#1e293b]/40 rounded-xl px-4 py-3 text-white font-bold text-xs focus:ring-1 focus:ring-[#66FF66] outline-none appearance-none"
-                                   >
-                                     {Object.values(Language).map(lang => (
-                                       <option key={lang} value={lang} className="bg-[#0d1117]">{getLanguageName(lang)}</option>
-                                     ))}
-                                   </select>
-                                 </div>
-                             </div>
+                                  <textarea value={testInput} onChange={(e) => setTestInput(e.target.value)} className="w-full bg-transparent border-none text-[#66FF66] text-sm font-mono focus:ring-0 h-32 resize-none" placeholder="Enter stimulus parameters..." />
                              <div className="flex justify-end mt-4">
                                  <button onClick={runNeuralTest} disabled={isTestRunning} className="bg-white text-black px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#66FF66] transition-all disabled:opacity-20">
                                      {isTestRunning ? 'Processing...' : 'Execute Test'}
@@ -2091,17 +2148,53 @@ const App: React.FC = () => {
               {appMode === 'LOCKED' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
 
-                  {/* DEMO MODE BUTTON */}
-                  <button
-                    onClick={() => {
-                      setActiveTab('DEMO_SETUP');
-                    }}
-                    className="flex flex-col items-center justify-center p-10 border-2 border-[#39ff88] bg-[#39ff88]/5 hover:bg-[#39ff88]/10 rounded-xl shadow-[0_0_20px_rgba(57,255,136,0.1)] transition-all group"
-                  >
-                    <Play className="w-12 h-12 mb-4 text-[#39ff88] group-hover:scale-110 transition-transform" />
-                    <h2 className="text-2xl font-bold text-white mb-2 font-orbitron tracking-wider">GUIDED DEMO</h2>
-                    <p className="text-xs text-[#39ff88]/70 text-center">Executive showcase. Extremely friendly persona, auto-language detection, and guided scenarios.</p>
-                  </button>
+                  {/* DEMO MODE — Inline Config Form */}
+                  <div className="flex flex-col p-8 border-2 border-[#39ff88] bg-[#39ff88]/5 rounded-xl shadow-[0_0_20px_rgba(57,255,136,0.1)]">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Play className="w-8 h-8 text-[#39ff88]" />
+                      <h2 className="text-2xl font-bold text-white font-orbitron tracking-wider">GUIDED DEMO</h2>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Your Name</label>
+                        <input type="text" value={demoConfig.userName} onChange={e => setDemoConfig(p => ({ ...p, userName: e.target.value }))} placeholder="e.g. Jonathan" className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:border-[#39ff88]/50 focus:outline-none transition-colors" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Company Name</label>
+                        <input type="text" value={demoConfig.company} onChange={e => setDemoConfig(p => ({ ...p, company: e.target.value }))} placeholder="e.g. Acme Corp" className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:border-[#39ff88]/50 focus:outline-none transition-colors" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Agent Objective</label>
+                        <select value={demoConfig.objective} onChange={e => setDemoConfig(p => ({ ...p, objective: e.target.value }))} className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#39ff88]/50 focus:outline-none transition-colors">
+                          <option value="reception">Receptionist &amp; Routing</option>
+                          <option value="qualification">Outbound Lead Qualification</option>
+                          <option value="techsupport">Technical Support Troubleshooting</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Agent Persona</label>
+                        <select value={demoConfig.persona} onChange={e => setDemoConfig(p => ({ ...p, persona: e.target.value }))} className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#39ff88]/50 focus:outline-none transition-colors">
+                          <option value="friendly">Extremely Friendly &amp; Conversational</option>
+                          <option value="professional">Strict &amp; Ultra-Professional</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Language Matrix</label>
+                        <select value={demoConfig.language} onChange={e => setDemoConfig(p => ({ ...p, language: e.target.value }))} className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#39ff88]/50 focus:outline-none transition-colors">
+                          <option value="auto">Auto-Detect</option>
+                          <option value="en-ZA">English</option>
+                          <option value="zu-ZA">Zulu</option>
+                          <option value="af-ZA">Afrikaans</option>
+                        </select>
+                      </div>
+                      <button
+                        onClick={() => { setAppMode('DEMO'); localStorage.setItem('os3_app_mode', 'DEMO'); setShowColdStartToast(true); setTimeout(() => setShowColdStartToast(false), 8000); setActiveTab('PIPELINE'); }}
+                        className="w-full mt-2 bg-[#39ff88] text-[#0d1117] py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:shadow-[0_0_20px_rgba(57,255,136,0.4)] transition-all font-orbitron"
+                      >
+                        Launch Demo
+                      </button>
+                    </div>
+                  </div>
 
                   {/* OPERATOR MODE BUTTON */}
                   <button
@@ -2215,7 +2308,7 @@ const App: React.FC = () => {
 
         {/* TAB: CALL ARCHIVE — LEDGER VAULT */}
         {activeTab === 'CALL_ARCHIVE' && (
-             <div className="flex-1 overflow-hidden p-4 sm:p-6 flex flex-col">
+             <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col">
                 <InfoOverlay 
                   isOpen={showArchiveInfo}
                   onClose={() => setShowArchiveInfo(false)}
@@ -2529,7 +2622,7 @@ const App: React.FC = () => {
             />
             <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div>
-                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">System Recalibration</h1>
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">System CONFIG</h1>
                   <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Backend control and Neural Hub reset protocols.</p>
                 </div>
                 <button 
@@ -2627,94 +2720,6 @@ const App: React.FC = () => {
                    <button onClick={() => setViewingTranscriptClient(null)} className="bg-[#1e293b] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#1e293b]/80 transition-all">Close Log</button>
                 </div>
              </div>
-          </div>
-        )}
-
-        {/* TAB: DEMO SETUP */}
-        {activeTab === 'DEMO_SETUP' && (
-          <div className="flex-1 overflow-y-auto p-6 sm:p-12 lg:p-24 animate-fade-in scrollbar-hide">
-            <div className="max-w-4xl mx-auto space-y-8">
-
-              {/* Header */}
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#39ff88]/10 border border-[#39ff88]/20 flex items-center justify-center">
-                  <WrenchScrewdriverIcon className="w-6 h-6 text-[#39ff88]" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-black uppercase tracking-widest text-white font-orbitron">Demo Setup</h2>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-mono">10 // Demo Configuration & Quick-Start</p>
-                </div>
-              </div>
-
-              {/* Demo Mode Selector */}
-              <section className="bg-white/[0.02] border border-[#1e293b]/40 rounded-xl p-6 space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Quick-Start Demo Modes</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[
-                    { title: 'Local Call Centre', desc: 'Mzansi-based qualification flow with POPIA compliance baked in.', mode: 'local' as const },
-                    { title: 'Global Expansion', desc: 'International protocol with multi-language support and cross-border compliance.', mode: 'intl' as const },
-                  ].map((demo) => (
-                    <button
-                      key={demo.mode}
-                      onClick={() => { setProtocolMode(demo.mode); setAppMode('DEMO'); localStorage.setItem('os3_app_mode', 'DEMO'); setShowColdStartToast(true); setTimeout(() => setShowColdStartToast(false), 8000); setActiveTab('PIPELINE'); }}
-                      className={`text-left p-5 rounded-xl border transition-all group hover:border-[#39ff88]/40 hover:bg-[#39ff88]/5 ${
-                        protocolMode === demo.mode ? 'border-[#39ff88]/60 bg-[#39ff88]/10' : 'border-[#1e293b]/40 bg-[#0d1117]'
-                      }`}
-                    >
-                      <h4 className="text-sm font-black uppercase tracking-wider text-white mb-1">{demo.title}</h4>
-                      <p className="text-[10px] text-slate-500 leading-relaxed">{demo.desc}</p>
-                      <span className="inline-block mt-3 text-[9px] font-bold uppercase tracking-[0.2em] text-[#39ff88]/60 group-hover:text-[#39ff88] transition-colors">
-                        {protocolMode === demo.mode ? '● Active' : 'Select & Launch →'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* Preflight Checklist */}
-              <section className="bg-white/[0.02] border border-[#1e293b]/40 rounded-xl p-6 space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Preflight Checklist</h3>
-                <div className="space-y-3">
-                  {[
-                    { label: 'Backend Uplink', ok: backendStatus === 'connected', detail: backendStatus === 'connected' ? `Connected (${latencyMs ?? '—'}ms)` : 'Disconnected' },
-                    { label: 'WebSocket Stream', ok: wsConnected, detail: wsConnected ? 'Live' : 'Offline' },
-                    { label: 'POPIA Protocol', ok: isProtocolAccepted, detail: isProtocolAccepted ? 'Accepted' : 'Pending Acceptance' },
-                    { label: 'Pipeline Data', ok: clients.length > 0, detail: `${clients.length} signals loaded` },
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-2 border-b border-[#1e293b]/20 last:border-0">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2.5 h-2.5 rounded-full ${item.ok ? 'bg-[#39ff88] shadow-[0_0_6px_#39ff88]' : 'bg-red-500 shadow-[0_0_6px_#ef4444]'}`} />
-                        <span className="text-xs font-bold uppercase tracking-wider text-white">{item.label}</span>
-                      </div>
-                      <span className={`text-[10px] font-mono ${item.ok ? 'text-[#39ff88]/70' : 'text-red-400/70'}`}>{item.detail}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* Quick Nav */}
-              <section className="bg-white/[0.02] border border-[#1e293b]/40 rounded-xl p-6 space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Quick Navigation</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {[
-                    { label: 'System Hub', tab: 'CONFIG_HUB' as const },
-                    { label: 'Pipeline', tab: 'PIPELINE' as const },
-                    { label: 'Live Terminal', tab: 'LIVE_TERMINAL' as const },
-                    { label: 'Data Inbox', tab: 'DATA_INBOX' as const },
-                    { label: 'Config', tab: 'BACKEND_SETTINGS' as const },
-                    { label: 'Call Archive', tab: 'CALL_ARCHIVE' as const },
-                  ].map((link) => (
-                    <button
-                      key={link.tab}
-                      onClick={() => setActiveTab(link.tab)}
-                      className="px-4 py-3 rounded-lg border border-[#1e293b]/40 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-[#39ff88] hover:border-[#39ff88]/30 transition-all text-left"
-                    >
-                      {link.label}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </div>
           </div>
         )}
 
@@ -2873,14 +2878,14 @@ const App: React.FC = () => {
       {/* COLD-START TOAST */}
       {showColdStartToast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-toast-in">
-          <div className="flex items-start gap-4 bg-[#0d1117] border border-[#66FF66]/30 rounded-lg px-6 py-4 shadow-2xl shadow-[#66FF66]/5 max-w-sm">
+          <div className="flex items-start gap-4 bg-[#0d1117] border border-[#39ff88]/30 rounded-lg px-6 py-4 shadow-2xl shadow-black/40 max-w-sm">
             <div className="mt-0.5">
               <svg className="w-5 h-5 text-[#66FF66] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
             <div className="flex-1">
-              <p className="text-[#66FF66] font-black text-xs uppercase tracking-widest mb-1">Neural Engine Spooling Up</p>
+              <p className="text-[#39ff88] font-black text-xs uppercase tracking-widest mb-1">Neural Engine Spooling Up</p>
               <p className="text-slate-400 text-xs leading-relaxed">First launch may take ~30 seconds while the system wakes. Your call is queued — stand by.</p>
             </div>
             <button onClick={() => setShowColdStartToast(false)} className="text-slate-600 hover:text-slate-300 transition-colors shrink-0">
