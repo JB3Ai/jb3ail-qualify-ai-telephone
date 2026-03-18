@@ -22,6 +22,7 @@ import path from 'path';
 import fs from 'fs';
 import * as appInsights from 'applicationinsights';
 import { WebSocketServer, WebSocket } from 'ws';
+import { EventEmitter } from 'events';
 
 // Only initialise Application Insights when the connection string is configured
 if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
@@ -130,6 +131,61 @@ wss.on('connection', (ws) => {
   });
 });
 
+// ── OS³ Fast-Stream: Token Streamer & Async TTS Dispatcher ───────────────────
+// Uses an EventEmitter to trigger TTS the moment a sentence is ready,
+// running concurrently alongside the LLM stream for ultra-low latency.
+const ttsEmitter = new EventEmitter();
+
+async function streamNeuralResponse(
+  userSpeech: string,
+  systemPrompt: string,
+  streamSid: string,
+  ws: WebSocket,
+  callLang: string
+): Promise<string> {
+  let tokenBuffer = '';
+  let fullResponse = '';
+
+  try {
+    for await (const token of aiService.streamResponse(userSpeech, systemPrompt)) {
+      tokenBuffer += token;
+      fullResponse += token;
+
+      // THE TRIGGER: If the token is punctuation, dispatch the chunk immediately!
+      if (token.match(/[.!?,;:\n]/)) {
+        const chunkToSpeak = tokenBuffer.trim();
+        if (chunkToSpeak.length > 2) {
+          console.log(`[OS³ FAST-STREAM] Dispatched Chunk: "${chunkToSpeak}"`);
+          ttsEmitter.emit('speak_chunk', { text: chunkToSpeak, streamSid, ws, locale: callLang });
+        }
+        tokenBuffer = '';
+      }
+    }
+
+    // FLUSH: If the AI finishes but didn't end with punctuation, send the rest
+    if (tokenBuffer.trim().length > 0) {
+      console.log(`[OS³ FAST-STREAM] Dispatched Final Chunk: "${tokenBuffer.trim()}"`);
+      ttsEmitter.emit('speak_chunk', { text: tokenBuffer.trim(), streamSid, ws, locale: callLang });
+    }
+  } catch (error) {
+    console.error('[OS³ ERROR] LLM Streaming Failed:', error);
+  }
+
+  return fullResponse;
+}
+
+// ── Async TTS Dispatcher — fires concurrently alongside the LLM ──────────────
+ttsEmitter.on('speak_chunk', async ({ text, streamSid, ws, locale }: { text: string; streamSid: string; ws: WebSocket; locale: string }) => {
+  if (ws.readyState !== WebSocket.OPEN) return;
+  try {
+    const audioBuffer = await voiceService.generateAudio(text, { format: 'mulaw', language: locale });
+    await streamAudioToTwilio(ws, streamSid, audioBuffer);
+    broadcastLog('INFO', `[FAST-STREAM TTS] Chunk sent: "${text.slice(0, 40)}..."`);
+  } catch (err: any) {
+    console.error('[OS³ TTS ERROR]:', err?.message);
+  }
+});
+
 // ── /api/twilio/stream — Zero-Latency WebSocket Bridge ───────────────────────
 // Azure TTS → raw mu-law in RAM → base64 → Twilio, no disk I/O
 const streamWss = new WebSocketServer({ server, path: '/api/twilio/stream' });
@@ -186,7 +242,9 @@ streamWss.on('connection', (ws) => {
 
       const callMetaForPrompt = callSid ? activeCalls.get(callSid) : undefined;
       const systemPrompt = buildSystemPrompt(callLang, callMetaForPrompt);
-      const aiResponse   = await aiService.generateResponse(userSpeech, systemPrompt);
+
+      // ── OS³ Fast-Stream: LLM tokens stream → punctuation-chunked TTS ──────
+      const aiResponse = await streamNeuralResponse(userSpeech, systemPrompt, streamSid, ws, callLang);
 
       if (callSid && activeCalls.has(callSid)) {
         activeCalls.get(callSid)!.aiConversation.push(`AI: ${aiResponse}`);
@@ -199,8 +257,7 @@ streamWss.on('connection', (ws) => {
       if (jsonMatch) { try { outputContract = JSON.parse(jsonMatch[0]); } catch { /* keyword fallback */ } }
       const isCallComplete = !!outputContract || completionKeywords.some(kw => aiResponse.toLowerCase().includes(kw));
 
-      const spokenResponse = aiResponse.replace(/\{[\s\S]*"status"\s*:[\s\S]*\}/, '').trim();
-      await sendAudioToTwilio(spokenResponse, callLang);
+      // Audio already dispatched chunk-by-chunk via ttsEmitter during streaming
 
       if (isCallComplete && callSid) {
         const callMeta = activeCalls.get(callSid);

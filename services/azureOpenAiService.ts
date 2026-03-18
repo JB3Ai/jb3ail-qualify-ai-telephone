@@ -47,6 +47,32 @@ export class AzureOpenAiService {
     }
   }
 
+  /**
+   * Stream tokens from Azure OpenAI for ultra-low-latency voice.
+   * Yields individual tokens as they arrive from the LLM.
+   */
+  async *streamResponse(userText: string, protocolSection?: string): AsyncGenerator<string> {
+    const systemPrompt = protocolSection
+      ? `<protocol_context>\n${protocolSection}\n</protocol_context>\n\n<contract>\nRespond in clear, professional prosody under three concise sentences.\nIf the interaction is complete, append the JSON output contract specified in the protocol.\n</contract>`
+      : "You are Zandi, a professional qualification agent for Mzansi Solutions.";
+
+    const stream = await this.client.chat.completions.create({
+      model: process.env.AZURE_OPENAI_DEPLOYMENT || "",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userText }
+      ],
+      max_tokens: 150,
+      temperature: 0.7,
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const token = chunk.choices[0]?.delta?.content;
+      if (token) yield token;
+    }
+  }
+
   async extractLeadData(transcript: string) {
     const response = await this.client.chat.completions.create({
       model: process.env.AZURE_OPENAI_DEPLOYMENT || "",
