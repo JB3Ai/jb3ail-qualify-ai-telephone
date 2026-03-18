@@ -780,6 +780,7 @@ const App: React.FC = () => {
   const [showArchiveInfo, setShowArchiveInfo] = useState(false);
   const [selectedArchiveSignal, setSelectedArchiveSignal] = useState<Client | null>(null);
   const [showBackendInfo, setShowBackendInfo] = useState(false);
+  const { showTicker, toggleTicker } = useTerminal();
   
   const [showColdStartToast, setShowColdStartToast] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
@@ -2461,6 +2462,29 @@ const App: React.FC = () => {
                 </div>
               </div>
               
+              {/* GLOBAL TELEMETRY FEED TOGGLE */}
+              <div className="bg-[#0d1117] border border-[#39ff88]/20 p-6 rounded-lg flex items-center justify-between gap-6">
+                <div>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39ff88] mb-1">GLOBAL_TELEMETRY_FEED</h3>
+                  <p className="text-xs text-slate-500">
+                    Display live system routing and endpoint status in the global header.
+                  </p>
+                </div>
+                <button
+                  onClick={toggleTicker}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#39ff88] focus:ring-offset-2 focus:ring-offset-black ${
+                    showTicker ? 'bg-[#39ff88]' : 'bg-[#1e293b]'
+                  }`}
+                  aria-label="Toggle telemetry ticker"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-black transition-transform ${
+                      showTicker ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
               <div className="bg-red-500/5 border border-red-500/20 p-8 rounded-lg">
                 <div className="flex items-center gap-4 mb-4">
                   <ShieldExclamationIcon className="w-8 h-8 text-red-500" />
