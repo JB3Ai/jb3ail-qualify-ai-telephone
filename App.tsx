@@ -1879,7 +1879,7 @@ const App: React.FC = () => {
                 </div>
               </>
             ) : (
-              <div className="flex-1 p-6 sm:p-12 lg:p-24 overflow-y-auto scrollbar-hide">
+              <div className="flex-1 p-6 sm:p-12 lg:p-24 overflow-y-auto scrollbar-hide font-mono text-[#66FF66]">
                 <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div>
                       <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Neural Test Lab</h1>
@@ -1894,6 +1894,114 @@ const App: React.FC = () => {
                     </button>
                 </header>
 
+                {/* ─── SYSTEM INITIALIZATION PARAMETERS (BOTH MODES) ─── */}
+                <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 mb-8">
+                  <h2 className="text-xl font-black tracking-widest mb-4 border-b border-[#66FF66]/30 pb-2 flex items-center gap-2 text-white">
+                    <CommandLineIcon className="w-5 h-5 text-[#66FF66]" />
+                    [ SYSTEM_INITIALIZATION_PARAMETERS ]
+                  </h2>
+                  <div className="flex flex-col md:flex-row gap-8">
+                    <div className="flex-1">
+                      <label className="block text-[#66FF66]/70 mb-2 text-[9px] font-black tracking-widest uppercase">
+                        Core Language Selection
+                      </label>
+                      <select
+                        value={testLang}
+                        onChange={(e) => setTestLang(e.target.value as Language)}
+                        className="w-full bg-[#0a110a] border border-[#66FF66]/30 rounded-xl px-4 py-3 text-white font-bold text-xs outline-none focus:border-[#66FF66] appearance-none"
+                      >
+                        {Object.values(Language).map(lang => (
+                          <option key={lang} value={lang} className="bg-[#0d1117]">{getLanguageName(lang)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {appMode === 'DEMO' && (
+                      <div className="flex-1 border-l border-[#66FF66]/20 pl-8">
+                        <p className="text-[9px] text-[#66FF66]/70 mb-2 font-black tracking-widest uppercase">Active Persona Lock</p>
+                        <p className="text-sm font-black text-white">CORP: {demoConfig?.company || 'UNASSIGNED'}</p>
+                        <p className="text-sm font-black text-white uppercase">OBJ: {demoConfig?.objective || 'UNASSIGNED'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ─── INTERNAL LINK + MANUAL SIGNAL — Two-column Grid ─── */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+
+                  {/* INTERNAL NEURAL LINK (BOTH MODES) */}
+                  <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 shadow-[0_0_15px_rgba(102,255,102,0.05)]">
+                    <div className="flex items-center gap-3 mb-2">
+                      <CpuChipIcon className="w-5 h-5 text-[#66FF66]" />
+                      <h3 className="text-lg font-black text-white">Establish Internal Link</h3>
+                    </div>
+                    <p className="text-[10px] text-[#66FF66]/70 mb-6 h-12 leading-relaxed">
+                      Direct connection to the language processing core. Uses local laptop microphone &amp; speakers for real-time 2-way logic verification.
+                    </p>
+                    <button
+                      onClick={() => handleStartInternalCall(testLang)}
+                      className="w-full flex items-center justify-center gap-3 py-4 font-black tracking-widest border rounded-xl transition-all text-[10px] uppercase bg-[#002200] border-[#66FF66] text-[#66FF66] hover:bg-[#66FF66]/10 shadow-[0_0_20px_rgba(102,255,102,0.2)]"
+                    >
+                      <SpeakerWaveIcon className="w-5 h-5" />
+                      INITIALIZE_MIC_UPLINK
+                    </button>
+                  </div>
+
+                  {/* MANUAL SIGNAL TRIGGER — OPERATOR ONLY / LOCKED IN DEMO */}
+                  {appMode === 'OPERATOR' ? (
+                    <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 shadow-[0_0_15px_rgba(102,255,102,0.05)]">
+                      <div className="flex items-center gap-3 mb-2">
+                        <PhoneIcon className="w-5 h-5 text-[#00D9FF]" />
+                        <h3 className="text-lg font-black text-white">Manual Signal Trigger</h3>
+                      </div>
+                      <p className="text-[10px] text-[#66FF66]/70 mb-6 h-12 leading-relaxed">
+                        Bypass local routing. Dispatch outbound Twilio signal to custom external telecommunications hardware (cell phone).
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. +27821234567"
+                          value={testPhone}
+                          onChange={(e) => setTestPhone(e.target.value)}
+                          className="flex-1 bg-[#0a110a] border border-[#66FF66]/30 rounded-xl px-4 py-3 text-white font-mono text-sm outline-none focus:border-[#00D9FF]"
+                        />
+                        <button
+                          onClick={() => {
+                            if (!testPhone) return;
+                            handleStartCall({
+                              id: `TEST-${Date.now()}`,
+                              name: 'Test',
+                              surname: 'Subject',
+                              phone: testPhone,
+                              language: testLang,
+                              status: 'pending',
+                              area: 'Test Lab',
+                              signup_date: new Date().toISOString(),
+                              collected_data: {}
+                            });
+                          }}
+                          disabled={!testPhone || backendStatus !== 'connected'}
+                          className="bg-[#00D9FF]/10 border border-[#00D9FF] text-[#00D9FF] px-6 rounded-xl hover:bg-[#00D9FF]/20 flex items-center justify-center disabled:opacity-20 transition-all"
+                        >
+                          <PhoneIcon className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[#050505] border border-gray-800 rounded-lg p-6 flex items-center justify-center opacity-50 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-black/60 z-10 flex items-center justify-center">
+                        <span className="bg-black px-4 py-1 border border-gray-600 text-gray-400 text-[9px] font-black tracking-widest rounded-full uppercase">
+                          Feature locked in Demo Mode
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-gray-600 mb-2">Manual Signal Trigger</h3>
+                        <p className="text-[10px] text-gray-600 h-12">Outbound Twilio dialing restricted.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ─── NEURAL STIMULUS + LAB OUTPUT (BOTH MODES) ─── */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40">
                         <div className="flex items-center gap-4 mb-8">
@@ -1951,106 +2059,13 @@ const App: React.FC = () => {
                             <CommandLineIcon className="w-8 h-8 text-[#66FF66]" />
                             <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Lab Output</h3>
                         </div>
-                        <div className="flex-1 bg-black/40 rounded-md p-6 border border-[#1e293b]/40 font-mono text-[10px] text-slate-400 overflow-y-auto space-y-2">
+                        <div className="flex-1 bg-black/40 rounded-md p-6 border border-[#1e293b]/40 font-mono text-[10px] text-slate-400 overflow-y-auto space-y-2 min-h-[300px]">
                             {testLogs.map((log, i) => (
                               <div key={i} className={log.includes('ERROR') ? 'text-red-500' : log.includes('SUCCESS') ? 'text-[#66FF66]' : ''}>
                                 {log}
                               </div>
                             ))}
                             {testLogs.length === 0 && <div className="opacity-30 italic">Awaiting stimulus...</div>}
-                        </div>
-                    </div>
-
-                    <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40 lg:col-span-2">
-                        <div className="flex items-center gap-4 mb-8">
-                            <PhoneIcon className="w-8 h-8 text-[#00D9FF]" />
-                            <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Manual Signal Trigger</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            {/* Outbound Section */}
-                            <div className="space-y-6">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <ArrowTopRightOnSquareIcon className="w-4 h-4 text-[#00D9FF]" />
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Outbound Signal</span>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Target Number</label>
-                                        <input 
-                                            type="text" 
-                                            value={testPhone} 
-                                            onChange={(e) => setTestPhone(e.target.value)}
-                                            placeholder="+27..."
-                                            className="w-full bg-black/40 border border-[#1e293b]/40 rounded-xl px-4 py-3 text-[#00D9FF] font-mono text-sm focus:ring-1 focus:ring-[#00D9FF] outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Language Protocol</label>
-                                        <select 
-                                            value={testLang} 
-                                            onChange={(e) => setTestLang(e.target.value as Language)}
-                                            className="w-full bg-black/40 border border-[#1e293b]/40 rounded-xl px-4 py-3 text-white font-bold text-xs focus:ring-1 focus:ring-[#00D9FF] outline-none appearance-none"
-                                        >
-                                            {Object.values(Language).map(lang => (
-                                                <option key={lang} value={lang} className="bg-[#0d1117]">{getLanguageName(lang)}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <button 
-                                        onClick={() => {
-                                            if (!testPhone) return;
-                                            handleStartCall({
-                                                id: `TEST-${Date.now()}`,
-                                                name: 'Test',
-                                                surname: 'Subject',
-                                                phone: testPhone,
-                                                language: testLang,
-                                                status: 'pending',
-                                                area: 'Test Lab',
-                                                signup_date: new Date().toISOString(),
-                                                collected_data: {}
-                                            });
-                                        }}
-                                        disabled={!testPhone || backendStatus !== 'connected'}
-                                        className="w-full bg-[#00D9FF] text-[#0d1117] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#39FF88] transition-all disabled:opacity-20 flex items-center justify-center gap-2"
-                                    >
-                                        <PhoneIcon className="w-4 h-4" /> Initialize Outbound
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Internal Section */}
-                            <div className="space-y-6 border-l border-[#1e293b]/30 pl-12">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <CpuChipIcon className="w-4 h-4 text-[#66FF66]" />
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Internal Neural Link</span>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-[#66FF66]/5 border border-[#66FF66]/10 rounded-xl">
-                                        <p className="text-[10px] text-slate-400 leading-relaxed">
-                                            Direct connection to the language processing core. Uses local speakerphone for real-time logic verification.
-                                        </p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Core Language</label>
-                                        <select 
-                                            value={testLang} 
-                                            onChange={(e) => setTestLang(e.target.value as Language)}
-                                            className="w-full bg-black/40 border border-[#1e293b]/40 rounded-xl px-4 py-3 text-white font-bold text-xs focus:ring-1 focus:ring-[#66FF66] outline-none appearance-none"
-                                        >
-                                            {Object.values(Language).map(lang => (
-                                                <option key={lang} value={lang} className="bg-[#0d1117]">{getLanguageName(lang)}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <button 
-                                        onClick={() => handleStartInternalCall(testLang)}
-                                        className="w-full bg-[#66FF66] text-[#0d1117] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(102,255,102,0.2)]"
-                                    >
-                                        <SpeakerWaveIcon className="w-4 h-4" /> Establish Internal Link
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
