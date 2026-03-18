@@ -1336,7 +1336,7 @@ const App: React.FC = () => {
 
           {/* WHAT — Execution & Status */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">What</p>
-          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="Hub" />
+          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="System Hub" />
           <NavItem active={activeTab === 'RUN_PROTOCOL'} onClick={() => setActiveTab('RUN_PROTOCOL')} icon={<BeakerIcon className="w-5 h-5" />} label="Run Protocol" disabled={!isProtocolAccepted} />
           <NavItem active={activeTab === 'LIVE_TERMINAL'} onClick={() => setActiveTab('LIVE_TERMINAL')} icon={<CommandLineIcon className="w-5 h-5" />} label="Live Terminal" disabled={!isProtocolAccepted} />
 
@@ -1385,7 +1385,7 @@ const App: React.FC = () => {
                     ? 'border-[#39FF88]/30 bg-[#39FF88]/5 text-[#39FF88]'
                     : 'border-[#00D9FF]/30 bg-[#00D9FF]/5 text-[#00D9FF]'
               }`}
-              title={backendStatus !== 'connected' ? 'Uplink Severed — click to diagnose in Config Hub' : undefined}
+              title={backendStatus !== 'connected' ? 'Uplink Severed — click to diagnose in System Hub' : undefined}
             >
               <div className="flex items-center gap-4">
                 <div className={`w-3 h-3 rounded-full animate-pulse shadow-[0_0_10px_currentColor] ${
@@ -2101,7 +2101,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="pl-8 space-y-4 text-sm">
                     <div className="flex flex-col">
-                      <span className="font-bold text-white tracking-wide">3. HUB (CONFIG_HUB)</span>
+                      <span className="font-bold text-white tracking-wide">3. SYSTEM_HUB</span>
                       <span className="text-[#39ff88]/70">The master dashboard. Monitor active systems, API node health, and overall uplink statuses.</span>
                     </div>
                     <div className="flex flex-col">
@@ -2249,7 +2249,7 @@ const App: React.FC = () => {
                 <InfoOverlay 
                   isOpen={showConfigInfo}
                   onClose={() => setShowConfigInfo(false)}
-                  title="07 // Config Hub — Calibration"
+                  title="07 // System Hub — Calibration"
                   icon={<SignalIcon className="w-6 h-6" />}
                   steps={[
                     {
@@ -2275,7 +2275,7 @@ const App: React.FC = () => {
                   ]}
                 />
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-12">
-                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter text-glow">Config Hub</h1>
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter text-glow">System Hub</h1>
                   <button 
                     onClick={() => setShowConfigInfo(true)}
                     className="i-button-pro"
