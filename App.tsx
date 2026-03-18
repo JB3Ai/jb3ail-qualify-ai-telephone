@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { PhoneCall, Server } from 'lucide-react';
+import { PhoneCall, Server, Home as HomeIcon, Database, Play, Settings as SettingsIcon, Terminal } from 'lucide-react';
 import { Client, CallConfig, Language, TranscriptionEntry } from './types';
 import { useTerminal } from './TerminalContext';
 import { clientService } from './services/clientService';
@@ -763,7 +763,7 @@ const NavItem: React.FC<{ active: boolean; onClick: () => void; icon: React.Reac
 
 const App: React.FC = () => {
   const [protocolMode, setProtocolMode] = useState<'local' | 'intl'>('local');
-  const [activeTab, setActiveTab] = useState<'DATA_INBOX' | 'PIPELINE' | 'CALL_ARCHIVE' | 'LIVE_TERMINAL' | 'RUN_PROTOCOL' | 'CONFIG_HUB' | 'BACKEND_SETTINGS' | 'DASHBOARD'>('PIPELINE');
+  const [activeTab, setActiveTab] = useState<'HOME' | 'DATA_INBOX' | 'PIPELINE' | 'CALL_ARCHIVE' | 'LIVE_TERMINAL' | 'RUN_PROTOCOL' | 'CONFIG_HUB' | 'BACKEND_SETTINGS' | 'DASHBOARD'>('HOME');
   const [clients, setClients] = useState<Client[]>([]);
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [isCalling, setIsCalling] = useState(false);
@@ -1326,8 +1326,11 @@ const App: React.FC = () => {
         </div>
         
         <div className="flex-1 px-2 sm:px-4 space-y-1 py-2 sm:py-4 overflow-y-auto scrollbar-hide">
+          {/* HOME */}
+          <NavItem active={activeTab === 'HOME'} onClick={() => setActiveTab('HOME')} icon={<HomeIcon className="w-5 h-5" />} label="Home" />
+
           {/* WHO — Onboarding & Data */}
-          <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-2 pb-2 hidden lg:block">Who</p>
+          <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-4 pb-2 hidden lg:block">Who</p>
           <NavItem active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="Data Inbox" disabled={!isProtocolAccepted} />
           <NavItem active={activeTab === 'PIPELINE'} onClick={() => setActiveTab('PIPELINE')} icon={<ListBulletIcon className="w-5 h-5" />} label="Pipeline" disabled={!isProtocolAccepted} />
 
@@ -2036,6 +2039,116 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB: HOME */}
+        {activeTab === 'HOME' && (
+          <div className="flex-1 overflow-y-auto p-6 sm:p-10 lg:p-16 animate-fade-in scrollbar-hide">
+            <div className="max-w-4xl mx-auto font-mono text-[#39ff88]">
+
+              {/* HEADER */}
+              <div className="border-b border-[#39ff88]/30 pb-6 mb-8">
+                <h1 className="text-3xl font-bold tracking-widest mb-2">
+                  JB³Ai OS³ <span className="text-[#39ff88]/50">|| MZANZI_ENGINE_CORE</span>
+                </h1>
+                <p className="text-sm text-[#39ff88]/70 uppercase tracking-wider">
+                  System Initialized. Zero-latency neural voice routing active.
+                </p>
+              </div>
+
+              {/* INTRO */}
+              <div className="bg-black/30 border border-[#39ff88]/20 rounded p-6 mb-10 shadow-[0_0_15px_rgba(57,255,136,0.05)]">
+                <p className="leading-relaxed text-[#39ff88]/90 mb-4">
+                  Welcome to the OS³ Terminal. This interface controls the Zandi neural agent,
+                  routing ultra-low latency telecommunications through Azure TTS and Twilio WebSockets.
+                </p>
+                <p className="text-sm text-[#39ff88]/60">
+                  To initiate a sequence, follow the navigation hierarchy on the left console from top to bottom.
+                </p>
+              </div>
+
+              {/* NAVIGATION FLOW ARCHITECTURE */}
+              <div className="space-y-8">
+
+                {/* WHO */}
+                <section>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Database className="w-5 h-5 text-[#39ff88]" />
+                    <h2 className="text-xl font-bold border-b border-[#39ff88]/30 flex-grow pb-1">
+                      [ 1.0 ] WHO // ONBOARDING &amp; DATA INGESTION
+                    </h2>
+                  </div>
+                  <div className="pl-8 space-y-4 text-sm">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-white tracking-wide">1. DATA_INBOX</span>
+                      <span className="text-[#39ff88]/70">Raw signal reception. View unprocessed lead data arriving from external webhooks.</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-white tracking-wide">2. PIPELINE</span>
+                      <span className="text-[#39ff88]/70">Target acquisition. Import, queue, and manage the list of contacts awaiting outbound neural calls.</span>
+                    </div>
+                  </div>
+                </section>
+
+                {/* WHAT */}
+                <section>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Play className="w-5 h-5 text-[#39ff88]" />
+                    <h2 className="text-xl font-bold border-b border-[#39ff88]/30 flex-grow pb-1">
+                      [ 2.0 ] WHAT // EXECUTION &amp; STATUS
+                    </h2>
+                  </div>
+                  <div className="pl-8 space-y-4 text-sm">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-white tracking-wide">3. HUB (CONFIG_HUB)</span>
+                      <span className="text-[#39ff88]/70">The master dashboard. Monitor active systems, API node health, and overall uplink statuses.</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-white tracking-wide">4. RUN_PROTOCOL</span>
+                      <span className="text-[#39ff88]/70">The sandbox. Test Mzanzi accents, dial-tones, script parameters, and SSML prosody before live deployment.</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-white tracking-wide">5. LIVE_TERMINAL</span>
+                      <span className="text-[#39ff88]/70">The execution floor. Watch real-time call telemetry, live dual-channel transcripts, and agent logic processing.</span>
+                    </div>
+                  </div>
+                </section>
+
+                {/* HOW */}
+                <section>
+                  <div className="flex items-center gap-3 mb-4">
+                    <SettingsIcon className="w-5 h-5 text-[#39ff88]" />
+                    <h2 className="text-xl font-bold border-b border-[#39ff88]/30 flex-grow pb-1">
+                      [ 3.0 ] HOW // SETTINGS &amp; LOGS
+                    </h2>
+                  </div>
+                  <div className="pl-8 space-y-4 text-sm">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-white tracking-wide">6. CONFIG (BACKEND_SETTINGS)</span>
+                      <span className="text-[#39ff88]/70">Core system parameters. Manage Twilio routing, Azure keys, and toggle OS³ UI features like the Telemetry Ticker.</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-white tracking-wide">7. CALL_ARCHIVE</span>
+                      <span className="text-[#39ff88]/70">The Intelligence Ledger. Review historical call transcripts, success metrics, and extracted JSON lead parameters.</span>
+                    </div>
+                  </div>
+                </section>
+
+              </div>
+
+              {/* QUICK START */}
+              <div className="mt-12 flex justify-center">
+                <button
+                  onClick={() => setActiveTab('LIVE_TERMINAL')}
+                  className="bg-[#39ff88]/10 border border-[#39ff88] text-[#39ff88] px-8 py-3 rounded hover:bg-[#39ff88]/20 hover:shadow-[0_0_15px_rgba(57,255,136,0.4)] transition-all flex items-center gap-3"
+                >
+                  <Terminal className="w-5 h-5" />
+                  <span className="font-bold tracking-widest uppercase">Bypass to Live Terminal</span>
+                </button>
+              </div>
+
+            </div>
           </div>
         )}
 
