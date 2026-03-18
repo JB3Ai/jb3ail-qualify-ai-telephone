@@ -570,32 +570,36 @@ app.all('/make-call', async (req, res) => {
 });
 
 // 2b. TWILIO TWIML CALLBACK — Twilio calls this URL to get call instructions
-app.all('/api/twilio/twiml', (req, res) => {
+// When Twilio dials the phone, it hits this route to ask "What do I do now?".
+// We tell it to open a WebSocket (<Stream>) and inject demo parameters directly into the audio stream.
+app.post('/api/twilio/twiml', (req, res) => {
   const mode = (req.query.mode as string) || 'OPERATOR';
-  let config: any = {};
-  try { config = JSON.parse(decodeURIComponent((req.query.config as string) || '{}')); } catch { /* ignore */ }
+  const configString = req.query.config as string;
 
-  const callSid = req.body?.CallSid as string | undefined;
-  const domain = process.env.PUBLIC_DOMAIN || process.env.DOMAIN || (process.env.APP_URL ? new URL(process.env.APP_URL).host : `localhost:${PORT}`);
-
-  console.log(`📡 TwiML callback — mode:${mode}, callSid:${callSid}, company:${config.company || '—'}`);
-
-  // Update activeCalls with config from query params (belt-and-suspenders with /make-call storage)
-  if (callSid && activeCalls.has(callSid)) {
-    const meta = activeCalls.get(callSid)!;
-    meta.mode = mode;
-    if (config && Object.keys(config).length) meta.demoConfig = config;
+  let demoConfig: any = {};
+  if (configString) {
+    try { demoConfig = JSON.parse(decodeURIComponent(configString)); } catch { /* ignore */ }
   }
 
-  // Return TwiML that opens a WSS media stream back to this server
-  const twiml = new Twilio.twiml.VoiceResponse();
-  twiml.connect().stream({
-    url: `wss://${domain}/api/twilio/stream`,
-    name: 'Mzanzi_Neural_Stream',
-  });
+  const domain = process.env.PUBLIC_DOMAIN || process.env.DOMAIN || (process.env.APP_URL ? new URL(process.env.APP_URL).host : `localhost:${PORT}`);
+
+  console.log(`📡 TwiML callback — mode:${mode}, company:${demoConfig.company || '—'}`);
+
+  const twiml = `
+    <Response>
+      <Connect>
+        <Stream url="wss://${domain}/api/twilio/stream">
+          <Parameter name="appMode" value="${mode}" />
+          <Parameter name="company" value="${demoConfig.company || ''}" />
+          <Parameter name="objective" value="${demoConfig.objective || ''}" />
+          <Parameter name="language" value="${demoConfig.language || ''}" />
+        </Stream>
+      </Connect>
+    </Response>
+  `;
 
   res.type('text/xml');
-  res.send(twiml.toString());
+  res.send(twiml);
 });
 
 // ─── OS³ Neural Prompt Injector ─── Demo-Aware System Prompt Generator ───
