@@ -242,12 +242,10 @@ const NeuralConnectivityMatrix: React.FC<{
   backendStatus: string; 
   isProtocolAccepted: boolean; 
   onAcceptProtocol: () => void; 
-  onLoadTeam: () => void;
-  onShowInfo: () => void;
   wsConnected?: boolean;
   ledgerStatus?: string;
   latencyMs?: number | null;
-}> = ({ backendStatus, isProtocolAccepted, onAcceptProtocol, onLoadTeam, onShowInfo, wsConnected, ledgerStatus, latencyMs }) => {
+}> = ({ backendStatus, isProtocolAccepted, onAcceptProtocol, wsConnected, ledgerStatus, latencyMs }) => {
   const latencyDisplay = latencyMs != null ? `${latencyMs}ms` : '—';
   const monitorCards = [
     {
@@ -275,32 +273,16 @@ const NeuralConnectivityMatrix: React.FC<{
   return (
     <div className="bg-[#020617] p-10 rounded-lg border border-[#1A2333] font-inter shadow-2xl relative">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
-        <div className="flex items-center gap-6">
-          <button 
-            onClick={onShowInfo}
-            className="i-button-pro"
-            title="Dashboard Info"
-          >
-            <InformationCircleIcon className="w-5 h-5" />
-          </button>
-          <div>
-            <h2 className="text-3xl font-black text-white uppercase tracking-tighter font-orbitron mb-2">Neural Connectivity Matrix</h2>
-            <p className="text-slate-500 font-medium text-xs uppercase tracking-widest">Command & Control Node • Real-time Telemetry</p>
-          </div>
+        <div>
+          <h2 className="text-3xl font-black text-white uppercase tracking-tighter font-orbitron mb-2">Neural Connectivity Matrix</h2>
+          <p className="text-slate-500 font-medium text-xs uppercase tracking-widest">Command & Control Node • Real-time Telemetry</p>
         </div>
-        <div className="flex gap-4 w-full lg:w-auto">
+        <div className="flex items-center">
           <button 
             onClick={onAcceptProtocol}
-            className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-[#1A2333] text-[#39FF88] border border-[#39FF88]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#39FF88] hover:text-[#020617] transition-all font-orbitron"
+            className="flex items-center gap-2 px-4 py-2 bg-[#1A2333] text-[#39FF88] border border-[#39FF88]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#39FF88] hover:text-[#020617] transition-all font-orbitron"
           >
             <ShieldCheckIcon className="w-4 h-4" /> Security & POPIA
-          </button>
-          <button 
-            onClick={onLoadTeam}
-            disabled={!isProtocolAccepted}
-            className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all font-orbitron ${isProtocolAccepted ? 'bg-[#39FF88] text-[#020617] shadow-[0_0_20px_rgba(57,255,136,0.4)]' : 'bg-[#1A2333] text-slate-600 cursor-not-allowed opacity-50'}`}
-          >
-            <UserGroupIcon className="w-4 h-4" /> Load Team
           </button>
         </div>
       </div>
@@ -2289,8 +2271,6 @@ const App: React.FC = () => {
                   backendStatus={backendStatus}
                   isProtocolAccepted={isProtocolAccepted}
                   onAcceptProtocol={() => setShowPopiaModal(true)}
-                  onLoadTeam={() => console.log('Loading team...')}
-                  onShowInfo={() => setShowDashboardInfo(true)}
                   wsConnected={wsConnected}
                   ledgerStatus={ledgerStatus}
                   latencyMs={latencyMs}
