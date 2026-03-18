@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { PhoneCall } from 'lucide-react';
 import { Client, CallConfig, Language, TranscriptionEntry } from './types';
 import { clientService } from './services/clientService';
 import { Os3HubMark } from './Os3HubMark';
@@ -1258,12 +1259,14 @@ const App: React.FC = () => {
       {/* --- SIDEBAR --- */}
       <nav className="w-16 sm:w-20 lg:w-64 bg-[#0f172a] border-r border-[#1e293b] flex flex-col shrink-0 surface-grain">
 
-        {/* OS³ Hub Mark — sidebar header */}
-        <div className="p-4 sm:p-5 flex items-center justify-center lg:justify-start gap-4">
-          <Os3HubMark />
+        {/* JB³Ai Logo — sidebar header */}
+        <div className="p-4 sm:p-5 flex items-center justify-center lg:justify-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0f172a] border border-[#39ff88]/20 shadow-[0_0_10px_rgba(57,255,136,0.1)] shrink-0">
+            <PhoneCall className="h-5 w-5 text-[#39ff88]" />
+          </div>
           <div className="hidden lg:block">
-            <h2 className="font-black text-[15px] tracking-tight uppercase leading-none text-[#c9d1d9]">JB³Ai <span className="text-[#39ff88]">OS³</span></h2>
-            <p className="text-[9px] font-mono text-[#484f58] uppercase tracking-widest mt-1">Grid Control</p>
+            <h2 className="font-mono font-bold text-[15px] tracking-widest uppercase leading-none text-white">JB³Ai</h2>
+            <p className="text-[9px] font-mono text-[#484f58] uppercase tracking-widest mt-1">OS³ Grid Control</p>
           </div>
         </div>
         
