@@ -229,15 +229,39 @@ streamWss.on('connection', (ws) => {
       if (msg.event === 'start') {
         streamSid = msg.start?.streamSid ?? '';
         callSid   = msg.start?.callSid   ?? '';
-        const callMeta = callSid ? activeCalls.get(callSid) : undefined;
-        callLang  = (callMeta as any)?.language || 'en-ZA';
+        console.log('[OS³] Stream Started. Extracting telemetry...');
+
+        // 1. Extract custom parameters injected via <Parameter> tags in TwiML
+        const customParams = msg.start?.customParameters || {};
+        const mode = customParams.appMode || 'OPERATOR';
+        const demoConfig = {
+          company:   customParams.company   || '',
+          objective: customParams.objective || '',
+          language:  customParams.language  || '',
+        };
+
+        // Sync into activeCalls so onRecognized / buildSystemPrompt can reference it
+        if (callSid) {
+          const existing = activeCalls.get(callSid);
+          if (existing) {
+            existing.mode = mode;
+            existing.demoConfig = demoConfig;
+            if (demoConfig.language && demoConfig.language !== 'auto') existing.language = demoConfig.language;
+          }
+        }
+
+        callLang = (demoConfig.language && demoConfig.language !== 'auto' && demoConfig.language !== '')
+          ? demoConfig.language
+          : (callSid && activeCalls.get(callSid)?.language) || 'en-ZA';
+
+        console.log(`[OS³] Agent Persona Locked: ${demoConfig.company || '—'} | ${demoConfig.objective || '—'} | mode=${mode}`);
 
         // Start continuous recognition for this call's language
         speechCfg.speechRecognitionLanguage = callLang;
         recognizer = new sdk.SpeechRecognizer(speechCfg, sdk.AudioConfig.fromStreamInput(pushStream));
         recognizer.recognized = onRecognized;
         recognizer.startContinuousRecognitionAsync(
-          () => broadcastLog('INFO', `[STREAM_BRIDGE] Recognizer started: ${streamSid} lang=${callLang}`),
+          () => broadcastLog('INFO', `[STREAM_BRIDGE] Recognizer started: ${streamSid} lang=${callLang} mode=${mode}`),
           (err) => broadcastLog('ERROR', `[STREAM_BRIDGE] Recognizer failed: ${String(err)}`)
         );
 
