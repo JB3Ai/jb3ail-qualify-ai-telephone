@@ -791,6 +791,8 @@ const App: React.FC = () => {
   const [showArchiveInfo, setShowArchiveInfo] = useState(false);
   const [selectedArchiveSignal, setSelectedArchiveSignal] = useState<Client | null>(null);
   const [showBackendInfo, setShowBackendInfo] = useState(false);
+  const [appMode, setAppMode] = useState<'LOCKED' | 'DEMO' | 'OPERATOR'>(() => (localStorage.getItem('os3_app_mode') as 'LOCKED' | 'DEMO' | 'OPERATOR') || 'LOCKED');
+  const [demoConfig, setDemoConfig] = useState<{ company: string; objective: string; language: string }>({ company: '', objective: 'reception', language: 'auto' });
   const { showTicker, toggleTicker } = useTerminal();
   
   const [showColdStartToast, setShowColdStartToast] = useState(false);
@@ -1342,19 +1344,19 @@ const App: React.FC = () => {
 
           {/* WHO — Onboarding & Data */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-4 pb-2 hidden lg:block">Who</p>
-          <NavItem index={2} active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="Data Inbox" disabled={!isProtocolAccepted} />
-          <NavItem index={3} active={activeTab === 'PIPELINE'} onClick={() => setActiveTab('PIPELINE')} icon={<ListBulletIcon className="w-5 h-5" />} label="Pipeline" disabled={!isProtocolAccepted} />
+          <NavItem index={2} active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="Data Inbox" disabled={appMode === 'LOCKED' || !isProtocolAccepted} />
+          <NavItem index={3} active={activeTab === 'PIPELINE'} onClick={() => setActiveTab('PIPELINE')} icon={<ListBulletIcon className="w-5 h-5" />} label="Pipeline" disabled={appMode === 'LOCKED' || !isProtocolAccepted} />
 
           {/* WHAT — Execution & Status */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">What</p>
           <NavItem index={4} active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="System Hub" />
-          <NavItem index={5} active={activeTab === 'RUN_PROTOCOL'} onClick={() => setActiveTab('RUN_PROTOCOL')} icon={<BeakerIcon className="w-5 h-5" />} label="Run Protocol" disabled={!isProtocolAccepted} />
-          <NavItem index={6} active={activeTab === 'LIVE_TERMINAL'} onClick={() => setActiveTab('LIVE_TERMINAL')} icon={<CommandLineIcon className="w-5 h-5" />} label="Live Terminal" disabled={!isProtocolAccepted} />
+          <NavItem index={5} active={activeTab === 'RUN_PROTOCOL'} onClick={() => setActiveTab('RUN_PROTOCOL')} icon={<BeakerIcon className="w-5 h-5" />} label="Run Protocol" disabled={appMode === 'LOCKED' || !isProtocolAccepted} />
+          <NavItem index={6} active={activeTab === 'LIVE_TERMINAL'} onClick={() => setActiveTab('LIVE_TERMINAL')} icon={<CommandLineIcon className="w-5 h-5" />} label="Live Terminal" disabled={appMode === 'LOCKED' || !isProtocolAccepted} />
 
           {/* HOW — Settings & Logs */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">How</p>
           <NavItem index={7} active={activeTab === 'BACKEND_SETTINGS'} onClick={() => setActiveTab('BACKEND_SETTINGS')} icon={<AdjustmentsHorizontalIcon className="w-5 h-5" />} label="Config" />
-          <NavItem index={8} active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={!isProtocolAccepted} />
+          <NavItem index={8} active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={appMode === 'LOCKED' || !isProtocolAccepted} />
           <NavItem index={9} active={false} onClick={() => {}} icon={<CpuChipIcon className="w-5 h-5" />} label="Backend Settings" disabled={true} />
 
           {/* DEMO SETUP — 10th Route */}
@@ -2057,111 +2059,74 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* TAB: HOME */}
+        {/* TAB: HOME — GATEWAY & MODE SELECTOR */}
         {activeTab === 'HOME' && (
           <div className="flex-1 overflow-y-auto p-6 sm:p-10 lg:p-16 animate-fade-in scrollbar-hide">
-            <div className="max-w-4xl mx-auto font-mono text-[#39ff88]">
+            <div className="max-w-5xl mx-auto font-mono text-[#39ff88]">
 
-              {/* HEADER */}
-              <div className="border-b border-[#39ff88]/30 pb-6 mb-8">
-                <h1 className="text-3xl font-bold tracking-widest mb-2">
-                  JB³Ai OS³ <span className="text-[#39ff88]/50">|| MZANZI_ENGINE_CORE</span>
-                </h1>
-                <p className="text-sm text-[#39ff88]/70 uppercase tracking-wider">
-                  System Initialized. Zero-latency neural voice routing active.
+              {/* PROFESSIONAL EXECUTIVE HEADER */}
+              <div className="border-b border-[#39ff88]/30 pb-6 mb-8 text-center">
+                <h1 className="text-3xl font-bold tracking-widest mb-4 text-white font-orbitron">OS³ <span className="text-[#39ff88]">INTELLIGENCE PLATFORM</span></h1>
+                <p className="leading-relaxed text-[#39ff88]/80 max-w-2xl mx-auto text-sm">
+                  Welcome to the OS³ Terminal. This platform demonstrates the capabilities of Zandi, our advanced neural AI agent. Designed for seamless customer interaction, this system handles intelligent call routing, real-time voice processing, and autonomous conversational logic.
                 </p>
               </div>
 
-              {/* INTRO */}
-              <div className="bg-black/30 border border-[#39ff88]/20 rounded p-6 mb-10 shadow-[0_0_15px_rgba(57,255,136,0.05)]">
-                <p className="leading-relaxed text-[#39ff88]/90 mb-4">
-                  Welcome to the OS³ Terminal. This interface controls the Zandi neural agent,
-                  routing ultra-low latency telecommunications through Azure TTS and Twilio WebSockets.
-                </p>
-                <p className="text-sm text-[#39ff88]/60">
-                  To initiate a sequence, follow the navigation hierarchy on the left console from top to bottom.
-                </p>
-              </div>
+              {/* MODE SELECTOR — shown when LOCKED */}
+              {appMode === 'LOCKED' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
 
-              {/* NAVIGATION FLOW ARCHITECTURE */}
-              <div className="space-y-8">
+                  {/* DEMO MODE BUTTON */}
+                  <button
+                    onClick={() => {
+                      setActiveTab('DEMO_SETUP');
+                    }}
+                    className="flex flex-col items-center justify-center p-10 border-2 border-[#39ff88] bg-[#39ff88]/5 hover:bg-[#39ff88]/10 rounded-xl shadow-[0_0_20px_rgba(57,255,136,0.1)] transition-all group"
+                  >
+                    <Play className="w-12 h-12 mb-4 text-[#39ff88] group-hover:scale-110 transition-transform" />
+                    <h2 className="text-2xl font-bold text-white mb-2 font-orbitron tracking-wider">GUIDED DEMO</h2>
+                    <p className="text-xs text-[#39ff88]/70 text-center">Executive showcase. Extremely friendly persona, auto-language detection, and guided scenarios.</p>
+                  </button>
 
-                {/* WHO */}
-                <section>
-                  <div className="flex items-center gap-3 mb-4">
-                    <Database className="w-5 h-5 text-[#39ff88]" />
-                    <h2 className="text-xl font-bold border-b border-[#39ff88]/30 flex-grow pb-1">
-                      [ 1.0 ] WHO // ONBOARDING &amp; DATA INGESTION
-                    </h2>
-                  </div>
-                  <div className="pl-8 space-y-4 text-sm">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-white tracking-wide">1. DATA_INBOX</span>
-                      <span className="text-[#39ff88]/70">Raw signal reception. View unprocessed lead data arriving from external webhooks.</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-white tracking-wide">2. PIPELINE</span>
-                      <span className="text-[#39ff88]/70">Target acquisition. Import, queue, and manage the list of contacts awaiting outbound neural calls.</span>
-                    </div>
-                  </div>
-                </section>
+                  {/* OPERATOR MODE BUTTON */}
+                  <button
+                    onClick={() => {
+                      setAppMode('OPERATOR');
+                      localStorage.setItem('os3_app_mode', 'OPERATOR');
+                      setShowColdStartToast(true);
+                      setTimeout(() => setShowColdStartToast(false), 8000);
+                    }}
+                    className="flex flex-col items-center justify-center p-10 border-2 border-slate-600 bg-slate-900 hover:bg-slate-800 hover:border-slate-400 rounded-xl transition-all group"
+                  >
+                    <Terminal className="w-12 h-12 mb-4 text-slate-400 group-hover:scale-110 transition-transform" />
+                    <h2 className="text-2xl font-bold text-white mb-2 font-orbitron tracking-wider">OPERATOR MODE</h2>
+                    <p className="text-xs text-slate-400 text-center">Full system access. Unrestricted configuration, custom prompt engineering, and raw data feeds.</p>
+                  </button>
+                </div>
+              )}
 
-                {/* WHAT */}
-                <section>
-                  <div className="flex items-center gap-3 mb-4">
-                    <Play className="w-5 h-5 text-[#39ff88]" />
-                    <h2 className="text-xl font-bold border-b border-[#39ff88]/30 flex-grow pb-1">
-                      [ 2.0 ] WHAT // EXECUTION &amp; STATUS
-                    </h2>
+              {/* ACTIVE MODE STATUS — shown when unlocked */}
+              {appMode !== 'LOCKED' && (
+                <div className="mt-12 text-center p-6 border border-[#39ff88]/20 bg-[#0d1117]/80 rounded-xl">
+                  <h3 className="text-lg font-bold text-white font-orbitron tracking-wider">SYSTEM ONLINE: <span className="text-[#39ff88]">{appMode}</span> MODE ACTIVE</h3>
+                  <p className="text-sm text-[#39ff88]/70 mt-2">The sidebar navigation is now unlocked. Proceed to the Live Terminal to execute.</p>
+                  <div className="flex items-center justify-center gap-4 mt-6">
+                    <button
+                      onClick={() => setActiveTab('LIVE_TERMINAL')}
+                      className="bg-[#39ff88]/10 border border-[#39ff88] text-[#39ff88] px-8 py-3 rounded-lg hover:bg-[#39ff88]/20 hover:shadow-[0_0_15px_rgba(57,255,136,0.4)] transition-all flex items-center gap-3"
+                    >
+                      <Terminal className="w-5 h-5" />
+                      <span className="font-bold tracking-widest uppercase text-xs">Go to Live Terminal</span>
+                    </button>
+                    <button
+                      onClick={() => { setAppMode('LOCKED'); localStorage.setItem('os3_app_mode', 'LOCKED'); }}
+                      className="text-xs underline text-slate-500 hover:text-white transition-colors"
+                    >
+                      Reset to Gateway
+                    </button>
                   </div>
-                  <div className="pl-8 space-y-4 text-sm">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-white tracking-wide">3. SYSTEM_HUB</span>
-                      <span className="text-[#39ff88]/70">The master dashboard. Monitor active systems, API node health, and overall uplink statuses.</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-white tracking-wide">4. RUN_PROTOCOL</span>
-                      <span className="text-[#39ff88]/70">The sandbox. Test Mzanzi accents, dial-tones, script parameters, and SSML prosody before live deployment.</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-white tracking-wide">5. LIVE_TERMINAL</span>
-                      <span className="text-[#39ff88]/70">The execution floor. Watch real-time call telemetry, live dual-channel transcripts, and agent logic processing.</span>
-                    </div>
-                  </div>
-                </section>
-
-                {/* HOW */}
-                <section>
-                  <div className="flex items-center gap-3 mb-4">
-                    <SettingsIcon className="w-5 h-5 text-[#39ff88]" />
-                    <h2 className="text-xl font-bold border-b border-[#39ff88]/30 flex-grow pb-1">
-                      [ 3.0 ] HOW // SETTINGS &amp; LOGS
-                    </h2>
-                  </div>
-                  <div className="pl-8 space-y-4 text-sm">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-white tracking-wide">6. CONFIG (BACKEND_SETTINGS)</span>
-                      <span className="text-[#39ff88]/70">Core system parameters. Manage Twilio routing, Azure keys, and toggle OS³ UI features like the Telemetry Ticker.</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-white tracking-wide">7. CALL_ARCHIVE</span>
-                      <span className="text-[#39ff88]/70">The Intelligence Ledger. Review historical call transcripts, success metrics, and extracted JSON lead parameters.</span>
-                    </div>
-                  </div>
-                </section>
-
-              </div>
-
-              {/* QUICK START */}
-              <div className="mt-12 flex justify-center">
-                <button
-                  onClick={() => setActiveTab('LIVE_TERMINAL')}
-                  className="bg-[#39ff88]/10 border border-[#39ff88] text-[#39ff88] px-8 py-3 rounded hover:bg-[#39ff88]/20 hover:shadow-[0_0_15px_rgba(57,255,136,0.4)] transition-all flex items-center gap-3"
-                >
-                  <Terminal className="w-5 h-5" />
-                  <span className="font-bold tracking-widest uppercase">Bypass to Live Terminal</span>
-                </button>
-              </div>
+                </div>
+              )}
 
             </div>
           </div>
@@ -2676,7 +2641,7 @@ const App: React.FC = () => {
                   ].map((demo) => (
                     <button
                       key={demo.mode}
-                      onClick={() => { setProtocolMode(demo.mode); setActiveTab('PIPELINE'); }}
+                      onClick={() => { setProtocolMode(demo.mode); setAppMode('DEMO'); localStorage.setItem('os3_app_mode', 'DEMO'); setShowColdStartToast(true); setTimeout(() => setShowColdStartToast(false), 8000); setActiveTab('PIPELINE'); }}
                       className={`text-left p-5 rounded-xl border transition-all group hover:border-[#39ff88]/40 hover:bg-[#39ff88]/5 ${
                         protocolMode === demo.mode ? 'border-[#39ff88]/60 bg-[#39ff88]/10' : 'border-[#1e293b]/40 bg-[#0d1117]'
                       }`}
