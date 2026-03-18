@@ -41,7 +41,8 @@ import {
   ShieldExclamationIcon,
   ScaleIcon,
   AcademicCapIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  WrenchScrewdriverIcon
 } from '@heroicons/react/24/solid';
 
 const DEFAULT_CONFIG: CallConfig = {
@@ -758,12 +759,13 @@ const StatusIndicator: React.FC<{ label: string; status: 'connected' | 'error' |
   </div>
 );
 
-const NavItem: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: number; disabled?: boolean }> = ({ active, onClick, icon, label, badge, disabled }) => (
+const NavItem: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: number; disabled?: boolean; index?: number }> = ({ active, onClick, icon, label, badge, disabled, index }) => (
   <button 
     onClick={onClick}
     disabled={disabled}
-    className={`sidebar-btn-3d ${active ? 'active' : ''}`}
+    className={`sidebar-btn-3d ${active ? 'active' : ''} ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
   >
+    {typeof index === 'number' && <span className="text-[10px] text-[#39ff88]/50 w-4 shrink-0 font-mono hidden lg:inline">{index}.</span>}
     <div className={`shrink-0 ${active ? 'scale-110' : ''}`}>{icon}</div>
     <span className="font-bold text-[10px] uppercase tracking-[0.2em] hidden lg:block text-left">{label}</span>
     {badge && <span className="absolute top-4 right-4 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[9px] text-white font-black animate-pulse shadow-lg">{badge}</span>}
@@ -772,7 +774,7 @@ const NavItem: React.FC<{ active: boolean; onClick: () => void; icon: React.Reac
 
 const App: React.FC = () => {
   const [protocolMode, setProtocolMode] = useState<'local' | 'intl'>('local');
-  const [activeTab, setActiveTab] = useState<'HOME' | 'DATA_INBOX' | 'PIPELINE' | 'CALL_ARCHIVE' | 'LIVE_TERMINAL' | 'RUN_PROTOCOL' | 'CONFIG_HUB' | 'BACKEND_SETTINGS' | 'DASHBOARD'>('HOME');
+  const [activeTab, setActiveTab] = useState<'HOME' | 'DATA_INBOX' | 'PIPELINE' | 'CALL_ARCHIVE' | 'LIVE_TERMINAL' | 'RUN_PROTOCOL' | 'CONFIG_HUB' | 'BACKEND_SETTINGS' | 'DEMO_SETUP' | 'DASHBOARD'>('HOME');
   const [clients, setClients] = useState<Client[]>([]);
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [isCalling, setIsCalling] = useState(false);
@@ -1336,24 +1338,28 @@ const App: React.FC = () => {
         
         <div className="flex-1 px-2 sm:px-4 space-y-1 py-2 sm:py-4 overflow-y-auto scrollbar-hide">
           {/* HOME */}
-          <NavItem active={activeTab === 'HOME'} onClick={() => setActiveTab('HOME')} icon={<HomeIcon className="w-5 h-5" />} label="Home" />
+          <NavItem index={1} active={activeTab === 'HOME'} onClick={() => setActiveTab('HOME')} icon={<HomeIcon className="w-5 h-5" />} label="Home" />
 
           {/* WHO — Onboarding & Data */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-4 pb-2 hidden lg:block">Who</p>
-          <NavItem active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="Data Inbox" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'PIPELINE'} onClick={() => setActiveTab('PIPELINE')} icon={<ListBulletIcon className="w-5 h-5" />} label="Pipeline" disabled={!isProtocolAccepted} />
+          <NavItem index={2} active={activeTab === 'DATA_INBOX'} onClick={() => setActiveTab('DATA_INBOX')} icon={<InboxStackIcon className="w-5 h-5" />} label="Data Inbox" disabled={!isProtocolAccepted} />
+          <NavItem index={3} active={activeTab === 'PIPELINE'} onClick={() => setActiveTab('PIPELINE')} icon={<ListBulletIcon className="w-5 h-5" />} label="Pipeline" disabled={!isProtocolAccepted} />
 
           {/* WHAT — Execution & Status */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">What</p>
-          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="System Hub" />
-          <NavItem active={activeTab === 'RUN_PROTOCOL'} onClick={() => setActiveTab('RUN_PROTOCOL')} icon={<BeakerIcon className="w-5 h-5" />} label="Run Protocol" disabled={!isProtocolAccepted} />
-          <NavItem active={activeTab === 'LIVE_TERMINAL'} onClick={() => setActiveTab('LIVE_TERMINAL')} icon={<CommandLineIcon className="w-5 h-5" />} label="Live Terminal" disabled={!isProtocolAccepted} />
+          <NavItem index={4} active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="System Hub" />
+          <NavItem index={5} active={activeTab === 'RUN_PROTOCOL'} onClick={() => setActiveTab('RUN_PROTOCOL')} icon={<BeakerIcon className="w-5 h-5" />} label="Run Protocol" disabled={!isProtocolAccepted} />
+          <NavItem index={6} active={activeTab === 'LIVE_TERMINAL'} onClick={() => setActiveTab('LIVE_TERMINAL')} icon={<CommandLineIcon className="w-5 h-5" />} label="Live Terminal" disabled={!isProtocolAccepted} />
 
           {/* HOW — Settings & Logs */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">How</p>
-          <NavItem active={activeTab === 'BACKEND_SETTINGS'} onClick={() => setActiveTab('BACKEND_SETTINGS')} icon={<AdjustmentsHorizontalIcon className="w-5 h-5" />} label="Config" />
-          <NavItem active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={!isProtocolAccepted} />
-          <NavItem active={false} onClick={() => {}} icon={<CpuChipIcon className="w-5 h-5" />} label="Backend Settings" disabled={true} />
+          <NavItem index={7} active={activeTab === 'BACKEND_SETTINGS'} onClick={() => setActiveTab('BACKEND_SETTINGS')} icon={<AdjustmentsHorizontalIcon className="w-5 h-5" />} label="Config" />
+          <NavItem index={8} active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={!isProtocolAccepted} />
+          <NavItem index={9} active={false} onClick={() => {}} icon={<CpuChipIcon className="w-5 h-5" />} label="Backend Settings" disabled={true} />
+
+          {/* DEMO SETUP — 10th Route */}
+          <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">Demo</p>
+          <NavItem index={10} active={activeTab === 'DEMO_SETUP'} onClick={() => setActiveTab('DEMO_SETUP')} icon={<WrenchScrewdriverIcon className="w-5 h-5" />} label="Demo Setup" />
         </div>
 
         {/* Security + Status + Version */}
@@ -2641,6 +2647,94 @@ const App: React.FC = () => {
                    <button onClick={() => setViewingTranscriptClient(null)} className="bg-[#1e293b] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#1e293b]/80 transition-all">Close Log</button>
                 </div>
              </div>
+          </div>
+        )}
+
+        {/* TAB: DEMO SETUP */}
+        {activeTab === 'DEMO_SETUP' && (
+          <div className="flex-1 overflow-y-auto p-6 sm:p-12 lg:p-24 animate-fade-in scrollbar-hide">
+            <div className="max-w-4xl mx-auto space-y-8">
+
+              {/* Header */}
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#39ff88]/10 border border-[#39ff88]/20 flex items-center justify-center">
+                  <WrenchScrewdriverIcon className="w-6 h-6 text-[#39ff88]" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black uppercase tracking-widest text-white font-orbitron">Demo Setup</h2>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-mono">10 // Demo Configuration & Quick-Start</p>
+                </div>
+              </div>
+
+              {/* Demo Mode Selector */}
+              <section className="bg-white/[0.02] border border-[#1e293b]/40 rounded-xl p-6 space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Quick-Start Demo Modes</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: 'Local Call Centre', desc: 'Mzansi-based qualification flow with POPIA compliance baked in.', mode: 'local' as const },
+                    { title: 'Global Expansion', desc: 'International protocol with multi-language support and cross-border compliance.', mode: 'intl' as const },
+                  ].map((demo) => (
+                    <button
+                      key={demo.mode}
+                      onClick={() => { setProtocolMode(demo.mode); setActiveTab('PIPELINE'); }}
+                      className={`text-left p-5 rounded-xl border transition-all group hover:border-[#39ff88]/40 hover:bg-[#39ff88]/5 ${
+                        protocolMode === demo.mode ? 'border-[#39ff88]/60 bg-[#39ff88]/10' : 'border-[#1e293b]/40 bg-[#0d1117]'
+                      }`}
+                    >
+                      <h4 className="text-sm font-black uppercase tracking-wider text-white mb-1">{demo.title}</h4>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">{demo.desc}</p>
+                      <span className="inline-block mt-3 text-[9px] font-bold uppercase tracking-[0.2em] text-[#39ff88]/60 group-hover:text-[#39ff88] transition-colors">
+                        {protocolMode === demo.mode ? '● Active' : 'Select & Launch →'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* Preflight Checklist */}
+              <section className="bg-white/[0.02] border border-[#1e293b]/40 rounded-xl p-6 space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Preflight Checklist</h3>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Backend Uplink', ok: backendStatus === 'connected', detail: backendStatus === 'connected' ? `Connected (${latencyMs ?? '—'}ms)` : 'Disconnected' },
+                    { label: 'WebSocket Stream', ok: wsConnected, detail: wsConnected ? 'Live' : 'Offline' },
+                    { label: 'POPIA Protocol', ok: isProtocolAccepted, detail: isProtocolAccepted ? 'Accepted' : 'Pending Acceptance' },
+                    { label: 'Pipeline Data', ok: clients.length > 0, detail: `${clients.length} signals loaded` },
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-2 border-b border-[#1e293b]/20 last:border-0">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2.5 h-2.5 rounded-full ${item.ok ? 'bg-[#39ff88] shadow-[0_0_6px_#39ff88]' : 'bg-red-500 shadow-[0_0_6px_#ef4444]'}`} />
+                        <span className="text-xs font-bold uppercase tracking-wider text-white">{item.label}</span>
+                      </div>
+                      <span className={`text-[10px] font-mono ${item.ok ? 'text-[#39ff88]/70' : 'text-red-400/70'}`}>{item.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Quick Nav */}
+              <section className="bg-white/[0.02] border border-[#1e293b]/40 rounded-xl p-6 space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Quick Navigation</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    { label: 'System Hub', tab: 'CONFIG_HUB' as const },
+                    { label: 'Pipeline', tab: 'PIPELINE' as const },
+                    { label: 'Live Terminal', tab: 'LIVE_TERMINAL' as const },
+                    { label: 'Data Inbox', tab: 'DATA_INBOX' as const },
+                    { label: 'Config', tab: 'BACKEND_SETTINGS' as const },
+                    { label: 'Call Archive', tab: 'CALL_ARCHIVE' as const },
+                  ].map((link) => (
+                    <button
+                      key={link.tab}
+                      onClick={() => setActiveTab(link.tab)}
+                      className="px-4 py-3 rounded-lg border border-[#1e293b]/40 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-[#39ff88] hover:border-[#39ff88]/30 transition-all text-left"
+                    >
+                      {link.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
           </div>
         )}
 
