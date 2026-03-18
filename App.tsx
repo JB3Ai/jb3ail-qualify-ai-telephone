@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { PhoneCall } from 'lucide-react';
+import { PhoneCall, Server } from 'lucide-react';
 import { Client, CallConfig, Language, TranscriptionEntry } from './types';
 import { clientService } from './services/clientService';
 import { Os3HubMark } from './Os3HubMark';
@@ -91,6 +91,27 @@ const getDefaultBackendUrl = () => {
 };
 
 /* ── Telemetry Strip ── */
+/* ── Uplink Badge ── */
+const UplinkBadge: React.FC<{ backendStatus: string; latencyMs: number | null }> = ({ backendStatus, latencyMs }) => {
+  const isConnected = backendStatus === 'connected';
+  const isLoading   = backendStatus === 'loading';
+  const ping = latencyMs !== null ? `${latencyMs}ms` : isLoading ? '...' : '--';
+  return (
+    <div
+      className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded border transition-transform duration-200 hover:-translate-y-[1px] cursor-default ${
+        isConnected ? 'bg-[#002200] border-[#39ff88]/30 text-[#39ff88]'
+        : isLoading  ? 'bg-[#1a1200] border-[#f59e0b]/30 text-[#f59e0b]'
+                     : 'bg-[#220000] border-[#ef4444]/30 text-[#ef4444]'
+      }`}
+      title={isConnected ? `Uplink Established: ${ping}` : isLoading ? 'Connecting...' : 'Uplink Severed'}
+    >
+      <div className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-[#39ff88]' : isLoading ? 'bg-[#f59e0b]' : 'bg-[#ef4444]'}`} />
+      <Server className="h-4 w-4" />
+      <span className="font-mono text-xs">{ping}</span>
+    </div>
+  );
+};
+
 /* ── Telemetry Ticker (top-of-page phosphor marquee) ── */
 const TelemetryTicker: React.FC<{ isEnabled?: boolean; backendStatus: string }> = ({ isEnabled = true, backendStatus }) => {
   if (!isEnabled) return null;
@@ -1281,15 +1302,7 @@ const App: React.FC = () => {
         </div>
         <ActivityStream backendStatus={backendStatus} isCalling={isCalling} isSyncing={isSyncing} activeThreads={activeThreads} />
         <div className="flex items-center gap-2.5">
-          <span className={`os3-heartbeat ${backendStatus === 'connected' ? '' : backendStatus === 'loading' ? 'os3-heartbeat--amber' : 'os3-heartbeat--red'}`} />
-          <span className={`text-[11px] font-medium tracking-wider ${
-            backendStatus === 'connected' ? 'text-[#39ff88]' : backendStatus === 'loading' ? 'text-[#f59e0b]' : 'text-[#ef4444]'
-          }`}>
-            {backendStatus === 'connected' ? 'Uplink Established' : backendStatus === 'loading' ? 'Connecting...' : 'Uplink Severed'}
-          </span>
-          {backendStatus === 'connected' && latencyMs !== null && (
-            <span className="text-[10px] font-mono font-bold text-[#39ff88]/70 ml-1 hidden sm:inline">{latencyMs}ms</span>
-          )}
+          <UplinkBadge backendStatus={backendStatus} latencyMs={latencyMs} />
         </div>
       </header>
 
