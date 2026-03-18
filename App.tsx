@@ -1028,7 +1028,7 @@ const App: React.FC = () => {
           response = await fetch(`${backendUrl}/make-call`, { 
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ clientId: client.id, phone: client.phone, name: client.name, language: client.language })
+              body: JSON.stringify({ clientId: client.id, phone: client.phone, name: client.name, language: client.language, mode: appMode, demoConfig })
           });
         } catch (networkErr: any) {
           alert(`Backend unreachable: ${networkErr.message}. Check Backend Settings.`);
