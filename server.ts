@@ -537,17 +537,16 @@ app.all('/make-call', async (req, res) => {
     // PUBLIC_DOMAIN overrides DOMAIN for local ngrok testing
     const domain = process.env.PUBLIC_DOMAIN || process.env.DOMAIN || (process.env.APP_URL ? new URL(process.env.APP_URL).host : `localhost:${PORT}`);
 
-    // Build TwiML that opens a WSS media stream back to this server
-    const twiml = new Twilio.twiml.VoiceResponse();
-    twiml.connect().stream({
-      url: `wss://${domain}/api/twilio/stream`,
-      name: 'Mzanzi_Neural_Stream',
-    });
+    // Build TwiML URL — pass mode + demoConfig as query params so the
+    // /api/twilio/twiml callback can read them when Twilio requests instructions
+    const callMode = req.body.mode || 'OPERATOR';
+    const encodedConfig = encodeURIComponent(JSON.stringify(req.body.demoConfig || {}));
+    const twimlUrl = `https://${domain}/api/twilio/twiml?mode=${callMode}&config=${encodedConfig}`;
 
     const call = await getTwilioClient().calls.create({
       to: dialPhone,
       from: process.env.TWILIO_PHONE_NUMBER || '',
-      twiml: twiml.toString(),
+      url: twimlUrl,
       record: true,
       timeout: 60,
     });
@@ -568,6 +567,35 @@ app.all('/make-call', async (req, res) => {
     console.error("Twilio Error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// 2b. TWILIO TWIML CALLBACK — Twilio calls this URL to get call instructions
+app.all('/api/twilio/twiml', (req, res) => {
+  const mode = (req.query.mode as string) || 'OPERATOR';
+  let config: any = {};
+  try { config = JSON.parse(decodeURIComponent((req.query.config as string) || '{}')); } catch { /* ignore */ }
+
+  const callSid = req.body?.CallSid as string | undefined;
+  const domain = process.env.PUBLIC_DOMAIN || process.env.DOMAIN || (process.env.APP_URL ? new URL(process.env.APP_URL).host : `localhost:${PORT}`);
+
+  console.log(`📡 TwiML callback — mode:${mode}, callSid:${callSid}, company:${config.company || '—'}`);
+
+  // Update activeCalls with config from query params (belt-and-suspenders with /make-call storage)
+  if (callSid && activeCalls.has(callSid)) {
+    const meta = activeCalls.get(callSid)!;
+    meta.mode = mode;
+    if (config && Object.keys(config).length) meta.demoConfig = config;
+  }
+
+  // Return TwiML that opens a WSS media stream back to this server
+  const twiml = new Twilio.twiml.VoiceResponse();
+  twiml.connect().stream({
+    url: `wss://${domain}/api/twilio/stream`,
+    name: 'Mzanzi_Neural_Stream',
+  });
+
+  res.type('text/xml');
+  res.send(twiml.toString());
 });
 
 // ─── OS³ Neural Prompt Injector ─── Demo-Aware System Prompt Generator ───
