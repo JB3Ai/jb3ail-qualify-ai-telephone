@@ -114,8 +114,9 @@ const UplinkBadge: React.FC<{ backendStatus: string; latencyMs: number | null }>
 };
 
 /* ── Telemetry Ticker (top-of-page phosphor marquee) ── */
-const TelemetryTicker: React.FC<{ isEnabled?: boolean; backendStatus: string }> = ({ isEnabled = true, backendStatus }) => {
-  if (!isEnabled) return null;
+const TelemetryTicker: React.FC<{ backendStatus: string }> = ({ backendStatus }) => {
+  const { showTicker } = useTerminal();
+  if (!showTicker) return null;
   const online = backendStatus === 'connected';
   const timestamp = new Date().toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg' });
   return (
@@ -761,7 +762,6 @@ const NavItem: React.FC<{ active: boolean; onClick: () => void; icon: React.Reac
 );
 
 const App: React.FC = () => {
-  const { showTicker } = useTerminal();
   const [protocolMode, setProtocolMode] = useState<'local' | 'intl'>('local');
   const [activeTab, setActiveTab] = useState<'DATA_INBOX' | 'PIPELINE' | 'CALL_ARCHIVE' | 'LIVE_TERMINAL' | 'RUN_PROTOCOL' | 'CONFIG_HUB' | 'BACKEND_SETTINGS' | 'DASHBOARD'>('PIPELINE');
   const [clients, setClients] = useState<Client[]>([]);
@@ -1294,7 +1294,7 @@ const App: React.FC = () => {
     <div className="h-screen flex flex-col bg-[#020617] text-slate-100 font-sans overflow-hidden selection:bg-[#66FF66]/30 surface-grain">
 
       {/* === TELEMETRY TICKER === */}
-      <TelemetryTicker backendStatus={backendStatus} isEnabled={showTicker} />
+      <TelemetryTicker backendStatus={backendStatus} />
 
       {/* === OS³ COMMAND BAR === */}
       <header className="h-14 bg-[#0d1117] border-b border-[#1e293b] flex items-center justify-between px-5 shrink-0" style={{ letterSpacing: '.04em', fontSize: '13px' }}>
