@@ -254,6 +254,16 @@ body {
 }
 
 /* ── Telemetry Strip ── */
+@keyframes slow-marquee {
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+.animate-slow-marquee {
+  animation: slow-marquee 40s linear infinite;
+  display: inline-block;
+  white-space: nowrap;
+}
+
 .telemetry-strip {
   height: 28px;
   background: #05070c;
@@ -261,7 +271,6 @@ body {
   border-bottom: 1px solid #1e293b;
   display: flex;
   align-items: center;
-  padding: 0 20px;
   overflow: hidden;
   white-space: nowrap;
   font-family: 'JetBrains Mono', monospace;
@@ -270,18 +279,31 @@ body {
   color: #484f58;
   flex-shrink: 0;
   margin-top: 12px;
+  position: relative;
 }
+/* fade edges */
+.telemetry-strip::before,
+.telemetry-strip::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  z-index: 1;
+  pointer-events: none;
+}
+.telemetry-strip::before { left: 0;  background: linear-gradient(to right, #05070c, transparent); }
+.telemetry-strip::after  { right: 0; background: linear-gradient(to left,  #05070c, transparent); }
 .telemetry-strip__item {
   flex-shrink: 0;
   font-weight: 700;
 }
 .telemetry-strip__sep {
+  display: inline-block;
   width: 1px;
   height: 12px;
   background: #1e293b;
   margin: 0 18px;
-  flex-shrink: 0;
-  display: inline-block;
   vertical-align: middle;
 }
 .telemetry-strip__val     { color: #6b7280; }

@@ -112,8 +112,10 @@ const TelemetryStrip: React.FC<{
   };
   const online = backendStatus === 'connected';
   const Sep = () => <span className="telemetry-strip__sep" />;
-  return (
-    <div className="telemetry-strip">
+  const ticker = (
+    <>
+      <span className="telemetry-strip__item">OS³_MZANZI_ENGINE<span className="telemetry-strip__val--ok">:ACTIVE</span></span>
+      <Sep />
       <span className="telemetry-strip__item">PIPELINE_QUEUE<span className={pipelineCount > 0 ? 'telemetry-strip__val--hi' : 'telemetry-strip__val'}>:{pipelineCount}</span></span>
       <Sep />
       <span className="telemetry-strip__item">ACTIVE_SIGNALS<span className={activeSignals > 0 || isCalling ? 'telemetry-strip__val--live' : 'telemetry-strip__val'}>:{activeSignals}</span></span>
@@ -126,6 +128,17 @@ const TelemetryStrip: React.FC<{
       <Sep />
       <span className="telemetry-strip__item">UPTIME<span className="telemetry-strip__val--ok">:{fmtUptime(uptime)}</span></span>
       {latencyMs !== null && (<><Sep /><span className="telemetry-strip__item">RTT<span className="telemetry-strip__val--ok">:{latencyMs}ms</span></span></>)}
+      <Sep />
+      <span className="telemetry-strip__item">JB³AI_PROTOCOL<span className="telemetry-strip__val--ok">:NOMINAL</span></span>
+      <Sep />
+      <span className="telemetry-strip__item">AZURE_SPEECH_NODE<span className={online ? 'telemetry-strip__val--ok' : 'telemetry-strip__val--err'}>{online ? ':ZA-NORTH' : ':OFFLINE'}</span></span>
+      <Sep />
+      <span className="telemetry-strip__item">AI_CORE<span className={online ? 'telemetry-strip__val--ok' : 'telemetry-strip__val--err'}>{online ? ':READY' : ':STANDBY'}</span></span>
+    </>
+  );
+  return (
+    <div className="telemetry-strip">
+      <span className="animate-slow-marquee">{ticker}</span>
     </div>
   );
 };
