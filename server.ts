@@ -39,7 +39,7 @@ const telemetryClient = appInsights.defaultClient ?? null;
 
 const app = express();
 const server = createServer(app);
-const PORT = Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Initialize WebSocket Server for live terminal uplink + Twilio Media Streams
 const wss = new WebSocketServer({ server, path: '/ws' });
@@ -184,7 +184,8 @@ streamWss.on('connection', (ws) => {
         activeCalls.get(callSid)!.aiConversation.push(`User: ${userSpeech}`);
       }
 
-      const systemPrompt = buildSystemPrompt(callLang);
+      const callMetaForPrompt = callSid ? activeCalls.get(callSid) : undefined;
+      const systemPrompt = buildSystemPrompt(callLang, callMetaForPrompt);
       const aiResponse   = await aiService.generateResponse(userSpeech, systemPrompt);
 
       if (callSid && activeCalls.has(callSid)) {
@@ -297,7 +298,7 @@ function resolveFrontendDistDir() {
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
-  'https://os3grid-fjgcb8hzfjhzcqhr.southafricanorth-01.azurewebsites.net',
+  'https://jb3ail-qualify-ai-telephone.onrender.com',
 ];
 app.use(cors({
   origin: (origin, callback) => {
@@ -390,6 +391,9 @@ const getGoogleAuth = async (forceRefresh = false) => {
     name: string;
     startTime: Date;
     aiConversation: string[];
+    language?: string;
+    mode?: string;
+    demoConfig?: { company: string; objective: string; language: string };
   }
   const activeCalls = new Map<string, ActiveCall>();
 
@@ -554,8 +558,10 @@ app.all('/make-call', async (req, res) => {
       name: dialName,
       startTime: new Date(),
       aiConversation: [],
-      ...(targetClient?.language ? { language: targetClient.language } : {})
-    } as ActiveCall & { language?: string });
+      ...(targetClient?.language ? { language: targetClient.language } : {}),
+      mode: req.body.mode || 'OPERATOR',
+      demoConfig: req.body.demoConfig || undefined,
+    } as ActiveCall);
 
     res.json({ success: true, callSid: call.sid });
   } catch (error: any) {
@@ -563,6 +569,28 @@ app.all('/make-call', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// ─── OS³ Neural Prompt Injector ─── Demo-Aware System Prompt Generator ───
+function generateDemoPrompt(demoConfig: { company: string; objective: string; language: string }): string {
+  let objectiveText = '';
+  if (demoConfig.objective === 'reception') {
+    objectiveText = 'acting as a front-desk receptionist. Greet the caller warmly, ask how you can direct their call, and take detailed messages if the person they want is unavailable.';
+  } else if (demoConfig.objective === 'sales') {
+    objectiveText = 'acting as an outbound sales development representative. Your goal is to qualify the lead, ask about their current pain points, and gently push to schedule a follow-up meeting with an account executive.';
+  } else if (demoConfig.objective === 'support') {
+    objectiveText = 'acting as a tier-1 technical support agent. Listen to their issue patiently, apologize for any inconvenience, and guide them through basic troubleshooting or escalate the ticket.';
+  }
+
+  return `You are Zandi, an extremely friendly, conversational, and highly professional AI voice agent representing ${demoConfig.company || 'our company'}.
+
+Your primary objective is to be ${objectiveText}
+
+CRITICAL RULES:
+1. Be highly engaging and human-like. Use polite filler words naturally (like "Ah", "I see", "Got it").
+2. Keep your responses concise (1-2 sentences max) so the conversation flows rapidly.
+3. Never break character. You work for ${demoConfig.company || 'this company'}.
+4. Language Matrix: ${demoConfig.language === 'auto' ? 'Listen to the user and automatically seamlessly switch to whatever language they are speaking.' : `Strictly speak in ${demoConfig.language}.`}`;
+}
 
 // ─── ZANDI RUN PROTOCOL ─── Language-Aware Greeting & System Prompt ───
 const LANGUAGE_PROTOCOLS: Record<string, { greeting: string; speechLang: string; personality: string; languageName: string }> = {
@@ -652,7 +680,15 @@ When the call is complete (qualified or failed), your FINAL message must end wit
 {"status":"QUALIFIED"|"FAILED","reasoning":"Brief outcome summary","interest_level":"HIGH"|"MEDIUM"|"LOW","popia_consent":"YES"|"NO"}
 `;
 
-function buildSystemPrompt(language: string): string {
+function buildSystemPrompt(language: string, callMeta?: ActiveCall): string {
+  // DEMO mode: use the dynamic demo prompt instead of BASE_SYSTEM_PROMPT
+  if (callMeta?.mode === 'DEMO' && callMeta.demoConfig) {
+    const demoBase = generateDemoPrompt(callMeta.demoConfig);
+    const protocol = LANGUAGE_PROTOCOLS[language] || LANGUAGE_PROTOCOLS['en-ZA'];
+    return `${demoBase}\n=== LANGUAGE NODE: ${language} ===\nPersonality: ${protocol.personality}\nGreet the caller in this language style.`;
+  }
+
+  // OPERATOR mode: full Mzansi Solutions qualification prompt
   const protocol = LANGUAGE_PROTOCOLS[language] || LANGUAGE_PROTOCOLS['en-ZA'];
   const langDirective = protocol.languageName !== 'English'
     ? `\n=== MANDATORY LANGUAGE DIRECTIVE ===\nYou MUST respond ENTIRELY in ${protocol.languageName}. Every word of every response must be in ${protocol.languageName}. Do NOT switch to English under any circumstances, even if the caller speaks English. The ONLY exception is the final JSON output contract block which remains in English keys.`
@@ -707,7 +743,8 @@ app.all('/handle-response', async (req, res) => {
 
   // Resolve language for this call
   const callLang = callSid && activeCalls.has(callSid) ? (activeCalls.get(callSid) as any).language || 'en-ZA' : 'en-ZA';
-  const systemPrompt = buildSystemPrompt(callLang);
+  const callMetaForPrompt = callSid ? activeCalls.get(callSid) : undefined;
+  const systemPrompt = buildSystemPrompt(callLang, callMetaForPrompt);
 
   // AI logic — Azure OpenAI with full RUN PROTOCOL
   const aiResponse = await aiService.generateResponse(userSpeech, systemPrompt);
@@ -988,10 +1025,7 @@ async function startServer() {
     });
   });
 
-  // Detect production: Azure sets WEBSITE_SITE_NAME; also check NODE_ENV
-  const isProduction = process.env.NODE_ENV === 'production' || !!process.env.WEBSITE_SITE_NAME;
-
-  if (!isProduction) {
+  if (process.env.NODE_ENV !== 'production') {
     // Dynamic import of Vite — only in dev mode, keeps production bundle lean
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
@@ -1002,14 +1036,13 @@ async function startServer() {
   } else {
     const distDir = resolveFrontendDistDir();
     if (!distDir) {
-      // Warn but don't crash — API routes still function without the frontend bundle
-      console.warn('[WARN] Frontend dist/ not found. Serving API only.');
-    } else {
-      app.use(express.static(distDir));
-      app.get('*', (req, res) => {
-        res.sendFile(path.join(distDir, 'index.html'));
-      });
+      throw new Error('Unable to locate frontend dist directory. Expected dist/index.html.');
     }
+
+    app.use(express.static(distDir));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distDir, 'index.html'));
+    });
   }
 
   server.listen(PORT, "0.0.0.0", () => {
