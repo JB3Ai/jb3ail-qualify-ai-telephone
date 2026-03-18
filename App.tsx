@@ -1275,14 +1275,14 @@ const App: React.FC = () => {
 
           {/* WHAT — Active system operations */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">What</p>
+          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="Hub" />
           <NavItem active={activeTab === 'RUN_PROTOCOL'} onClick={() => setActiveTab('RUN_PROTOCOL')} icon={<BeakerIcon className="w-5 h-5" />} label="Run Protocol" disabled={!isProtocolAccepted} />
           <NavItem active={activeTab === 'LIVE_TERMINAL'} onClick={() => setActiveTab('LIVE_TERMINAL')} icon={<CommandLineIcon className="w-5 h-5" />} label="Live Terminal" disabled={!isProtocolAccepted} />
 
           {/* HOW — System infrastructure */}
           <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] px-4 sm:px-6 pt-6 pb-2 hidden lg:block">How</p>
-          <NavItem active={activeTab === 'CONFIG_HUB'} onClick={() => setActiveTab('CONFIG_HUB')} icon={<SignalIcon className="w-5 h-5" />} label="Hub" />
-          <NavItem active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={!isProtocolAccepted} />
           <NavItem active={activeTab === 'BACKEND_SETTINGS'} onClick={() => setActiveTab('BACKEND_SETTINGS')} icon={<AdjustmentsHorizontalIcon className="w-5 h-5" />} label="Config" />
+          <NavItem active={activeTab === 'CALL_ARCHIVE'} onClick={() => setActiveTab('CALL_ARCHIVE')} icon={<ClipboardDocumentListIcon className="w-5 h-5" />} label="Call Archive" disabled={!isProtocolAccepted} />
           <NavItem active={false} onClick={() => {}} icon={<CpuChipIcon className="w-5 h-5" />} label="Backend Settings" disabled={true} />
         </div>
 
