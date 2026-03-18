@@ -238,6 +238,33 @@ const ActivityStream: React.FC<{
   );
 };
 
+/* ── Vitals Header (center console telemetry array) ── */
+const VitalsHeader: React.FC<{
+  backendStatus: string;
+  wsConnected: boolean;
+  ledgerStatus: string;
+  latencyMs: number | null;
+}> = ({ backendStatus, wsConnected, ledgerStatus, latencyMs }) => {
+  const ok = backendStatus === 'connected';
+  const dot = (on: boolean) =>
+    `w-1.5 h-1.5 rounded-full ${on ? 'bg-[#39ff88] animate-pulse' : 'bg-[#ef4444]'}`;
+  const label = (on: boolean) => (on ? 'OK' : 'OFF');
+  const sep = <span className="text-[#39ff88]/30">|</span>;
+  return (
+    <div className="hidden md:flex items-center gap-3 px-5 py-1.5 bg-black/40 border border-[#39ff88]/20 rounded-full shadow-[0_0_10px_rgba(57,255,136,0.05)] text-[10px] font-mono text-[#39ff88]/80 tracking-widest uppercase">
+      <span className="flex items-center gap-1.5"><div className={dot(ok)} /> TWILIO: {label(ok)}</span>
+      {sep}
+      <span className="flex items-center gap-1.5"><div className={dot(ok)} /> AZURE: {label(ok)}</span>
+      {sep}
+      <span className="flex items-center gap-1.5"><div className={dot(wsConnected)} /> WS: {wsConnected ? 'LIVE' : 'OFF'}</span>
+      {sep}
+      <span className="flex items-center gap-1.5"><div className={dot(ledgerStatus !== 'IDLE' || ok)} /> DB: {ledgerStatus === 'SYNCING' ? 'SYNC' : ok ? 'OK' : 'OFF'}</span>
+      {sep}
+      <span className="text-white font-bold">PING: {latencyMs != null ? `${latencyMs}ms` : '--'}</span>
+    </div>
+  );
+};
+
 const NeuralConnectivityMatrix: React.FC<{ 
   backendStatus: string; 
   isProtocolAccepted: boolean; 
@@ -1285,7 +1312,7 @@ const App: React.FC = () => {
           <Os3HubMark size="sm" />
           <span className="hidden sm:inline font-black text-sm uppercase tracking-tight">JB³Ai</span>
         </div>
-        <ActivityStream backendStatus={backendStatus} isCalling={isCalling} isSyncing={isSyncing} activeThreads={activeThreads} />
+        <VitalsHeader backendStatus={backendStatus} wsConnected={wsConnected} ledgerStatus={ledgerStatus} latencyMs={latencyMs} />
         <div className="flex items-center gap-2.5">
           <UplinkBadge backendStatus={backendStatus} latencyMs={latencyMs} />
         </div>
