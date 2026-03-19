@@ -432,6 +432,66 @@ app.post('/api/log-compliance', (req, res) => {
  */
 let cachedAuth: any = null;
 
+const parseGoogleCredentials = (rawValue: string) => {
+  const raw = rawValue.trim();
+
+  const tryParseJson = (value: string) => {
+    const parsed = JSON.parse(value);
+    return typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+  };
+
+  const normalizePrivateKey = (credentials: any) => {
+    if (credentials?.private_key && typeof credentials.private_key === 'string') {
+      credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+    }
+    return credentials;
+  };
+
+  try {
+    return normalizePrivateKey(tryParseJson(raw));
+  } catch {
+    // Continue through fallback formats below.
+  }
+
+  const unwrapped =
+    (raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))
+      ? raw.slice(1, -1)
+      : raw;
+
+  try {
+    return normalizePrivateKey(tryParseJson(unwrapped));
+  } catch {
+    // Continue through fallback formats below.
+  }
+
+  // Support credentials stored as base64-encoded JSON.
+  if (!unwrapped.startsWith('{')) {
+    try {
+      const decoded = Buffer.from(unwrapped, 'base64').toString('utf8');
+      return normalizePrivateKey(tryParseJson(decoded));
+    } catch {
+      // Continue through fallback formats below.
+    }
+  }
+
+  // Recover from env values pasted as JS object literals using single quotes.
+  const singleQuoteObject = unwrapped
+    .replace(/([{,]\s*)'([^']+?)'\s*:/g, '$1"$2":')
+    .replace(/:\s*'([^']*)'(?=\s*[,}])/g, (_match, value) => {
+      const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      return `: "${escaped}"`;
+    });
+
+  try {
+    return normalizePrivateKey(tryParseJson(singleQuoteObject));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown JSON parse error';
+    throw new Error(
+      `GOOGLE_KEY_JSON_DATA is not valid JSON. Paste the full service-account JSON object into Render, or provide it as a JSON string/base64 string. Parse error: ${message}`
+    );
+  }
+};
+
 const getGoogleAuth = async (forceRefresh = false) => {
   const scopes = ['https://www.googleapis.com/auth/spreadsheets'];
 
@@ -443,7 +503,7 @@ const getGoogleAuth = async (forceRefresh = false) => {
 
   try {
     if (process.env.GOOGLE_KEY_JSON_DATA) {
-      const credentials = JSON.parse(process.env.GOOGLE_KEY_JSON_DATA);
+      const credentials = parseGoogleCredentials(process.env.GOOGLE_KEY_JSON_DATA);
       cachedAuth = new google.auth.GoogleAuth({ credentials, scopes });
       console.log('✅ Google Auth initialized from GOOGLE_KEY_JSON_DATA env var');
     } else if (require('fs').existsSync(require('path').join(__dirname, '..', 'google-key.json'))) {
