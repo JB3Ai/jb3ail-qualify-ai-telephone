@@ -292,9 +292,11 @@ streamWss.on('connection', (ws) => {
         const customParams = msg.start?.customParameters || {};
         const mode = customParams.appMode || 'OPERATOR';
         const demoConfig = {
-          company:   customParams.company   || '',
+          fullName: customParams.fullName || '',
+          company: customParams.company || '',
           objective: customParams.objective || '',
-          language:  customParams.language  || '',
+          persona: customParams.persona || '',
+          language: customParams.language || '',
         };
 
         // Sync into activeCalls so onRecognized / buildSystemPrompt can reference it
@@ -303,12 +305,14 @@ streamWss.on('connection', (ws) => {
           if (existing) {
             existing.mode = mode;
             existing.demoConfig = demoConfig;
-            if (demoConfig.language && demoConfig.language !== 'auto') existing.language = demoConfig.language;
+            if (demoConfig.language && normalizeDemoLanguage(demoConfig.language) !== 'auto') {
+              existing.language = normalizeDemoLanguage(demoConfig.language);
+            }
           }
         }
 
-        callLang = (demoConfig.language && demoConfig.language !== 'auto' && demoConfig.language !== '')
-          ? demoConfig.language
+        callLang = (demoConfig.language && normalizeDemoLanguage(demoConfig.language) !== 'auto' && demoConfig.language !== '')
+          ? normalizeDemoLanguage(demoConfig.language)
           : (callSid && activeCalls.get(callSid)?.language) || 'en-ZA';
 
         console.log(`[OS³] Agent Persona Locked: ${demoConfig.company || '—'} | ${demoConfig.objective || '—'} | mode=${mode}`);
@@ -474,7 +478,7 @@ const getGoogleAuth = async (forceRefresh = false) => {
     aiConversation: string[];
     language?: string;
     mode?: string;
-    demoConfig?: { company: string; objective: string; language: string };
+    demoConfig?: { fullName?: string; company: string; objective: string; persona?: string; language: string };
   }
   const activeCalls = new Map<string, ActiveCall>();
 
@@ -621,7 +625,13 @@ app.all('/make-call', async (req, res) => {
     // Build TwiML URL — pass mode + demoConfig as query params so the
     // /api/twilio/twiml callback can read them when Twilio requests instructions
     const callMode = req.body.mode || 'OPERATOR';
-    const encodedConfig = encodeURIComponent(JSON.stringify(req.body.demoConfig || {}));
+    const normalizedDemoConfig = req.body.demoConfig
+      ? {
+          ...req.body.demoConfig,
+          company: req.body.demoConfig.companyName || req.body.demoConfig.company || '',
+        }
+      : undefined;
+    const encodedConfig = encodeURIComponent(JSON.stringify(normalizedDemoConfig || {}));
     const twimlUrl = `https://${domain}/api/twilio/twiml?mode=${callMode}&config=${encodedConfig}`;
 
     const call = await getTwilioClient().calls.create({
@@ -640,7 +650,7 @@ app.all('/make-call', async (req, res) => {
       aiConversation: [],
       ...(targetClient?.language ? { language: targetClient.language } : {}),
       mode: req.body.mode || 'OPERATOR',
-      demoConfig: req.body.demoConfig || undefined,
+      demoConfig: normalizedDemoConfig || undefined,
     } as ActiveCall);
 
     res.json({ success: true, callSid: call.sid });
@@ -664,16 +674,18 @@ app.post('/api/twilio/twiml', (req, res) => {
 
   const domain = process.env.PUBLIC_DOMAIN || process.env.DOMAIN || (process.env.APP_URL ? new URL(process.env.APP_URL).host : `localhost:${PORT}`);
 
-  console.log(`📡 TwiML callback — mode:${mode}, company:${demoConfig.company || '—'}`);
+  console.log(`📡 TwiML callback — mode:${mode}, company:${demoConfig.companyName || demoConfig.company || '—'}`);
 
   const twiml = `
     <Response>
       <Connect>
         <Stream url="wss://${domain}/api/twilio/stream">
           <Parameter name="appMode" value="${mode}" />
-          <Parameter name="company" value="${demoConfig.company || ''}" />
-          <Parameter name="objective" value="${demoConfig.objective || ''}" />
-          <Parameter name="language" value="${demoConfig.language || ''}" />
+        <Parameter name="fullName" value="${demoConfig.fullName || ''}" />
+        <Parameter name="company" value="${demoConfig.companyName || demoConfig.company || ''}" />
+        <Parameter name="objective" value="${demoConfig.objective || ''}" />
+        <Parameter name="persona" value="${demoConfig.persona || ''}" />
+        <Parameter name="language" value="${demoConfig.language || ''}" />
         </Stream>
       </Connect>
     </Response>
@@ -684,25 +696,48 @@ app.post('/api/twilio/twiml', (req, res) => {
 });
 
 // ─── OS³ Neural Prompt Injector ─── Demo-Aware System Prompt Generator ───
-function generateDemoPrompt(demoConfig: { company: string; objective: string; language: string }): string {
+function normalizeDemoLanguage(language: string): string {
+  const languageMap: Record<string, string> = {
+    'Auto-Detect': 'auto',
+    'English': 'en-ZA',
+    'Zulu': 'zu-ZA',
+    'Afrikaans': 'af-ZA',
+    'Sepedi': 'nso-ZA',
+    'Greek': 'el-GR',
+    'Portuguese': 'pt-PT',
+    'Mandarin': 'zh-CN'
+  };
+  return languageMap[language] || language;
+}
+
+function generateDemoPrompt(demoConfig: { fullName?: string; company: string; objective: string; persona?: string; language: string }): string {
   let objectiveText = '';
-  if (demoConfig.objective === 'reception') {
+  if (demoConfig.objective === 'Receptionist & Routing') {
     objectiveText = 'acting as a front-desk receptionist. Greet the caller warmly, ask how you can direct their call, and take detailed messages if the person they want is unavailable.';
-  } else if (demoConfig.objective === 'sales') {
+  } else if (demoConfig.objective === 'Outbound Lead Qualification') {
     objectiveText = 'acting as an outbound sales development representative. Your goal is to qualify the lead, ask about their current pain points, and gently push to schedule a follow-up meeting with an account executive.';
-  } else if (demoConfig.objective === 'support') {
+  } else if (demoConfig.objective === 'Cold Calling') {
+    objectiveText = 'acting as a cold-calling agent. Open with confidence, establish relevance quickly, overcome resistance calmly, and work toward permission for a deeper conversation or follow-up.';
+  } else if (demoConfig.objective === 'Technical Support Troubleshooting') {
     objectiveText = 'acting as a tier-1 technical support agent. Listen to their issue patiently, apologize for any inconvenience, and guide them through basic troubleshooting or escalate the ticket.';
   }
+
+  const personaText = demoConfig.persona === 'Strict & Ultra-Professional'
+    ? 'Your tone is strict, ultra-professional, concise, and highly controlled.'
+    : 'Your tone is extremely friendly, conversational, warm, and highly engaging.';
+
+  const normalizedLanguage = normalizeDemoLanguage(demoConfig.language);
 
   return `You are Zandi, an extremely friendly, conversational, and highly professional AI voice agent representing ${demoConfig.company || 'our company'}.
 
 Your primary objective is to be ${objectiveText}
 
 CRITICAL RULES:
-1. Be highly engaging and human-like. Use polite filler words naturally (like "Ah", "I see", "Got it").
+1. ${personaText}
 2. Keep your responses concise (1-2 sentences max) so the conversation flows rapidly.
 3. Never break character. You work for ${demoConfig.company || 'this company'}.
-4. Language Matrix: ${demoConfig.language === 'auto' ? 'Listen to the user and automatically seamlessly switch to whatever language they are speaking.' : `Strictly speak in ${demoConfig.language}.`}`;
+4. ${demoConfig.fullName ? `You are operating this demo for ${demoConfig.fullName}.` : 'You are operating this demo for the current user.'}
+5. Language Matrix: ${normalizedLanguage === 'auto' ? 'Listen to the user and automatically seamlessly switch to whatever language they are speaking.' : `Strictly speak in ${demoConfig.language}.`}`;
 }
 
 // ─── ZANDI RUN PROTOCOL ─── Language-Aware Greeting & System Prompt ───

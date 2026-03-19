@@ -22,7 +22,7 @@ export const CallArchive: React.FC<CallArchiveProps> = ({
   onShowInfo,
 }) => {
   return (
-    <section className="archive-module">
+    <section className="archive-module h-full flex flex-col">
       <header className="archive-header">
         <div className="archive-title">
           <span className="step-tag">06</span>
@@ -45,8 +45,8 @@ export const CallArchive: React.FC<CallArchiveProps> = ({
         </div>
       </header>
 
-      <div className="archive-grid">
-        <aside className="record-list">
+      <div className="archive-grid flex flex-col md:flex-row h-full overflow-y-auto">
+        <aside className="record-list w-full md:w-1/3 min-h-[300px]">
           {archiveClients.map((client, idx) => (
             <button
               key={client.id}
@@ -75,7 +75,7 @@ export const CallArchive: React.FC<CallArchiveProps> = ({
           )}
         </aside>
 
-        <section className="inspection-pane">
+        <section className="inspection-pane w-full md:w-2/3">
           {selectedSignal ? (
             <>
               <div className="view-header">

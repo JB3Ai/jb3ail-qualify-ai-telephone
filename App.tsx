@@ -792,8 +792,14 @@ const App: React.FC = () => {
   const [showArchiveInfo, setShowArchiveInfo] = useState(false);
   const [selectedArchiveSignal, setSelectedArchiveSignal] = useState<Client | null>(null);
   const [showBackendInfo, setShowBackendInfo] = useState(false);
-  const [appMode, setAppMode] = useState<'LOCKED' | 'DEMO' | 'OPERATOR'>(() => (localStorage.getItem('os3_app_mode') as 'LOCKED' | 'DEMO' | 'OPERATOR') || 'LOCKED');
-  const [demoConfig, setDemoConfig] = useState<{ userName: string; company: string; objective: string; persona: string; language: string }>({ userName: '', company: '', objective: 'reception', persona: 'friendly', language: 'auto' });
+  const [appMode, setAppMode] = useState<'LOCKED' | 'DEMO' | 'OPERATOR'>('LOCKED');
+  const [demoConfig, setDemoConfig] = useState<{ fullName: string; companyName: string; objective: string; persona: string; language: string }>({
+    fullName: '',
+    companyName: '',
+    objective: 'Receptionist & Routing',
+    persona: 'Extremely Friendly & Conversational',
+    language: 'Auto-Detect'
+  });
   const { showTicker, toggleTicker } = useTerminal();
   
   const [showColdStartToast, setShowColdStartToast] = useState(false);
@@ -807,12 +813,12 @@ const App: React.FC = () => {
   const [detectedLanguage, setDetectedLanguage] = useState<string>("");
   const [testPhone, setTestPhone] = useState('');
   const [testLang, setTestLang] = useState<Language>(Language.ZULU);
-  const [outboundLang, setOutboundLang] = useState<Language>(Language.ENGLISH);
   const [isInternalCall, setIsInternalCall] = useState(false);
   const [internalInput, setInternalInput] = useState('');
   const [isInternalSending, setIsInternalSending] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const languageMatrix = DEFAULT_CONFIG.enabledLanguages;
 
   // Editable Run Protocol state
   const [languageProtocols, setLanguageProtocols] = useState<Record<string, { greeting: string; objection: string; closing: string; switch: string }>>(() => {
@@ -1061,7 +1067,7 @@ const App: React.FC = () => {
 
   const handleStartInternalCall = async (lang: Language) => {
     const proto = languageProtocols[lang];
-    const greeting = proto?.greeting || `[INTERNAL LINK ESTABLISHED] Core language set to ${getLanguageName(lang)}. Speakerphone active. Ready for neural stimulus.`;
+    const greeting = proto?.greeting || `[INTERNAL LINK ESTABLISHED] Opening call language set to ${getLanguageName(lang)}. Speakerphone active. Ready for verification.`;
     setIsInternalCall(true);
     setIsCalling(true);
     setActiveClient({
@@ -1200,7 +1206,7 @@ const App: React.FC = () => {
           try {
             const audio = new Audio(`data:audio/wav;base64,${data.audioBase64}`);
             await audio.play();
-            setTestLogs(prev => [`[${ts()}] AUDIO UNIT SUCCESS: Playback complete.`, ...prev]);
+        setTestLogs(prev => [`[${ts()}] AUDIO PLAYBACK SUCCESS: Playback complete.`, ...prev]);
           } catch (playErr: any) {
             setTestLogs(prev => [
               `[${ts()}] WARN: Audio generated but browser playback failed: ${playErr.message}`,
@@ -1225,9 +1231,9 @@ const App: React.FC = () => {
         }
         const data = await parseJsonResponse(response);
         if (data.success) {
-          setTestLogs(prev => [`[${ts()}] LOGIC UNIT RESPONSE: ${data.response}`, ...prev]);
+        setTestLogs(prev => [`[${ts()}] CORE RESPONSE: ${data.response}`, ...prev]);
         } else {
-          throw new Error(data.error || 'Unknown logic unit error');
+        throw new Error(data.error || 'Unknown core processing error');
         }
       }
     } catch (err: any) {
@@ -1370,7 +1376,8 @@ const App: React.FC = () => {
             className={`flex items-center gap-2.5 text-[10px] font-medium uppercase tracking-wider w-full ${isProtocolAccepted ? 'text-[#00ff00]' : 'text-slate-600 hover:text-[#39ff88]'}`}
           >
             <div className={`w-2 h-2 rounded-full ${isProtocolAccepted ? 'bg-[#00ff00] shadow-[0_0_6px_#00ff00]' : 'bg-slate-600'}`} />
-            <ShieldCheckIcon className="w-3.5 h-3.5" /> <span className="hidden lg:inline">POPIA Valid</span>
+            <ShieldCheckIcon className="w-3.5 h-3.5" />
+            <span className="hidden md:flex">POPIA Valid</span>
           </button>
           <div className="flex items-center gap-2.5">
             <span className={`os3-heartbeat ${backendStatus === 'connected' ? '' : backendStatus === 'loading' ? 'os3-heartbeat--amber' : 'os3-heartbeat--red'}`} />
@@ -1914,7 +1921,7 @@ const App: React.FC = () => {
                                 value={internalInput}
                                 onChange={e => setInternalInput(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleInternalSend()}
-                                placeholder={isInternalCall ? 'Enter neural stimulus...' : 'Inject operator message...'}
+                                placeholder={isInternalCall ? 'Enter verification input...' : 'Inject operator message...'}
                                 disabled={isInternalSending}
                                 className="flex-1 h-12 bg-black/40 rounded-xl border border-[#66FF66]/30 px-6 text-[#66FF66] text-xs font-mono focus:outline-none focus:border-[#66FF66]/70 placeholder:text-slate-600 disabled:opacity-50"
                               />
@@ -1960,157 +1967,117 @@ const App: React.FC = () => {
                     </button>
                 </header>
 
-                {/* ─── LAB + MANUAL SIGNAL — Two-column Grid ─── */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-
-                  {/* DEMO LAB / TESTING LAB (BOTH MODES) */}
-                  <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 shadow-[0_0_15px_rgba(102,255,102,0.05)] flex flex-col">
-                    <div className="flex items-center gap-3 mb-3">
-                      <CpuChipIcon className="w-5 h-5 text-[#66FF66]" />
-                      <h3 className="text-lg font-black text-white tracking-widest">
-                        {appMode === 'DEMO' ? '[ DEMO LAB ]' : '[ TESTING LAB ]'}
-                      </h3>
-                    </div>
-                    <p className="text-[10px] text-[#66FF66]/70 mb-5 leading-relaxed">
-                      Uses your laptop mic &amp; speakers for a local 2-way session with the AI core. No Twilio required — test the full Run Protocol in-browser.
-                    </p>
-                    <div className="mb-4">
-                      <label className="block text-[9px] font-black text-[#66FF66]/60 uppercase tracking-widest mb-2">Core Language</label>
-                      <select
-                        value={testLang}
-                        onChange={(e) => setTestLang(e.target.value as Language)}
-                        className="w-full bg-[#0a110a] border border-[#66FF66]/30 rounded-xl px-4 py-3 text-white font-bold text-xs outline-none focus:border-[#66FF66] appearance-none"
-                      >
-                        {Object.values(Language).map(lang => (
-                          <option key={lang} value={lang} className="bg-[#0d1117]">{getLanguageName(lang)}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <button
-                      onClick={() => handleStartInternalCall(testLang)}
-                      className="mt-auto w-full flex items-center justify-center gap-3 py-4 font-black tracking-widest border rounded-xl transition-all text-[10px] uppercase bg-[#002200] border-[#66FF66] text-[#66FF66] hover:bg-[#66FF66]/10 shadow-[0_0_20px_rgba(102,255,102,0.2)]"
-                    >
-                      <SpeakerWaveIcon className="w-5 h-5" />
-                      {appMode === 'DEMO' ? 'Establish Internal Link' : 'Initialize Mic Uplink'}
-                    </button>
+                <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 sm:p-8 shadow-[0_0_15px_rgba(102,255,102,0.05)] mb-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <CommandLineIcon className="w-5 h-5 text-[#66FF66]" />
+                    <h3 className="text-lg font-black text-white tracking-widest">[ TERMINAL_COMMAND_CONSOLE ]</h3>
                   </div>
 
-                  {/* MANUAL SIGNAL TRIGGER — OPERATOR ONLY / LOCKED IN DEMO */}
-                  {appMode === 'OPERATOR' ? (
-                    <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 shadow-[0_0_15px_rgba(102,255,102,0.05)] flex flex-col">
+                  <div className="mb-6">
+                    <label className="block text-[9px] font-black text-[#66FF66]/60 uppercase tracking-widest mb-3">Opening Call Language</label>
+                    <div className="flex flex-wrap gap-2">
+                      {languageMatrix.map(lang => (
+                        <button
+                          key={`opening-lang-${lang}`}
+                          onClick={() => setTestLang(lang)}
+                          className={`px-3 py-2 text-[9px] uppercase tracking-widest rounded-full transition-all ${
+                            testLang === lang
+                              ? 'bg-[#00ff00] text-black font-bold'
+                              : 'border border-[#00ff00]/30 text-[#00ff00]/70 hover:bg-[#00ff00]/10'
+                          }`}
+                        >
+                          {getLanguageName(lang)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-[#0d1117] border border-[#1e293b]/40 rounded-xl p-6 flex flex-col">
                       <div className="flex items-center gap-3 mb-3">
-                        <PhoneIcon className="w-5 h-5 text-[#00D9FF]" />
-                        <h3 className="text-lg font-black text-white tracking-widest">[ MANUAL SIGNAL TRIGGER ]</h3>
+                        <SpeakerWaveIcon className="w-5 h-5 text-[#66FF66]" />
+                        <h4 className="text-sm font-black text-white tracking-widest uppercase">[ INTERNAL LINK ]</h4>
                       </div>
                       <p className="text-[10px] text-[#66FF66]/70 mb-5 leading-relaxed">
-                        Dispatch outbound Twilio signal to an external phone number. Bypasses pipeline routing for ad-hoc testing.
+                        Direct connection to the language processing core. Uses local laptop microphone &amp; speakers or mobile device on speaker phone mode - for real-time 2-way logic verification.
                       </p>
-                      <div className="mb-4">
-                        <label className="block text-[9px] font-black text-[#66FF66]/60 uppercase tracking-widest mb-2">Target Phone Number</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. +27821234567"
-                          value={testPhone}
-                          onChange={(e) => setTestPhone(e.target.value)}
-                          className="w-full bg-[#0a110a] border border-[#66FF66]/30 rounded-xl px-4 py-3 text-white font-mono text-sm outline-none focus:border-[#00D9FF]"
-                        />
-                      </div>
-                      <div className="mb-4">
-                        <label className="block text-[9px] font-black text-[#66FF66]/60 uppercase tracking-widest mb-2">Core Language</label>
-                        <select
-                          value={outboundLang}
-                          onChange={(e) => setOutboundLang(e.target.value as Language)}
-                          className="w-full bg-[#0a110a] border border-[#66FF66]/30 rounded-xl px-4 py-3 text-white font-bold text-xs outline-none focus:border-[#00D9FF] appearance-none"
-                        >
-                          {Object.values(Language).map(lang => (
-                            <option key={lang} value={lang} className="bg-[#0d1117]">{getLanguageName(lang)}</option>
-                          ))}
-                        </select>
-                      </div>
                       <button
-                        onClick={() => {
-                          if (!testPhone) return;
-                          handleStartCall({
-                            id: `TEST-${Date.now()}`,
-                            name: 'Test',
-                            surname: 'Subject',
-                            phone: testPhone,
-                            language: outboundLang,
-                            status: 'pending',
-                            area: 'Test Lab',
-                            signup_date: new Date().toISOString(),
-                            collected_data: {}
-                          });
-                        }}
-                        disabled={!testPhone || backendStatus !== 'connected'}
-                        className="mt-auto w-full flex items-center justify-center gap-3 py-4 font-black tracking-widest border rounded-xl transition-all text-[10px] uppercase bg-[#001a33] border-[#00D9FF] text-[#00D9FF] hover:bg-[#00D9FF]/10 shadow-[0_0_20px_rgba(0,217,255,0.15)] disabled:opacity-30 disabled:cursor-not-allowed"
+                        onClick={() => handleStartInternalCall(testLang)}
+                        className="mt-auto w-full flex items-center justify-center gap-3 py-4 font-black tracking-widest border rounded-xl transition-all text-[10px] uppercase bg-[#002200] border-[#66FF66] text-[#66FF66] hover:bg-[#66FF66]/10 shadow-[0_0_20px_rgba(102,255,102,0.2)]"
                       >
-                        <PhoneIcon className="w-5 h-5" />
-                        DISPATCH OUTBOUND SIGNAL
+                        <SpeakerWaveIcon className="w-5 h-5" />
+                        {appMode === 'DEMO' ? 'Establish Internal Link' : 'Initialize Mic Uplink'}
                       </button>
                     </div>
-                  ) : (
-                    <div className="bg-[#050505] border border-slate-800/60 rounded-lg p-6 flex flex-col relative overflow-hidden">
-                      <div className="absolute inset-0 bg-black/70 z-10 flex items-center justify-center">
-                        <span className="bg-black/90 px-5 py-2 border border-slate-700 text-slate-500 text-[9px] font-black tracking-[0.2em] rounded-full uppercase">
-                          Outbound Calling Restricted in Demo Mode
-                        </span>
+
+                    {appMode === 'OPERATOR' ? (
+                      <div className="bg-[#0d1117] border border-[#1e293b]/40 rounded-xl p-6 flex flex-col">
+                        <div className="flex items-center gap-3 mb-3">
+                          <PhoneIcon className="w-5 h-5 text-[#00D9FF]" />
+                          <h4 className="text-sm font-black text-white tracking-widest uppercase">[ MANUAL SIGNAL TRIGGER ]</h4>
+                        </div>
+                        <p className="text-[10px] text-[#66FF66]/70 mb-5 leading-relaxed">
+                          Dispatch outbound Twilio signal to an external phone number. Bypasses pipeline routing for ad-hoc testing.
+                        </p>
+                        <div className="mb-4">
+                          <label className="block text-[9px] font-black text-[#66FF66]/60 uppercase tracking-widest mb-2">Target Phone Number</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. +27821234567"
+                            value={testPhone}
+                            onChange={(e) => setTestPhone(e.target.value)}
+                            className="w-full bg-[#0a110a] border border-[#66FF66]/30 rounded-xl px-4 py-3 text-white font-mono text-sm outline-none focus:border-[#00D9FF]"
+                          />
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (!testPhone) return;
+                            handleStartCall({
+                              id: `TEST-${Date.now()}`,
+                              name: 'Test',
+                              surname: 'Subject',
+                              phone: testPhone,
+                              language: testLang,
+                              status: 'pending',
+                              area: 'Test Lab',
+                              signup_date: new Date().toISOString(),
+                              collected_data: {}
+                            });
+                          }}
+                          disabled={!testPhone || backendStatus !== 'connected'}
+                          className="mt-auto w-full flex items-center justify-center gap-3 py-4 font-black tracking-widest border rounded-xl transition-all text-[10px] uppercase bg-[#001a33] border-[#00D9FF] text-[#00D9FF] hover:bg-[#00D9FF]/10 shadow-[0_0_20px_rgba(0,217,255,0.15)] disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <PhoneIcon className="w-5 h-5" />
+                          DISPATCH OUTBOUND SIGNAL
+                        </button>
                       </div>
-                      <div className="flex items-center gap-3 mb-3 opacity-30">
-                        <PhoneIcon className="w-5 h-5 text-slate-600" />
-                        <h3 className="text-lg font-black text-slate-600 tracking-widest">[ MANUAL SIGNAL TRIGGER ]</h3>
+                    ) : (
+                      <div className="bg-[#0d1117] border border-slate-800/60 rounded-xl p-6 flex flex-col relative overflow-hidden">
+                        <div className="absolute inset-0 bg-black/70 z-10 flex items-center justify-center">
+                          <span className="bg-black/90 px-5 py-2 border border-slate-700 text-slate-500 text-[9px] font-black tracking-[0.2em] rounded-full uppercase">
+                            Outbound Calling Restricted in Demo Mode
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mb-3 opacity-30">
+                          <PhoneIcon className="w-5 h-5 text-slate-600" />
+                          <h4 className="text-sm font-black text-slate-600 tracking-widest uppercase">[ MANUAL SIGNAL TRIGGER ]</h4>
+                        </div>
+                        <p className="text-[10px] text-slate-700 mb-5 leading-relaxed opacity-30">
+                          Dispatch outbound Twilio signal to an external phone number. Bypasses pipeline routing for ad-hoc testing.
+                        </p>
+                        <div className="mb-4 opacity-20">
+                          <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Target Phone Number</label>
+                          <div className="w-full bg-[#0a110a] border border-slate-800 rounded-xl px-4 py-3 text-slate-700 font-mono text-sm">+27•••••••••</div>
+                        </div>
+                        <div className="mt-auto w-full py-4 text-center font-black tracking-widest border rounded-xl text-[10px] uppercase bg-[#0a0a0a] border-slate-800 text-slate-700 opacity-20">
+                          DISPATCH OUTBOUND SIGNAL
+                        </div>
                       </div>
-                      <p className="text-[10px] text-slate-700 mb-5 leading-relaxed opacity-30">Dispatch outbound Twilio signal to an external phone number.</p>
-                      <div className="mb-4 opacity-20">
-                        <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Target Phone Number</label>
-                        <div className="w-full bg-[#0a110a] border border-slate-800 rounded-xl px-4 py-3 text-slate-700 font-mono text-sm">+27•••••••••</div>
-                      </div>
-                      <div className="mb-4 opacity-20">
-                        <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Core Language</label>
-                        <div className="w-full bg-[#0a110a] border border-slate-800 rounded-xl px-4 py-3 text-slate-700 font-bold text-xs">English</div>
-                      </div>
-                      <div className="mt-auto w-full py-4 text-center font-black tracking-widest border rounded-xl text-[10px] uppercase bg-[#0a0a0a] border-slate-800 text-slate-700 opacity-20">
-                        DISPATCH OUTBOUND SIGNAL
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
-                {/* ─── NEURAL STIMULUS + LAB OUTPUT (BOTH MODES) ─── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                    <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40">
-                        <div className="flex items-center gap-4 mb-8">
-                            <BeakerIcon className="w-8 h-8 text-[#66FF66]" />
-                            <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Neural Stimulus</h3>
-                        </div>
-                        <div className="bg-black/40 rounded-md p-6 border border-[#1e293b]/40 mb-6">
-                                  <textarea value={testInput} onChange={(e) => setTestInput(e.target.value)} className="w-full bg-transparent border-none text-[#66FF66] text-sm font-mono focus:ring-0 h-32 resize-none" placeholder="Enter stimulus parameters..." />
-                             <div className="flex justify-end mt-4">
-                                 <button onClick={runNeuralTest} disabled={isTestRunning} className="bg-white text-black px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#66FF66] transition-all disabled:opacity-20">
-                                     {isTestRunning ? 'Processing...' : 'Execute Test'}
-                                 </button>
-                             </div>
-                        </div>
-                        <div className="mb-4 flex flex-wrap gap-2">
-                          {Object.values(Language).map(lang => (
-                            <button
-                              key={`stimulus-lang-${lang}`}
-                              onClick={() => setTestLang(lang)}
-                              className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded border transition-all ${testLang === lang ? 'bg-[#66FF66] text-[#0d1117] border-[#66FF66]' : 'bg-[#1e293b]/10 text-slate-400 border-[#1e293b]/30 hover:border-[#66FF66]/40 hover:text-white'}`}
-                            >
-                              {getLanguageName(lang)}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {getQuickScriptsForLanguage(testLang).map(s => (
-                                <button key={s.name} onClick={() => setTestInput(s.text)} className="px-3 py-1.5 bg-[#1e293b]/10 text-[9px] font-black text-slate-400 uppercase tracking-widest rounded border border-[#1e293b]/30 hover:border-[#66FF66]/40 transition-all hover:text-white">
-                                    {s.name}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
+                <div className="grid grid-cols-1 gap-12">
                     <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40 flex flex-col">
                         <div className="flex items-center gap-4 mb-8">
                             <CommandLineIcon className="w-8 h-8 text-[#66FF66]" />
@@ -2156,60 +2123,67 @@ const App: React.FC = () => {
                     </div>
                     <div className="space-y-4">
                       <div>
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Your Name</label>
-                        <input type="text" value={demoConfig.userName} onChange={e => setDemoConfig(p => ({ ...p, userName: e.target.value }))} placeholder="e.g. Jonathan" className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:border-[#39ff88]/50 focus:outline-none transition-colors" />
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">FULL NAME AND SURNAME</label>
+                        <input type="text" value={demoConfig.fullName} onChange={e => setDemoConfig(p => ({ ...p, fullName: e.target.value }))} placeholder="e.g. Jonathan Blackburn" className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:border-[#39ff88]/50 focus:outline-none transition-colors" />
                       </div>
                       <div>
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Company Name</label>
-                        <input type="text" value={demoConfig.company} onChange={e => setDemoConfig(p => ({ ...p, company: e.target.value }))} placeholder="e.g. Acme Corp" className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:border-[#39ff88]/50 focus:outline-none transition-colors" />
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">COMPANY NAME</label>
+                        <input type="text" value={demoConfig.companyName} onChange={e => setDemoConfig(p => ({ ...p, companyName: e.target.value }))} placeholder="e.g. Acme Corp" className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:border-[#39ff88]/50 focus:outline-none transition-colors" />
                       </div>
                       <div>
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Agent Objective</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">AGENT OBJECTIVE</label>
                         <select value={demoConfig.objective} onChange={e => setDemoConfig(p => ({ ...p, objective: e.target.value }))} className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#39ff88]/50 focus:outline-none transition-colors">
-                          <option value="reception">Receptionist &amp; Routing</option>
-                          <option value="qualification">Outbound Lead Qualification</option>
-                          <option value="techsupport">Technical Support Troubleshooting</option>
+                          <option value="Receptionist &amp; Routing">Receptionist &amp; Routing</option>
+                          <option value="Outbound Lead Qualification">Outbound Lead Qualification</option>
+                          <option value="Cold Calling">Cold Calling</option>
+                          <option value="Technical Support Troubleshooting">Technical Support Troubleshooting</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Agent Persona</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">AGENT PERSONA</label>
                         <select value={demoConfig.persona} onChange={e => setDemoConfig(p => ({ ...p, persona: e.target.value }))} className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#39ff88]/50 focus:outline-none transition-colors">
-                          <option value="friendly">Extremely Friendly &amp; Conversational</option>
-                          <option value="professional">Strict &amp; Ultra-Professional</option>
+                          <option value="Extremely Friendly &amp; Conversational">Extremely Friendly &amp; Conversational</option>
+                          <option value="Strict &amp; Ultra-Professional">Strict &amp; Ultra-Professional</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Language Matrix</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">LANGUAGE MATRIX</label>
                         <select value={demoConfig.language} onChange={e => setDemoConfig(p => ({ ...p, language: e.target.value }))} className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#39ff88]/50 focus:outline-none transition-colors">
-                          <option value="auto">Auto-Detect</option>
-                          <option value="en-ZA">English</option>
-                          <option value="zu-ZA">Zulu</option>
-                          <option value="af-ZA">Afrikaans</option>
+                          <option value="Auto-Detect">Auto-Detect</option>
+                          <option value="English">English</option>
+                          <option value="Zulu">Zulu</option>
+                          <option value="Afrikaans">Afrikaans</option>
+                          <option value="Sepedi">Sepedi</option>
+                          <option value="Greek">Greek</option>
+                          <option value="Portuguese">Portuguese</option>
+                          <option value="Mandarin">Mandarin</option>
                         </select>
                       </div>
                       <button
-                        onClick={() => { setAppMode('DEMO'); localStorage.setItem('os3_app_mode', 'DEMO'); setShowColdStartToast(true); setTimeout(() => setShowColdStartToast(false), 8000); setActiveTab('PIPELINE'); }}
+                        onClick={() => { setAppMode('DEMO'); setShowColdStartToast(true); setTimeout(() => setShowColdStartToast(false), 8000); setActiveTab('PIPELINE'); }}
                         className="w-full mt-2 bg-[#39ff88] text-[#0d1117] py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:shadow-[0_0_20px_rgba(57,255,136,0.4)] transition-all font-orbitron"
                       >
-                        Launch Demo
+                        [ LAUNCH DEMO ]
                       </button>
                     </div>
                   </div>
 
                   {/* OPERATOR MODE BUTTON */}
-                  <button
-                    onClick={() => {
-                      setAppMode('OPERATOR');
-                      localStorage.setItem('os3_app_mode', 'OPERATOR');
-                      setShowColdStartToast(true);
-                      setTimeout(() => setShowColdStartToast(false), 8000);
-                    }}
-                    className="flex flex-col items-center justify-center p-10 border-2 border-slate-600 bg-slate-900 hover:bg-slate-800 hover:border-slate-400 rounded-xl transition-all group"
-                  >
-                    <Terminal className="w-12 h-12 mb-4 text-slate-400 group-hover:scale-110 transition-transform" />
-                    <h2 className="text-2xl font-bold text-white mb-2 font-orbitron tracking-wider">OPERATOR MODE</h2>
-                    <p className="text-xs text-slate-400 text-center">Full system access. Unrestricted configuration, custom prompt engineering, and raw data feeds.</p>
-                  </button>
+                  <div className="flex flex-col items-center justify-center p-10 border-2 border-slate-600 bg-slate-900 hover:bg-slate-800 hover:border-slate-400 rounded-xl transition-all group">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">OR OPERATOR MODE</p>
+                    <button
+                      onClick={() => {
+                        setAppMode('OPERATOR');
+                        setShowColdStartToast(true);
+                        setTimeout(() => setShowColdStartToast(false), 8000);
+                      }}
+                      className="flex flex-col items-center justify-center w-full"
+                    >
+                      <Terminal className="w-12 h-12 mb-4 text-slate-400 group-hover:scale-110 transition-transform" />
+                      <h2 className="text-2xl font-bold text-white mb-2 font-orbitron tracking-wider">OPERATOR MODE</h2>
+                      <p className="text-xs text-slate-400 text-center">Full system access. Unrestricted configuration, custom prompt engineering, and raw data feeds.</p>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -2227,7 +2201,7 @@ const App: React.FC = () => {
                       <span className="font-bold tracking-widest uppercase text-xs">Go to Live Terminal</span>
                     </button>
                     <button
-                      onClick={() => { setAppMode('LOCKED'); localStorage.setItem('os3_app_mode', 'LOCKED'); }}
+                      onClick={() => { setAppMode('LOCKED'); }}
                       className="text-xs underline text-slate-500 hover:text-white transition-colors"
                     >
                       Reset to Gateway
@@ -2878,19 +2852,24 @@ const App: React.FC = () => {
       {/* COLD-START TOAST */}
       {showColdStartToast && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-toast-in">
-          <div className="flex items-start gap-4 bg-[#0d1117] border border-[#39ff88]/30 rounded-lg px-6 py-4 shadow-2xl shadow-black/40 max-w-sm">
+          <div className="rounded-lg px-6 py-4 max-w-sm bg-[#1a1a00] border border-yellow-500 text-yellow-500 z-[9999] shadow-[0_0_20px_rgba(234,179,8,0.3)]">
+            <div className="flex items-start gap-4">
             <div className="mt-0.5">
               <svg className="w-5 h-5 text-[#66FF66] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
             <div className="flex-1">
-              <p className="text-[#39ff88] font-black text-xs uppercase tracking-widest mb-1">Neural Engine Spooling Up</p>
-              <p className="text-slate-400 text-xs leading-relaxed">First launch may take ~30 seconds while the system wakes. Your call is queued — stand by.</p>
+              <p className="text-yellow-400 animate-pulse font-bold text-xs uppercase tracking-widest mb-1">Neural Engine Spooling Up</p>
+              <p className="text-yellow-500/80 text-xs leading-relaxed">First launch may take ~30 seconds while the system wakes. Your call is queued — stand by.</p>
             </div>
             <button onClick={() => setShowColdStartToast(false)} className="text-slate-600 hover:text-slate-300 transition-colors shrink-0">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
+          </div>
+            <div className="w-full h-1 bg-yellow-900 mt-3 overflow-hidden rounded">
+              <div className="w-1/2 h-full bg-yellow-500 animate-[pulse_1s_ease-in-out_infinite]" />
+            </div>
           </div>
         </div>
       )}
