@@ -85,12 +85,50 @@ const getLanguageName = (lang: string) => {
 
 const RENDER_BACKEND_URL = 'https://jb3ail-qualify-ai-telephone.onrender.com';
 
+const API_ROUTES = {
+  health: '/api/health',
+  logCompliance: '/api/log-compliance',
+  syncSheets: '/api/clients/sync-sheets',
+  makeCall: '/make-call',
+  testVoice: '/api/test-voice',
+  testLogic: '/api/test-logic',
+  converse: '/api/converse',
+} as const;
+
+const FRONTEND_ONLY_HOSTS = new Set(['www.jb3ai.com', 'jb3ai.com']);
+
+const normalizeBackendUrl = (url?: string | null) => {
+  const raw = (url || '').trim();
+  if (!raw) return RENDER_BACKEND_URL;
+
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (hostname.includes('azurewebsites.net') || FRONTEND_ONLY_HOSTS.has(hostname)) {
+      return RENDER_BACKEND_URL;
+    }
+
+    return parsed.origin.replace(/\/$/, '');
+  } catch {
+    return RENDER_BACKEND_URL;
+  }
+};
+
+const buildBackendApiUrl = (backendUrl: string, route: string) =>
+  `${normalizeBackendUrl(backendUrl)}${route}`;
+
+const getBackendSocketUrl = (backendUrl: string) =>
+  normalizeBackendUrl(backendUrl).replace(/^http/i, 'ws');
+
 const getDefaultBackendUrl = () => {
-  // VITE_API_BASE_URL set in Render's environment dashboard takes highest priority
-  if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL as string;
+  const configuredUrl = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL) as string | undefined;
+  if (configuredUrl) return normalizeBackendUrl(configuredUrl);
   const isLocalhost =
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocalhost ? 'http://localhost:3000' : RENDER_BACKEND_URL;
+  return normalizeBackendUrl(isLocalhost ? 'http://localhost:3000' : RENDER_BACKEND_URL);
 };
 
 /* ── Telemetry Strip ── */
@@ -872,15 +910,14 @@ const App: React.FC = () => {
 
   const [backendUrl, setBackendUrl] = useState<string>(() => {
     const stored = localStorage.getItem('mzansi_backend_url');
-    const url = stored || getDefaultBackendUrl();
-    return url.endsWith('/') ? url.slice(0, -1) : url;
+    return normalizeBackendUrl(stored || getDefaultBackendUrl());
   });
   const [backendStatus, setBackendStatus] = useState<'connected' | 'error' | 'loading'>('loading');
   const [isProtocolAccepted, setIsProtocolAccepted] = useState<boolean>(localStorage.getItem('mzansi_protocol_accepted') === 'true');
 
   const handleAcceptProtocol = async () => {
     try {
-      const response = await fetch(`${backendUrl}/api/log-compliance`, {
+      const response = await fetch(buildBackendApiUrl(backendUrl, API_ROUTES.logCompliance), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -912,7 +949,7 @@ const App: React.FC = () => {
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
 
   useEffect(() => {
-    const wsUrl = backendUrl.replace(/^http/, 'ws');
+    const wsUrl = getBackendSocketUrl(backendUrl);
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout>;
 
@@ -993,11 +1030,11 @@ const App: React.FC = () => {
   }, [transcriptions]);
 
   const checkBackendHealth = async (urlOverride?: string) => {
-    const targetUrl = urlOverride || backendUrl;
+    const targetUrl = normalizeBackendUrl(urlOverride || backendUrl);
     const t0 = performance.now();
     try {
       setBackendStatus('loading');
-      const res = await fetch(`${targetUrl}/api/health`, { method: 'GET' });
+      const res = await fetch(`${targetUrl}${API_ROUTES.health}`, { method: 'GET' });
       const rtt = Math.round(performance.now() - t0);
       if (!res.ok) {
         setBackendStatus('error');
@@ -1035,7 +1072,7 @@ const App: React.FC = () => {
     try {
         let response: Response;
         try {
-          response = await fetch(`${backendUrl}/make-call`, { 
+          response = await fetch(buildBackendApiUrl(backendUrl, API_ROUTES.makeCall), { 
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ clientId: client.id, phone: client.phone, name: client.name, language: client.language, mode: appMode, demoConfig })
@@ -1087,7 +1124,7 @@ const App: React.FC = () => {
     ]);
     // Play greeting audio through device speaker
     try {
-      const r = await fetch(`${backendUrl}/api/test-voice`, {
+      const r = await fetch(buildBackendApiUrl(backendUrl, API_ROUTES.testVoice), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: greeting, language: lang })
@@ -1118,7 +1155,7 @@ const App: React.FC = () => {
     setIsInternalSending(true);
     setTranscriptions(prev => [...prev, { role: 'user', text, timestamp: Date.now() }]);
     try {
-      const r = await fetch(`${backendUrl}/api/converse`, {
+      const r = await fetch(buildBackendApiUrl(backendUrl, API_ROUTES.converse), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, language: activeClient?.language || Language.ENGLISH })
@@ -1193,7 +1230,7 @@ const App: React.FC = () => {
       if (testType === 'speak') {
         let response: Response;
         try {
-          response = await fetch(`${backendUrl}/api/test-voice`, {
+          response = await fetch(buildBackendApiUrl(backendUrl, API_ROUTES.testVoice), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: testInput, language: testLang })
@@ -1221,7 +1258,7 @@ const App: React.FC = () => {
       } else {
         let response: Response;
         try {
-          response = await fetch(`${backendUrl}/api/test-logic`, {
+          response = await fetch(buildBackendApiUrl(backendUrl, API_ROUTES.testLogic), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: testInput })
@@ -1265,7 +1302,7 @@ const App: React.FC = () => {
   };
 
   const saveBackendUrl = (url: string) => {
-    const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+    const cleanUrl = normalizeBackendUrl(url);
     setBackendUrl(cleanUrl);
     localStorage.setItem('mzansi_backend_url', cleanUrl);
   };
@@ -2225,10 +2262,10 @@ const App: React.FC = () => {
               onSync={async () => {
                 setIsSyncing(true);
                 try {
-                  console.log(`📡 Initiating sync with: ${backendUrl}/api/clients/sync-sheets`);
+                  console.log(`📡 Initiating sync with: ${buildBackendApiUrl(backendUrl, API_ROUTES.syncSheets)}`);
                   let response: Response;
                   try {
-                    response = await fetch(`${backendUrl}/api/clients/sync-sheets`, { method: 'POST' });
+                    response = await fetch(buildBackendApiUrl(backendUrl, API_ROUTES.syncSheets), { method: 'POST' });
                   } catch (fetchErr: any) {
                     // Network error — backend unreachable. Inject demo fallback leads.
                     console.warn('⚠️ Backend unreachable, injecting demo leads locally.', fetchErr.message);
