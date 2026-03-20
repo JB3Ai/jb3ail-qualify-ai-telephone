@@ -84,6 +84,7 @@ const getLanguageName = (lang: string) => {
 };
 
 const RENDER_BACKEND_URL = 'https://jb3ail-qualify-ai-telephone.onrender.com';
+const LOCAL_BACKEND_PORT = '3000';
 
 const API_ROUTES = {
   health: '/api/health',
@@ -106,6 +107,13 @@ const normalizeBackendUrl = (url?: string | null) => {
   try {
     const parsed = new URL(withProtocol);
     const hostname = parsed.hostname.toLowerCase();
+
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      if (parsed.port !== LOCAL_BACKEND_PORT) {
+        return `${parsed.protocol}//${parsed.hostname}:${LOCAL_BACKEND_PORT}`;
+      }
+      return parsed.origin.replace(/\/$/, '');
+    }
 
     if (hostname.includes('azurewebsites.net') || FRONTEND_ONLY_HOSTS.has(hostname)) {
       return RENDER_BACKEND_URL;
@@ -139,7 +147,7 @@ const UplinkBadge: React.FC<{ backendStatus: string; latencyMs: number | null }>
   const ping = latencyMs !== null ? `${latencyMs}ms` : isLoading ? '...' : '--';
   return (
     <div
-      className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded border transition-transform duration-200 hover:-translate-y-[1px] cursor-default ${
+      className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded border transition-transform duration-200 hover:-translate-y-px cursor-default ${
         isConnected ? 'bg-[#002200] border-[#39ff88]/30 text-[#39ff88]'
         : isLoading  ? 'bg-[#1a1200] border-[#f59e0b]/30 text-[#f59e0b]'
                      : 'bg-[#220000] border-[#ef4444]/30 text-[#ef4444]'
@@ -271,7 +279,7 @@ const ActivityStream: React.FC<{
   const current = liveMessages[idx % liveMessages.length];
 
   return (
-    <div className="activity-stream hidden sm:flex items-center gap-2 overflow-hidden max-w-[340px]">
+    <div className="activity-stream hidden sm:flex items-center gap-2 overflow-hidden max-w-85">
       <span className="activity-stream__dot" />
       <span className={`activity-stream__text ${fade ? 'activity-stream__text--visible' : ''}`}>{current}</span>
     </div>
@@ -363,7 +371,7 @@ const NeuralConnectivityMatrix: React.FC<{
                   {card.name}
                   {card.href && <ArrowTopRightOnSquareIcon className="w-3 h-3 opacity-40 group-hover:opacity-100 transition-opacity" />}
                 </span>
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${card.status === 'ONLINE' || card.status === 'READY' ? 'bg-[#39FF88] animate-pulse shadow-[0_0_10px_#39FF88]' : card.status === 'SYNCING' ? 'bg-[#FFD700] animate-pulse' : 'bg-red-500'}`}></div>
+                <div className={`w-2 h-2 rounded-full shrink-0 ${card.status === 'ONLINE' || card.status === 'READY' ? 'bg-[#39FF88] animate-pulse shadow-[0_0_10px_#39FF88]' : card.status === 'SYNCING' ? 'bg-[#FFD700] animate-pulse' : 'bg-red-500'}`}></div>
               </div>
               <div className="text-2xl font-black text-white tracking-tighter font-orbitron">
                 {card.status}
@@ -469,7 +477,7 @@ const InfoOverlay: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] bg-[#020617]/95 backdrop-blur-xl p-6 md:p-12 overflow-y-auto animate-fade-in">
+    <div className="fixed inset-0 z-120 bg-[#020617]/95 backdrop-blur-xl p-6 md:p-12 overflow-y-auto animate-fade-in">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-12">
           <div className="flex items-center gap-4">
@@ -489,7 +497,7 @@ const InfoOverlay: React.FC<{
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {steps.map((item) => (
             <div key={item.step} className="bg-[#0d1117] p-8 rounded-lg border border-[#1e293b]/40 relative overflow-hidden group">
-              <span className="absolute -top-4 -right-4 text-8xl font-black text-white/[0.02] group-hover:text-[#66FF66]/[0.05] transition-colors">{item.step}</span>
+              <span className="absolute -top-4 -right-4 text-8xl font-black text-white/2 group-hover:text-[#66FF66]/5 transition-colors">{item.step}</span>
               <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-4 flex items-center gap-3">
                 <span className="text-[#66FF66] font-mono text-xs">{item.step}.</span> {item.title}
               </h4>
@@ -562,22 +570,22 @@ const DataInbox: React.FC<{
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#020617] animate-fade-in overflow-hidden">
-      <div className="min-h-[5rem] bg-[#0d1117] border-b border-[#1e293b]/40 flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-8 lg:px-12 py-3 sm:py-0 gap-3 sm:gap-0 shrink-0">
-        <div className="flex items-center gap-3 sm:gap-4">
+    <div className="data-inbox-page animate-fade-in">
+      <div className="inbox-toolbar">
+        <div className="inbox-title-group">
           <InboxStackIcon className="w-5 h-5 sm:w-6 sm:h-6 text-[#66FF66]" />
-          <div>
-            <h2 className="font-orbitron font-black text-white uppercase tracking-[0.1em] sm:tracking-[0.2em] text-xs sm:text-sm">Data Inbox</h2>
-            <p className="text-[8px] sm:text-[9px] text-slate-500 font-mono uppercase tracking-widest hidden sm:block">Source: Hub_Central_Ledger</p>
+          <div className="title-text">
+            <h2 className="font-orbitron font-black uppercase">Data Inbox</h2>
+            <p className="font-mono uppercase tracking-widest hidden sm:block">Source: Hub_Central_Ledger</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-          <button 
+        <div className="inbox-action-group">
+          <button
             onClick={() => setShowWorkflowGuide(true)}
-            className="i-button-pro"
+            className="bg-[#0f1319] border border-[#1f2937] p-2 rounded-lg shrink-0 flex items-center justify-center transition-colors hover:bg-gray-800"
             title="Workflow Guide"
           >
-            <InformationCircleIcon className="w-5 h-5" />
+            <span className="text-green-500 font-bold text-lg leading-none">ℹ️</span>
           </button>
           <button 
             onClick={handleRefreshSheet}
@@ -601,7 +609,7 @@ const DataInbox: React.FC<{
         </div>
       </div>
 
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden flex flex-col relative">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <InfoOverlay 
           isOpen={showWorkflowGuide}
           onClose={() => setShowWorkflowGuide(false)}
@@ -639,9 +647,9 @@ const DataInbox: React.FC<{
           }}
         />
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden min-h-0 gap-4 sm:gap-6">
+        <div className="inbox-content-area">
           {/* Left Columns: Google Sheet Iframe */}
-          <div className="hidden lg:flex lg:col-span-8 border border-[#1e293b]/30 bg-black flex-col relative group overflow-hidden rounded-md lg:rounded-lg">
+          <div className="spreadsheet-container hidden lg:flex flex-col relative group">
             <div className="absolute top-6 left-6 z-10 bg-black/60 backdrop-blur-md px-4 py-2 rounded-lg border border-[#1e293b]/40 flex items-center gap-2">
               <TableCellsIcon className="w-4 h-4 text-[#66FF66]" />
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Live Source: 12bR...dO5g</span>
@@ -655,15 +663,15 @@ const DataInbox: React.FC<{
           </div>
 
           {/* Right Columns: Tactical List */}
-          <div className="col-span-1 lg:col-span-4 flex flex-col bg-[#020617] overflow-hidden rounded-md lg:rounded-lg border border-[#1e293b]/40">
-            <div className="p-8 border-b border-[#1e293b]/30 bg-[#0d1117]/50">
+          <div className="execution-sidebar">
+            <div className="sidebar-header bg-[#0d1117]/50">
               <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] font-orbitron flex items-center gap-3">
                 <SignalIcon className="w-5 h-5 text-[#66FF66]" /> Ready for Execution
               </h3>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Immediate AI Interaction Queue</p>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
+            <div className="queue-list space-y-4 scrollbar-hide">
               {pendingClients.length > 0 ? (
                 pendingClients.map(client => (
                   <div key={client.id} className="bg-[#1A2333] p-6 rounded-md border border-[#1e293b]/40 hover:border-[#66FF66]/30 transition-all group">
@@ -1129,8 +1137,8 @@ const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: greeting, language: lang })
       });
-      const d = await r.json();
-      if (d.audioBase64) {
+      const d = await parseJsonResponse(r);
+      if (r.ok && d.audioBase64) {
         const a = new Audio(`data:audio/wav;base64,${d.audioBase64}`);
         a.play().catch(() => {});
       }
@@ -1160,15 +1168,15 @@ const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, language: activeClient?.language || Language.ENGLISH })
       });
-      const d = await r.json();
-      if (d.success) {
+      const d = await parseJsonResponse(r);
+      if (r.ok && d.success) {
         setTranscriptions(prev => [...prev, { role: 'model', text: d.text, timestamp: Date.now() }]);
         if (d.audioBase64) {
           const a = new Audio(`data:audio/wav;base64,${d.audioBase64}`);
           a.play().catch(() => {});
         }
       } else {
-        setTranscriptions(prev => [...prev, { role: 'model', text: `[LINK ERROR] ${d.error || 'No response from core'}`, timestamp: Date.now() }]);
+        throw new Error(d.error || 'No response from core');
       }
     } catch (e: any) {
       setTranscriptions(prev => [...prev, { role: 'model', text: `[LINK ERROR] ${e.message}`, timestamp: Date.now() }]);
@@ -1435,7 +1443,7 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
 
         {/* 🖥️ THE HUD (Active Protocol Screen) */}
-        {['DATA_INBOX', 'PIPELINE', 'LIVE_TERMINAL', 'DASHBOARD'].includes(activeTab) && (
+        {['DASHBOARD'].includes(activeTab) && (
           <div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 shrink-0">
             <div
               onClick={() => { if (backendStatus !== 'connected') setActiveTab('CONFIG_HUB'); }}
@@ -1480,11 +1488,11 @@ const App: React.FC = () => {
         )}
 
         {/* 🚀 MAIN CONTENT ZONE */}
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden flex flex-col content-module-layered">
+        <div className="flex-1 min-h-0 p-4 sm:p-6 lg:p-8 overflow-hidden flex flex-col content-module-layered">
           
           {/* TAB: PIPELINE */}
           {activeTab === 'PIPELINE' && (
-            <div className="space-y-4 animate-fadeIn relative flex-1 flex flex-col overflow-hidden">
+            <div className="execution-pipeline-page animate-fadeIn relative">
               <InfoOverlay 
                 isOpen={showPipelineInfo}
                 onClose={() => setShowPipelineInfo(false)}
@@ -1513,14 +1521,15 @@ const App: React.FC = () => {
                   }
                 ]}
               />
+              <div className="pipeline-header-block">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-4">
-                  <button 
+                  <button
                     onClick={() => setShowPipelineInfo(true)}
-                    className="i-button-pro" style={{ width: 40, height: 40 }}
+                    className="bg-[#0f1319] border border-[#1f2937] p-2 rounded-lg shrink-0 flex items-center justify-center transition-colors hover:bg-gray-800"
                     title="Pipeline Info"
                   >
-                    <InformationCircleIcon className="w-5 h-5" />
+                    <span className="text-green-500 font-bold text-lg leading-none">ℹ️</span>
                   </button>
                   <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter font-orbitron">Execution Pipeline</h2>
                 </div>
@@ -1593,13 +1602,16 @@ const App: React.FC = () => {
                   </span>
                 </div>
               </div>
+              </div>
 
+              <div className="pipeline-dynamic-area">
               {/* Pipeline Live Node Map */}
-              <div className="node-map mb-4">
-                <div className="node-map__header">
+              <div id="nodeMapView" className="node-map map-view-container mb-4">
+                <div className="node-map__header map-header">
                   <SignalIcon className="w-3.5 h-3.5 text-[#39ff88]" />
                   <span>LIVE NODE MAP</span>
                 </div>
+                <div className="map-content">
                 <svg viewBox="0 0 700 140" className="node-map__svg" xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <path id="p-inb-pta" d="M 130 70 L 250 40" />
@@ -1678,51 +1690,55 @@ const App: React.FC = () => {
                   <text x="660" y="100" className="node-map__stat">{archiveClients.length}</text>
                   <text x="660" y="114" className="node-map__sublabel">DONE</text>
                 </svg>
+                </div>
               </div>
 
               {/* === PRE-FLIGHT SIGN-OFF PROCEDURE === */}
-              {pipelineClients.length > 0 && (
-                <div className="bg-[#0d1117] border border-[#00ff00]/20 rounded-2xl p-5 space-y-4">
-                  <div className="flex items-center gap-3 mb-1">
-                    <ShieldCheckIcon className="w-5 h-5 text-[#00ff00]" />
-                    <h3 className="text-[11px] font-black text-[#00ff00] uppercase tracking-[0.3em] font-orbitron">Pre-Flight Sign-Off Procedure</h3>
+                <div id="signOffView" className={`checklist-view-container bg-[#0d1117] border border-[#00ff00]/20 rounded-2xl p-5 space-y-4 ${pipelineClients.length === 0 ? 'pipeline-view-hidden' : ''}`}>
+                  <div style={{ flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ flexShrink: 0 }}>
+                      <div className="flex items-center gap-3 mb-1">
+                        <ShieldCheckIcon className="w-5 h-5 text-[#00ff00]" />
+                        <h3 className="text-[11px] font-black text-[#00ff00] uppercase tracking-[0.3em] font-orbitron">Pre-Flight Sign-Off Procedure</h3>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-mono tracking-wide mb-4">ALL GATES MUST BE CLEARED BEFORE MASTER EXECUTION IS AUTHORIZED.</p>
+                    </div>
+                    <div className="checklist-items-scroll grid grid-cols-1 sm:grid-cols-2 gap-3" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
+                      {[
+                        { key: 'queueDepth' as const, label: `Confirm Queue Depth — ${pipelineClients.length} Lead${pipelineClients.length !== 1 ? 's' : ''} Loaded` },
+                        { key: 'languages' as const, label: `Confirm Target Languages Selected — ${activeLangs.size} Active` },
+                        { key: 'hubUplinks' as const, label: `Confirm System Hub Uplinks — ${backendStatus === 'connected' ? 'All Green' : 'OFFLINE'}` },
+                        { key: 'protocolRead' as const, label: 'Confirm Operational Protocol Read' },
+                      ].map(({ key, label }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setPreFlightChecks(prev => ({ ...prev, [key]: !prev[key] }))}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all group ${
+                            preFlightChecks[key]
+                              ? 'border-[#00ff00]/50 bg-[#00ff00]/5 shadow-[0_0_12px_rgba(0,255,0,0.08)]'
+                              : 'border-[#1e293b]/50 bg-[#1A2333]/60 hover:border-[#00ff00]/20'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                            preFlightChecks[key]
+                              ? 'border-[#00ff00] bg-[#00ff00] shadow-[0_0_8px_rgba(0,255,0,0.4)]'
+                              : 'border-slate-600 group-hover:border-[#00ff00]/40'
+                          }`}>
+                            {preFlightChecks[key] && (
+                              <svg className="w-3 h-3 text-[#020617]" viewBox="0 0 12 12" fill="none">
+                                <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </div>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                            preFlightChecks[key] ? 'text-[#00ff00]' : 'text-slate-400 group-hover:text-slate-300'
+                          }`}>{label}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-[10px] text-slate-500 font-mono tracking-wide">ALL GATES MUST BE CLEARED BEFORE MASTER EXECUTION IS AUTHORIZED.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
-                      { key: 'queueDepth' as const, label: `Confirm Queue Depth — ${pipelineClients.length} Lead${pipelineClients.length !== 1 ? 's' : ''} Loaded` },
-                      { key: 'languages' as const, label: `Confirm Target Languages Selected — ${activeLangs.size} Active` },
-                      { key: 'hubUplinks' as const, label: `Confirm System Hub Uplinks — ${backendStatus === 'connected' ? 'All Green' : 'OFFLINE'}` },
-                      { key: 'protocolRead' as const, label: 'Confirm Operational Protocol Read' },
-                    ].map(({ key, label }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setPreFlightChecks(prev => ({ ...prev, [key]: !prev[key] }))}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all group ${
-                          preFlightChecks[key]
-                            ? 'border-[#00ff00]/50 bg-[#00ff00]/5 shadow-[0_0_12px_rgba(0,255,0,0.08)]'
-                            : 'border-[#1e293b]/50 bg-[#1A2333]/60 hover:border-[#00ff00]/20'
-                        }`}
-                      >
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
-                          preFlightChecks[key]
-                            ? 'border-[#00ff00] bg-[#00ff00] shadow-[0_0_8px_rgba(0,255,0,0.4)]'
-                            : 'border-slate-600 group-hover:border-[#00ff00]/40'
-                        }`}>
-                          {preFlightChecks[key] && (
-                            <svg className="w-3 h-3 text-[#020617]" viewBox="0 0 12 12" fill="none">
-                              <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
-                        </div>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                          preFlightChecks[key] ? 'text-[#00ff00]' : 'text-slate-400 group-hover:text-slate-300'
-                        }`}>{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="pt-2 flex items-center gap-4">
+                  <div className="pt-2 flex items-center gap-4 shrink-0">
                     <button
                       disabled={!allPreFlightCleared || backendStatus !== 'connected'}
                       onClick={() => {
@@ -1744,14 +1760,13 @@ const App: React.FC = () => {
                     </span>
                   </div>
                 </div>
-              )}
 
               {pipelineClients.length === 0 ? (
                 <div className="p-20 text-center text-slate-600 font-orbitron text-xs">
                   NO_LEADS_IN_PIPELINE. SYNC_FROM_INBOX_TO_INITIALIZE.
                 </div>
               ) : (
-                <div className="bg-[#1A2333] rounded-[24px] border border-white/5 overflow-auto scrollbar-hide flex-1">
+                <div className="bg-[#1A2333] rounded-3xl border border-white/5 overflow-auto scrollbar-hide flex-1 min-h-0 shrink-0 min-h-[280px]">
                   {/* Desktop table */}
                   <table className="w-full text-left hidden sm:table">
                     <thead className="bg-[#020617] text-[10px] text-[#39FF88] font-orbitron sticky top-0 z-10">
@@ -1825,12 +1840,13 @@ const App: React.FC = () => {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           )}
 
           {/* TAB: LIVE TERMINAL */}
           {activeTab === 'LIVE_TERMINAL' && (
-            <div className="flex-1 flex flex-col animate-fade-in overflow-hidden relative">
+            <div className="flex-1 min-h-0 flex flex-col animate-fade-in overflow-y-auto relative">
               <InfoOverlay 
                 isOpen={showLabInfo}
                 onClose={() => setShowLabInfo(false)}
@@ -1860,9 +1876,9 @@ const App: React.FC = () => {
                 ]}
               />
               {isCalling ? (
-              <>
-                <div className="p-8 border-b border-[#1e293b]/30 bg-[#0d1117]/80 flex items-center justify-between">
-                  <div className="flex items-center gap-6">
+              <div className="flex flex-col h-full overflow-y-auto md:overflow-hidden pb-20 md:pb-0">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 bg-[#0b0e14] p-4 border border-gray-800 rounded-lg">
+                  <div className="flex items-center gap-4 sm:gap-6">
                     <div className="w-12 h-12 rounded-md bg-red-500/10 flex items-center justify-center text-red-500 animate-pulse border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
                       {isInternalCall ? <CpuChipIcon className="w-6 h-6 text-[#66FF66]" /> : <PhoneIcon className="w-6 h-6" />}
                     </div>
@@ -1876,13 +1892,13 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   
-                  <button onClick={endCall} className="bg-red-600 hover:bg-red-500 text-white px-8 py-4 rounded-md text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
+                  <button onClick={endCall} className="w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-md text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
                     <PhoneXMarkIcon className="w-4 h-4" /> {isInternalCall ? 'Sever Neural Link' : 'Terminate Session'}
                   </button>
                 </div>
 
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8 p-4 sm:p-8 overflow-hidden">
-                  <div className="lg:col-span-1 space-y-6">
+                <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0 mt-4">
+                  <div className="w-full md:w-[350px] shrink-0 flex flex-col gap-4">
                     <div className="bg-[#0d1117] p-6 rounded-lg border border-[#1e293b]/40 group hover:border-[#66FF66]/30 transition-all">
                       <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex justify-between items-center">
                         Call Duration <ClockIcon className="w-4 h-4 text-[#66FF66]" />
@@ -1922,15 +1938,15 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="lg:col-span-3 flex flex-col bg-[#0d1117] rounded-lg border border-[#1e293b]/40 overflow-hidden shadow-2xl">
-                    <div className="p-6 border-b border-[#1e293b]/30 bg-white/[0.01] flex items-center justify-between">
+                  <div className="w-full md:flex-1 flex flex-col bg-[#0d1117] rounded-lg border border-[#1e293b]/40 overflow-hidden shadow-2xl min-h-[500px] md:min-h-0">
+                    <div className="p-6 border-b border-[#1e293b]/30 bg-white/1 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CommandLineIcon className="w-5 h-5 text-[#66FF66]" />
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">Encrypted Session Metadata</span>
                       </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-12 space-y-8 scrollbar-hide font-mono">
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 scrollbar-hide font-mono">
                       {transcriptions.map((t, i) => (
                         <div key={i} className={`flex ${t.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
                           <div className="max-w-[70%]">
@@ -1951,8 +1967,8 @@ const App: React.FC = () => {
                       <div ref={transcriptEndRef} />
                     </div>
                     
-                    <div className="p-8 border-t border-[#1e293b]/30 bg-black/10">
-                      <div className="flex items-center gap-6">
+                    <div className="shrink-0 p-4 border-t border-[#1e293b]/30 bg-black/10">
+                      <div className="flex items-center gap-2">
                               <input
                                 type="text"
                                 value={internalInput}
@@ -1960,7 +1976,7 @@ const App: React.FC = () => {
                                 onKeyDown={e => e.key === 'Enter' && handleInternalSend()}
                                 placeholder={isInternalCall ? 'Enter verification input...' : 'Inject operator message...'}
                                 disabled={isInternalSending}
-                                className="flex-1 h-12 bg-black/40 rounded-xl border border-[#66FF66]/30 px-6 text-[#66FF66] text-xs font-mono focus:outline-none focus:border-[#66FF66]/70 placeholder:text-slate-600 disabled:opacity-50"
+                                className="flex-1 h-12 bg-black/40 rounded-xl border border-[#66FF66]/30 px-4 sm:px-6 text-[#66FF66] text-xs font-mono focus:outline-none focus:border-[#66FF66]/70 placeholder:text-slate-600 disabled:opacity-50"
                               />
                               <button
                                 id="neural-send-btn"
@@ -1970,7 +1986,7 @@ const App: React.FC = () => {
                               >
                                 {isInternalSending ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Send'}
                               </button>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                             <button
                               onClick={toggleMic}
                               disabled={isInternalSending}
@@ -1987,37 +2003,45 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </>
+              </div>
             ) : (
               <div className="flex-1 p-6 sm:p-12 lg:p-24 overflow-y-auto scrollbar-hide font-mono text-[#66FF66]">
-                <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
-                    <div>
-                      <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">[ LIVE TERMINAL ]</h1>
-                      <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Internal testing &amp; outbound signal dispatch.</p>
-                    </div>
-                    <button 
+                <div className="mb-8 sm:mb-16">
+                  <div className="flex items-center gap-4 mb-6">
+                    <button
                       onClick={() => setShowLabInfo(true)}
-                      className="i-button-pro"
+                      className="bg-[#0f1319] border border-[#1f2937] p-2 rounded-lg shrink-0 flex items-center justify-center transition-colors hover:bg-gray-800"
                       title="Lab Info"
                     >
-                      <InformationCircleIcon className="w-5 h-5" />
+                      <span className="text-green-500 font-bold text-lg leading-none">ℹ️</span>
                     </button>
-                </header>
+                    <h2 className="text-white font-bold text-2xl tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                      LIVE TERMINAL
+                    </h2>
+                  </div>
+                  <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Internal testing &amp; outbound signal dispatch.</p>
+                </div>
 
-                <div className="bg-[#050505] border border-[#66FF66]/30 rounded-lg p-6 sm:p-8 shadow-[0_0_15px_rgba(102,255,102,0.05)] mb-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <CommandLineIcon className="w-5 h-5 text-[#66FF66]" />
-                    <h3 className="text-lg font-black text-white tracking-widest">[ TERMINAL_COMMAND_CONSOLE ]</h3>
+                <div className="bg-[#0b0e14] border border-[#1f2937] rounded-lg p-4 flex flex-col gap-4 mb-8">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 bg-green-500/20 text-green-500 p-1 rounded shrink-0">
+                      <CommandLineIcon className="w-4 h-4" />
+                    </div>
+                    <h2 className="text-white font-bold text-lg tracking-widest break-words">
+                      [ TERMINAL_COMMAND_CONSOLE ]
+                    </h2>
                   </div>
 
-                  <div className="mb-6">
-                    <label className="block text-[9px] font-black text-[#66FF66]/60 uppercase tracking-widest mb-3">Opening Call Language</label>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-green-500 text-[10px] font-bold tracking-widest uppercase">
+                      Opening Call Language
+                    </span>
                     <div className="flex flex-wrap gap-2">
                       {languageMatrix.map(lang => (
                         <button
                           key={`opening-lang-${lang}`}
                           onClick={() => setTestLang(lang)}
-                          className={`px-3 py-2 text-[9px] uppercase tracking-widest rounded-full transition-all ${
+                          className={`px-3 py-1 text-xs uppercase tracking-widest rounded-full transition-colors ${
                             testLang === lang
                               ? 'bg-[#00ff00] text-black font-bold'
                               : 'border border-[#00ff00]/30 text-[#00ff00]/70 hover:bg-[#00ff00]/10'
@@ -2029,41 +2053,43 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-[#0d1117] border border-[#1e293b]/40 rounded-xl p-6 flex flex-col">
-                      <div className="flex items-center gap-3 mb-3">
-                        <SpeakerWaveIcon className="w-5 h-5 text-[#66FF66]" />
-                        <h4 className="text-sm font-black text-white tracking-widest uppercase">[ INTERNAL LINK ]</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-[#111827] border border-gray-800 rounded-lg p-4 flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        <SpeakerWaveIcon className="w-4 h-4 text-[#66FF66]" />
+                        <h3 className="text-white font-bold tracking-widest text-sm">[ INTERNAL LINK ]</h3>
                       </div>
-                      <p className="text-[10px] text-[#66FF66]/70 mb-5 leading-relaxed">
+                      <p className="text-[#66FF66]/80 text-xs leading-snug">
                         Direct connection to the language processing core. Uses local laptop microphone &amp; speakers or mobile device on speaker phone mode - for real-time 2-way logic verification.
                       </p>
                       <button
                         onClick={() => handleStartInternalCall(testLang)}
-                        className="mt-auto w-full flex items-center justify-center gap-3 py-4 font-black tracking-widest border rounded-xl transition-all text-[10px] uppercase bg-[#002200] border-[#66FF66] text-[#66FF66] hover:bg-[#66FF66]/10 shadow-[0_0_20px_rgba(102,255,102,0.2)]"
+                        className="mt-1 border border-green-500 text-green-500 hover:bg-green-500 hover:text-black font-bold tracking-widest text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
                       >
-                        <SpeakerWaveIcon className="w-5 h-5" />
-                        {appMode === 'DEMO' ? 'Establish Internal Link' : 'Initialize Mic Uplink'}
+                        <SpeakerWaveIcon className="w-4 h-4" />
+                        {appMode === 'DEMO' ? 'ESTABLISH INTERNAL LINK' : 'INITIALIZE MIC UPLINK'}
                       </button>
                     </div>
 
                     {appMode === 'OPERATOR' ? (
-                      <div className="bg-[#0d1117] border border-[#1e293b]/40 rounded-xl p-6 flex flex-col">
-                        <div className="flex items-center gap-3 mb-3">
-                          <PhoneIcon className="w-5 h-5 text-[#00D9FF]" />
-                          <h4 className="text-sm font-black text-white tracking-widest uppercase">[ MANUAL SIGNAL TRIGGER ]</h4>
+                      <div className="bg-[#111827] border border-gray-800 rounded-lg p-4 flex flex-col gap-3">
+                        <div className="flex items-center gap-2">
+                          <PhoneIcon className="w-4 h-4 text-[#3b82f6]" />
+                          <h3 className="text-white font-bold tracking-widest text-sm">[ MANUAL SIGNAL TRIGGER ]</h3>
                         </div>
-                        <p className="text-[10px] text-[#66FF66]/70 mb-5 leading-relaxed">
+                        <p className="text-[#66FF66]/80 text-xs leading-snug">
                           Dispatch outbound Twilio signal to an external phone number. Bypasses pipeline routing for ad-hoc testing.
                         </p>
-                        <div className="mb-4">
-                          <label className="block text-[9px] font-black text-[#66FF66]/60 uppercase tracking-widest mb-2">Target Phone Number</label>
+                        <div className="flex flex-col gap-2">
+                          <label className="text-[#66FF66] text-[10px] font-bold tracking-widest uppercase">
+                            Target Phone Number
+                          </label>
                           <input
                             type="text"
                             placeholder="e.g. +27821234567"
                             value={testPhone}
                             onChange={(e) => setTestPhone(e.target.value)}
-                            className="w-full bg-[#0a110a] border border-[#66FF66]/30 rounded-xl px-4 py-3 text-white font-mono text-sm outline-none focus:border-[#00D9FF]"
+                            className="w-full bg-[#0a110a] border border-[#66FF66]/30 rounded-lg px-4 py-2 text-white font-mono text-sm outline-none focus:border-[#00D9FF]"
                           />
                         </div>
                         <button
@@ -2082,31 +2108,33 @@ const App: React.FC = () => {
                             });
                           }}
                           disabled={!testPhone || backendStatus !== 'connected'}
-                          className="mt-auto w-full flex items-center justify-center gap-3 py-4 font-black tracking-widest border rounded-xl transition-all text-[10px] uppercase bg-[#001a33] border-[#00D9FF] text-[#00D9FF] hover:bg-[#00D9FF]/10 shadow-[0_0_20px_rgba(0,217,255,0.15)] disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="mt-1 border border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-black font-bold tracking-widest text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
-                          <PhoneIcon className="w-5 h-5" />
+                          <PhoneIcon className="w-4 h-4" />
                           DISPATCH OUTBOUND SIGNAL
                         </button>
                       </div>
                     ) : (
-                      <div className="bg-[#0d1117] border border-slate-800/60 rounded-xl p-6 flex flex-col relative overflow-hidden">
+                      <div className="bg-[#111827] border border-gray-800 rounded-lg p-4 flex flex-col gap-3 relative overflow-hidden">
                         <div className="absolute inset-0 bg-black/70 z-10 flex items-center justify-center">
                           <span className="bg-black/90 px-5 py-2 border border-slate-700 text-slate-500 text-[9px] font-black tracking-[0.2em] rounded-full uppercase">
                             Outbound Calling Restricted in Demo Mode
                           </span>
                         </div>
-                        <div className="flex items-center gap-3 mb-3 opacity-30">
-                          <PhoneIcon className="w-5 h-5 text-slate-600" />
-                          <h4 className="text-sm font-black text-slate-600 tracking-widest uppercase">[ MANUAL SIGNAL TRIGGER ]</h4>
+                        <div className="flex items-center gap-2 opacity-30">
+                          <PhoneIcon className="w-4 h-4 text-slate-600" />
+                          <h3 className="text-slate-600 font-bold tracking-widest text-sm">[ MANUAL SIGNAL TRIGGER ]</h3>
                         </div>
-                        <p className="text-[10px] text-slate-700 mb-5 leading-relaxed opacity-30">
+                        <p className="text-slate-700 text-xs leading-snug opacity-30">
                           Dispatch outbound Twilio signal to an external phone number. Bypasses pipeline routing for ad-hoc testing.
                         </p>
-                        <div className="mb-4 opacity-20">
-                          <label className="block text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Target Phone Number</label>
-                          <div className="w-full bg-[#0a110a] border border-slate-800 rounded-xl px-4 py-3 text-slate-700 font-mono text-sm">+27•••••••••</div>
+                        <div className="flex flex-col gap-2 opacity-20">
+                          <label className="text-slate-600 text-[10px] font-bold tracking-widest uppercase">
+                            Target Phone Number
+                          </label>
+                          <div className="w-full bg-[#0a110a] border border-slate-800 rounded-lg px-4 py-2 text-slate-700 font-mono text-sm">+27•••••••••</div>
                         </div>
-                        <div className="mt-auto w-full py-4 text-center font-black tracking-widest border rounded-xl text-[10px] uppercase bg-[#0a0a0a] border-slate-800 text-slate-700 opacity-20">
+                        <div className="mt-1 border border-slate-800 text-slate-700 font-bold tracking-widest text-xs py-2 rounded-lg text-center opacity-20">
                           DISPATCH OUTBOUND SIGNAL
                         </div>
                       </div>
@@ -2120,7 +2148,7 @@ const App: React.FC = () => {
                             <CommandLineIcon className="w-8 h-8 text-[#66FF66]" />
                             <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Lab Output</h3>
                         </div>
-                        <div className="flex-1 bg-black/40 rounded-md p-6 border border-[#1e293b]/40 font-mono text-[10px] text-slate-400 overflow-y-auto space-y-2 min-h-[300px]">
+                        <div className="lab-output-console bg-black/40 rounded-md p-6 border border-[#1e293b]/40 text-[10px] text-slate-400 space-y-2">
                             {testLogs.map((log, i) => (
                               <div key={i} className={log.includes('ERROR') ? 'text-red-500' : log.includes('SUCCESS') ? 'text-[#66FF66]' : ''}>
                                 {log}
@@ -2161,7 +2189,7 @@ const App: React.FC = () => {
                     <div className="space-y-4">
                       <div>
                         <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">FULL NAME AND SURNAME</label>
-                        <input type="text" value={demoConfig.fullName} onChange={e => setDemoConfig(p => ({ ...p, fullName: e.target.value }))} placeholder="e.g. Jonathan Blackburn" className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:border-[#39ff88]/50 focus:outline-none transition-colors" />
+                        <input type="text" value={demoConfig.fullName} onChange={e => setDemoConfig(p => ({ ...p, fullName: e.target.value }))} placeholder="e.g. Full name" className="w-full bg-[#0d1117] border border-[#1e293b] rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:border-[#39ff88]/50 focus:outline-none transition-colors" />
                       </div>
                       <div>
                         <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">COMPANY NAME</label>
@@ -2373,15 +2401,19 @@ const App: React.FC = () => {
                     }
                   ]}
                 />
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-12">
-                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter text-glow">System Hub</h1>
-                  <button 
-                    onClick={() => setShowConfigInfo(true)}
-                    className="i-button-pro"
-                    title="Config Info"
-                  >
-                    <InformationCircleIcon className="w-5 h-5" />
-                  </button>
+                <div className="mb-8 sm:mb-12">
+                  <div className="flex items-center gap-4 mb-6">
+                    <button
+                      onClick={() => setShowConfigInfo(true)}
+                      className="bg-[#0f1319] border border-[#1f2937] p-2 rounded-lg shrink-0 flex items-center justify-center transition-colors hover:bg-gray-800"
+                      title="Config Info"
+                    >
+                      <span className="text-green-500 font-bold text-lg leading-none">ℹ️</span>
+                    </button>
+                    <h2 className="text-white font-bold text-2xl tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                      SYSTEM HUB
+                    </h2>
+                  </div>
                 </div>
 
                 <NeuralConnectivityMatrix 
@@ -2466,19 +2498,21 @@ const App: React.FC = () => {
                 }
               ]}
             />
-            <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
-                <div>
-                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">Run Protocol</h1>
-                  <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Company, Product, Personality & Instruction Sets for each Language.</p>
-                </div>
-                <button 
+            <div className="mb-8 sm:mb-16">
+              <div className="flex items-center gap-4 mb-6">
+                <button
                   onClick={() => setShowProtocolInfo(true)}
-                  className="i-button-pro"
+                  className="bg-[#0f1319] border border-[#1f2937] p-2 rounded-lg shrink-0 flex items-center justify-center transition-colors hover:bg-gray-800"
                   title="Protocol Info"
                 >
-                  <InformationCircleIcon className="w-5 h-5" />
+                  <span className="text-green-500 font-bold text-lg leading-none">ℹ️</span>
                 </button>
-            </header>
+                <h2 className="text-white font-bold text-2xl tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                  RUN PROTOCOL
+                </h2>
+              </div>
+              <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Company, Product, Personality &amp; Instruction Sets for each Language.</p>
+            </div>
 
             <div className="space-y-12">
               {/* COMPANY & CALL GUIDE */}
@@ -2631,19 +2665,21 @@ const App: React.FC = () => {
                 }
               ]}
             />
-            <header className="mb-8 sm:mb-16 flex flex-col sm:flex-row justify-between items-start gap-4">
-                <div>
-                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 text-glow">System CONFIG</h1>
-                  <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Backend control and Neural Hub reset protocols.</p>
-                </div>
-                <button 
+            <div className="mb-8 sm:mb-16">
+              <div className="flex items-center gap-4 mb-6">
+                <button
                   onClick={() => setShowBackendInfo(true)}
-                  className="i-button-pro"
+                  className="bg-[#0f1319] border border-[#1f2937] p-2 rounded-lg shrink-0 flex items-center justify-center transition-colors hover:bg-gray-800"
                   title="Backend Info"
                 >
-                  <InformationCircleIcon className="w-5 h-5" />
+                  <span className="text-green-500 font-bold text-lg leading-none">ℹ️</span>
                 </button>
-            </header>
+                <h2 className="text-white font-bold text-2xl tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                  SYSTEM CONFIG
+                </h2>
+              </div>
+              <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Backend control and Neural Hub reset protocols.</p>
+            </div>
 
             <div className="max-w-2xl space-y-8">
               <div className="bg-[#0d1117] p-10 rounded-lg border border-[#1e293b]/40">
@@ -2709,7 +2745,7 @@ const App: React.FC = () => {
 
         {/* MODAL: SESSION ANALYTICS */}
         {viewingTranscriptClient && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-[#020617]/95 backdrop-blur-xl animate-fade-in">
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-8 bg-[#020617]/95 backdrop-blur-xl animate-fade-in">
              <div className="bg-[#0d1117] w-full max-w-3xl rounded-lg border border-[#1e293b]/40 flex flex-col h-[85vh] shadow-2xl relative">
                 <button onClick={() => setViewingTranscriptClient(null)} className="absolute top-8 right-8 text-slate-500 hover:text-[#66FF66] transition-colors"><XMarkIcon className="w-8 h-8" /></button>
                 <div className="p-12 border-b border-[#1e293b]/30">
@@ -2736,7 +2772,7 @@ const App: React.FC = () => {
 
         {/* MODAL: POPIA POLICY */}
         {showPopiaModal && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-[#020617]/95 backdrop-blur-xl animate-fade-in overflow-y-auto">
+          <div className="fixed inset-0 z-110 flex items-center justify-center p-8 bg-[#020617]/95 backdrop-blur-xl animate-fade-in overflow-y-auto">
              <div className="bg-[#0d1117] w-full max-w-4xl rounded-lg border border-[#1e293b]/40 flex flex-col shadow-2xl relative my-auto max-h-[90vh]">
                 {isProtocolAccepted && (
                   <button 
@@ -2888,8 +2924,8 @@ const App: React.FC = () => {
 
       {/* COLD-START TOAST */}
       {showColdStartToast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-toast-in">
-          <div className="rounded-lg px-6 py-4 max-w-sm bg-[#1a1a00] border border-yellow-500 text-yellow-500 z-[9999] shadow-[0_0_20px_rgba(234,179,8,0.3)]">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-200 animate-toast-in">
+          <div className="rounded-lg px-6 py-4 max-w-sm bg-[#1a1a00] border border-yellow-500 text-yellow-500 z-9999 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
             <div className="flex items-start gap-4">
             <div className="mt-0.5">
               <svg className="w-5 h-5 text-[#66FF66] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">

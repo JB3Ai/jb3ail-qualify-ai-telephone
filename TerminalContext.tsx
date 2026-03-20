@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 interface TerminalState {
   showTicker: boolean;
@@ -8,17 +8,7 @@ interface TerminalState {
 const TerminalContext = createContext<TerminalState | undefined>(undefined);
 
 export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [showTicker, setShowTicker] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('os3_ticker_enabled');
-      return saved === 'true';
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('os3_ticker_enabled', String(showTicker));
-  }, [showTicker]);
+  const [showTicker, setShowTicker] = useState(true);
 
   const toggleTicker = () => setShowTicker((prev) => !prev);
 

@@ -2,7 +2,6 @@ import React from 'react';
 import { Client, TranscriptionEntry } from './types';
 import {
   InboxStackIcon,
-  InformationCircleIcon,
 } from '@heroicons/react/24/solid';
 import './CallArchive.css';
 
@@ -22,31 +21,31 @@ export const CallArchive: React.FC<CallArchiveProps> = ({
   onShowInfo,
 }) => {
   return (
-    <section className="archive-module h-full flex flex-col">
-      <header className="archive-header">
-        <div className="archive-title">
-          <span className="step-tag">06</span>
+    <section className="flex flex-col h-[calc(100vh-80px)] overflow-hidden p-4">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0 mb-4 p-4 bg-[#0f1319] rounded-lg border border-gray-800">
+        <div className="flex items-center gap-3">
+          <div className="bg-gray-800 px-2 py-1 rounded text-xs text-white font-mono">06</div>
           <div>
-            <h2>CALL ARCHIVE // LEDGER_VAULT</h2>
-            <p>SECURE TRANSCRIPTS, METADATA, AUDIT EXPORTS</p>
+            <h2 className="text-white font-bold tracking-widest">CALL ARCHIVE // LEDGER_VAULT</h2>
+            <p className="text-gray-500 text-xs">SECURE TRANSCRIPTS, METADATA, AUDIT EXPORTS</p>
           </div>
         </div>
-        <div className="vault-stats">
-          <span>SECURE_RECORDS: {archiveClients.length}</span>
-          <span className="vault-lock">POPIA VALID</span>
+
+        <div className="flex items-center gap-4 text-xs font-mono">
+          <span className="text-gray-400">SECURE_RECORDS: {archiveClients.length}</span>
+          <span className="text-green-500">POPIA VALID</span>
           <button
             onClick={onShowInfo}
-            className="i-button-pro"
-            style={{ width: 36, height: 36, borderRadius: 8 }}
+            className="bg-[#0f1319] border border-[#1f2937] p-2 rounded-lg shrink-0 flex items-center justify-center transition-colors hover:bg-gray-800"
             title="Archive Info"
           >
-            <InformationCircleIcon className="w-4 h-4" />
+            <span className="text-green-500 font-bold text-lg leading-none">ℹ️</span>
           </button>
         </div>
       </header>
 
-      <div className="archive-grid flex flex-col md:flex-row h-full overflow-y-auto">
-        <aside className="record-list w-full md:w-1/3 min-h-[300px]">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 gap-4">
+        <aside className="w-full md:w-[380px] shrink-0 overflow-y-auto flex flex-col gap-2 pb-4">
           {archiveClients.map((client, idx) => (
             <button
               key={client.id}
@@ -75,7 +74,7 @@ export const CallArchive: React.FC<CallArchiveProps> = ({
           )}
         </aside>
 
-        <section className="inspection-pane w-full md:w-2/3">
+        <section className="flex-1 overflow-y-auto bg-[#080a0f] border border-gray-800 rounded-lg flex flex-col min-h-[400px] min-w-0">
           {selectedSignal ? (
             <>
               <div className="view-header">
@@ -108,7 +107,9 @@ export const CallArchive: React.FC<CallArchiveProps> = ({
               </button>
             </>
           ) : (
-            <div className="empty-vault">SELECT_SIGNAL_FOR_INSPECTION</div>
+            <div className="empty-vault flex-1 flex items-center justify-center">
+              <span className="text-gray-600 tracking-widest font-mono">$ELECT_SIGNAL_FOR_INSPECTION</span>
+            </div>
           )}
         </section>
       </div>
