@@ -530,7 +530,8 @@ body {
   flex-direction: column;
   gap: 16px;
   overflow-y: auto;
-  padding-bottom: 24px;
+  /* Keep the last pipeline controls clear of the footer strip. */
+  padding-bottom: 128px;
 }
 .map-view-container,
 .checklist-view-container {

@@ -2027,7 +2027,7 @@ const App: React.FC = () => {
                     <div className="mt-1 bg-green-500/20 text-green-500 p-1 rounded shrink-0">
                       <CommandLineIcon className="w-4 h-4" />
                     </div>
-                    <h2 className="text-white font-bold text-lg tracking-widest break-words">
+                    <h2 className="text-white font-bold text-base tracking-widest break-words">
                       [ TERMINAL_COMMAND_CONSOLE ]
                     </h2>
                   </div>
