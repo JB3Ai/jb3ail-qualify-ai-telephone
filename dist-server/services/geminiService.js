@@ -8,7 +8,7 @@ const genai_1 = require("@google/genai");
 const types_1 = require("../types");
 // Azure OpenAI failsafe for text generation
 const azureEndpoint = (process.env.AZURE_OPENAI_ENDPOINT || process.env.AZURE_AI_ENDPOINT || '').replace(/\/$/, '');
-const azureKey = process.env.AZURE_OPENAI_KEY || process.env.AZURE_AI_KEY || '';
+const azureKey = process.env.AZURE_OPENAI_API_KEY || '';
 const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
 async function azureChat(messages, jsonMode = false) {
     if (!azureEndpoint || !azureKey)

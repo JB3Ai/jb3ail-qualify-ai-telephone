@@ -129,7 +129,7 @@ const buildBackendApiUrl = (backendUrl: string, route: string) =>
   `${normalizeBackendUrl(backendUrl)}${route}`;
 
 const getBackendSocketUrl = (backendUrl: string) =>
-  normalizeBackendUrl(backendUrl).replace(/^http/i, 'ws');
+  normalizeBackendUrl(backendUrl).replace(/^http/i, 'ws') + '/ws';
 
 const getDefaultBackendUrl = () => {
   const configuredUrl = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL) as string | undefined;
