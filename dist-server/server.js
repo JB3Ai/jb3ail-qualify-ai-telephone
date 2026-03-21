@@ -369,6 +369,8 @@ const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:5173',
     'https://jb3ail-qualify-ai-telephone.onrender.com',
+    'https://jb3ai.com',
+    'https://www.jb3ai.com'
 ];
 app.use((0, cors_1.default)({
     origin: (origin, callback) => {
