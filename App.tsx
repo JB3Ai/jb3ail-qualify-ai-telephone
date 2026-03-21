@@ -1694,72 +1694,72 @@ const App: React.FC = () => {
               </div>
 
               {/* === PRE-FLIGHT SIGN-OFF PROCEDURE === */}
-                <div id="signOffView" className={`checklist-view-container bg-[#0d1117] border border-[#00ff00]/20 rounded-2xl p-5 space-y-4 ${pipelineClients.length === 0 ? 'pipeline-view-hidden' : ''}`}>
-                  <div className="flex flex-col">
-                    <div style={{ flexShrink: 0 }}>
-                      <div className="flex items-center gap-3 mb-1">
-                        <ShieldCheckIcon className="w-5 h-5 text-[#00ff00]" />
-                        <h3 className="text-[11px] font-black text-[#00ff00] uppercase tracking-[0.3em] font-orbitron">Pre-Flight Sign-Off Procedure</h3>
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-mono tracking-wide mb-4">ALL GATES MUST BE CLEARED BEFORE MASTER EXECUTION IS AUTHORIZED.</p>
+              <div id="signOffView" className={`bg-[#0d1117] border border-[#00ff00]/20 rounded-2xl p-5 space-y-4 shrink-0 mt-6 ${pipelineClients.length === 0 ? 'hidden' : ''}`}>
+                <div className="flex flex-col">
+                  <div className="mb-4">
+                    <div className="flex items-center gap-3 mb-1">
+                      <ShieldCheckIcon className="w-5 h-5 text-[#00ff00]" />
+                      <h3 className="text-[11px] font-black text-[#00ff00] uppercase tracking-[0.3em] font-orbitron">Pre-Flight Sign-Off Procedure</h3>
                     </div>
-                    <div className="checklist-items-scroll grid grid-cols-1 sm:grid-cols-2 gap-3" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
-                      {[
-                        { key: 'queueDepth' as const, label: `Confirm Queue Depth — ${pipelineClients.length} Lead${pipelineClients.length !== 1 ? 's' : ''} Loaded` },
-                        { key: 'languages' as const, label: `Confirm Target Languages Selected — ${activeLangs.size} Active` },
-                        { key: 'hubUplinks' as const, label: `Confirm System Hub Uplinks — ${backendStatus === 'connected' ? 'All Green' : 'OFFLINE'}` },
-                        { key: 'protocolRead' as const, label: 'Confirm Operational Protocol Read' },
-                      ].map(({ key, label }) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setPreFlightChecks(prev => ({ ...prev, [key]: !prev[key] }))}
-                          className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all group ${
-                            preFlightChecks[key]
-                              ? 'border-[#00ff00]/50 bg-[#00ff00]/5 shadow-[0_0_12px_rgba(0,255,0,0.08)]'
-                              : 'border-[#1e293b]/50 bg-[#1A2333]/60 hover:border-[#00ff00]/20'
-                          }`}
-                        >
-                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
-                            preFlightChecks[key]
-                              ? 'border-[#00ff00] bg-[#00ff00] shadow-[0_0_8px_rgba(0,255,0,0.4)]'
-                              : 'border-slate-600 group-hover:border-[#00ff00]/40'
-                          }`}>
-                            {preFlightChecks[key] && (
-                              <svg className="w-3 h-3 text-[#020617]" viewBox="0 0 12 12" fill="none">
-                                <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            )}
-                          </div>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                            preFlightChecks[key] ? 'text-[#00ff00]' : 'text-slate-400 group-hover:text-slate-300'
-                          }`}>{label}</span>
-                        </button>
-                      ))}
-                    </div>
+                    <p className="text-[10px] text-slate-500 font-mono tracking-wide">ALL GATES MUST BE CLEARED BEFORE MASTER EXECUTION IS AUTHORIZED.</p>
                   </div>
-                  <div className="pt-2 flex items-center gap-4 shrink-0">
-                    <button
-                      disabled={!allPreFlightCleared || backendStatus !== 'connected'}
-                      onClick={() => {
-                        pipelineClients.forEach((c: any) => handleCall(c.id, c.phone));
-                      }}
-                      className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] font-orbitron transition-all flex items-center gap-3 ${
-                        allPreFlightCleared && backendStatus === 'connected'
-                          ? 'bg-[#00ff00] text-[#020617] shadow-[0_0_24px_rgba(0,255,0,0.3)] hover:shadow-[0_0_36px_rgba(0,255,0,0.45)] cursor-pointer'
-                          : 'bg-[#1A2333] text-slate-600 border border-[#1e293b]/40 cursor-not-allowed opacity-50'
-                      }`}
-                    >
-                      <BoltIcon className="w-4 h-4" />
-                      Initiate Master Execution
-                    </button>
-                    <span className={`text-[9px] font-mono tracking-wider ${
-                      allPreFlightCleared ? 'text-[#00ff00]' : 'text-slate-600'
-                    }`}>
-                      {allPreFlightCleared ? '[ ALL GATES CLEARED ]' : `[ ${Object.values(preFlightChecks).filter(Boolean).length}/4 GATES CLEARED ]`}
-                    </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { key: 'queueDepth' as const, label: `Confirm Queue Depth — ${pipelineClients.length} Lead${pipelineClients.length !== 1 ? 's' : ''} Loaded` },
+                      { key: 'languages' as const, label: `Confirm Target Languages Selected — ${activeLangs.size} Active` },
+                      { key: 'hubUplinks' as const, label: `Confirm System Hub Uplinks — ${backendStatus === 'connected' ? 'All Green' : 'OFFLINE'}` },
+                      { key: 'protocolRead' as const, label: 'Confirm Operational Protocol Read' },
+                    ].map(({ key, label }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setPreFlightChecks(prev => ({ ...prev, [key]: !prev[key] }))}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all group ${
+                          preFlightChecks[key]
+                            ? 'border-[#00ff00]/50 bg-[#00ff00]/5 shadow-[0_0_12px_rgba(0,255,0,0.08)]'
+                            : 'border-[#1e293b]/50 bg-[#1A2333]/60 hover:border-[#00ff00]/20'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                          preFlightChecks[key]
+                            ? 'border-[#00ff00] bg-[#00ff00] shadow-[0_0_8px_rgba(0,255,0,0.4)]'
+                            : 'border-slate-600 group-hover:border-[#00ff00]/40'
+                        }`}>
+                          {preFlightChecks[key] && (
+                            <svg className="w-3 h-3 text-[#020617]" viewBox="0 0 12 12" fill="none">
+                              <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                          preFlightChecks[key] ? 'text-[#00ff00]' : 'text-slate-400 group-hover:text-slate-300'
+                        }`}>{label}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
+                <div className="pt-4 mt-2 flex items-center gap-4 shrink-0 border-t border-[#1e293b]/50">
+                  <button
+                    disabled={!allPreFlightCleared || backendStatus !== 'connected'}
+                    onClick={() => {
+                      pipelineClients.forEach((c: any) => handleCall(c.id, c.phone));
+                    }}
+                    className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] font-orbitron transition-all flex items-center gap-3 ${
+                      allPreFlightCleared && backendStatus === 'connected'
+                        ? 'bg-[#00ff00] text-[#020617] shadow-[0_0_24px_rgba(0,255,0,0.3)] hover:shadow-[0_0_36px_rgba(0,255,0,0.45)] cursor-pointer'
+                        : 'bg-[#1A2333] text-slate-600 border border-[#1e293b]/40 cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    <BoltIcon className="w-4 h-4" />
+                    Initiate Master Execution
+                  </button>
+                  <span className={`text-[9px] font-mono tracking-wider hidden sm:inline ${
+                    allPreFlightCleared ? 'text-[#00ff00]' : 'text-slate-600'
+                  }`}>
+                    {allPreFlightCleared ? '[ ALL GATES CLEARED ]' : `[ ${Object.values(preFlightChecks).filter(Boolean).length}/4 GATES CLEARED ]`}
+                  </span>
+                </div>
+              </div>
 
               {pipelineClients.length === 0 ? (
                 <div className="p-20 text-center text-slate-600 font-orbitron text-xs">
