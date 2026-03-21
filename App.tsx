@@ -1435,7 +1435,7 @@ const App: React.FC = () => {
               <span className="text-[9px] font-mono font-bold text-[#39ff88]/60 hidden lg:inline ml-1">{latencyMs}ms</span>
             )}
           </div>
-          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v3.4.1-stable-mzanzi</p>
+          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.0.2-stable-mzanzi</p>
         </div>
       </nav>
 
@@ -1488,7 +1488,7 @@ const App: React.FC = () => {
         )}
 
         {/* 🚀 MAIN CONTENT ZONE */}
-        <div className="flex-1 min-h-0 p-4 sm:p-6 lg:p-8 overflow-hidden flex flex-col content-module-layered">
+        <div className="flex-1 min-h-0 p-4 sm:p-6 lg:p-8 overflow-y-auto pb-32 flex flex-col content-module-layered">
           
           {/* TAB: PIPELINE */}
           {activeTab === 'PIPELINE' && (
@@ -1695,7 +1695,7 @@ const App: React.FC = () => {
 
               {/* === PRE-FLIGHT SIGN-OFF PROCEDURE === */}
                 <div id="signOffView" className={`checklist-view-container bg-[#0d1117] border border-[#00ff00]/20 rounded-2xl p-5 space-y-4 ${pipelineClients.length === 0 ? 'pipeline-view-hidden' : ''}`}>
-                  <div style={{ flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                  <div className="flex flex-col">
                     <div style={{ flexShrink: 0 }}>
                       <div className="flex items-center gap-3 mb-1">
                         <ShieldCheckIcon className="w-5 h-5 text-[#00ff00]" />
@@ -2899,7 +2899,11 @@ const App: React.FC = () => {
 
       {/* === OS³ FOOTER STRIP === */}
       <footer className="h-9 bg-[#0d1117] border-t border-[#1e293b] flex items-center justify-between px-5 shrink-0 text-[11px] text-[#484f58] font-mono tracking-wide">
-        <span>v3.4.1-stable-mzanzi</span>
+        <div className="flex items-center gap-4">
+          <span>v4.0.2-stable-mzanzi</span>
+          <span className="hidden sm:inline opacity-40">|</span>
+          <span className="hidden sm:inline">&copy; 2026 JB³Ai | OS³ GRID</span>
+        </div>
         <span className="flex items-center gap-1.5">
           <ShieldCheckIcon className="w-3 h-3 text-[#39ff88]/60" />
           <span className="text-[#8b949e]">POPIA Valid</span>
