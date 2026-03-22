@@ -1111,8 +1111,15 @@ const App: React.FC = () => {
   };
 
   const handleStartInternalCall = async (lang: Language) => {
-    const proto = languageProtocols[lang];
-    const greeting = proto?.greeting || `[INTERNAL LINK ESTABLISHED] Opening call language set to ${getLanguageName(lang)}. Speakerphone active. Ready for verification.`;
+    let greeting = '';
+    if (appMode === 'DEMO') {
+      const company = demoConfig.companyName || 'our company';
+      greeting = `Hello, this is Zandi from ${company}. I am handling ${demoConfig.objective}. How can I assist you today?`;
+    } else {
+      const proto = languageProtocols[lang];
+      greeting = proto?.greeting || `[INTERNAL LINK ESTABLISHED] Opening call language set to ${getLanguageName(lang)}. Speakerphone active. Ready for verification.`;
+    }
+
     setIsInternalCall(true);
     setIsCalling(true);
     setActiveClient({
@@ -1447,7 +1454,7 @@ const App: React.FC = () => {
               <span className="text-[9px] font-mono font-bold text-[#39ff88]/60 hidden lg:inline ml-1">{latencyMs}ms</span>
             )}
           </div>
-          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.0.2-stable-mzanzi</p>
+          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.0.3-stable-mzanzi</p>
         </div>
       </nav>
 
@@ -1752,14 +1759,20 @@ const App: React.FC = () => {
                 </div>
                 <div className="pt-4 mt-2 flex items-center gap-4 shrink-0 border-t border-[#1e293b]/50">
                   <button
-                    disabled={!allPreFlightCleared || backendStatus !== 'connected'}
-                    onClick={() => {
+                    onClick={(e) => {
+                      if (appMode === 'DEMO') {
+                        alert("ACTION RESTRICTED: Master Execution batch calling is disabled in DEMO MODE. Switch to OPERATOR MODE to dispatch live signals.");
+                        return;
+                      }
+                      if (!allPreFlightCleared || backendStatus !== 'connected') return;
                       pipelineClients.forEach((c: any) => handleCall(c.id, c.phone));
                     }}
                     className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] font-orbitron transition-all flex items-center gap-3 ${
-                      allPreFlightCleared && backendStatus === 'connected'
-                        ? 'bg-[#00ff00] text-[#020617] shadow-[0_0_24px_rgba(0,255,0,0.3)] hover:shadow-[0_0_36px_rgba(0,255,0,0.45)] cursor-pointer'
-                        : 'bg-[#1A2333] text-slate-600 border border-[#1e293b]/40 cursor-not-allowed opacity-50'
+                      appMode === 'DEMO'
+                        ? 'bg-[#1A2333] text-slate-500 border border-slate-700 cursor-not-allowed opacity-80'
+                        : allPreFlightCleared && backendStatus === 'connected'
+                          ? 'bg-[#00ff00] text-[#020617] shadow-[0_0_24px_rgba(0,255,0,0.3)] hover:shadow-[0_0_36px_rgba(0,255,0,0.45)] cursor-pointer'
+                          : 'bg-[#1A2333] text-slate-600 border border-[#1e293b]/40 cursor-not-allowed opacity-50'
                     }`}
                   >
                     <BoltIcon className="w-4 h-4" />
@@ -2035,11 +2048,11 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="bg-[#0b0e14] border border-[#1f2937] rounded-lg p-4 flex flex-col gap-4 mb-8">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
                     <div className="mt-1 bg-green-500/20 text-green-500 p-1 rounded shrink-0">
                       <CommandLineIcon className="w-4 h-4" />
                     </div>
-                    <h2 className="text-white font-bold text-sm sm:text-base tracking-widest break-all sm:break-normal">
+                    <h2 className="flex-1 min-w-0 text-white font-bold text-[11px] sm:text-base leading-tight tracking-[0.12em] sm:tracking-widest break-all sm:break-normal">
                       [ TERMINAL_COMMAND_CONSOLE ]
                     </h2>
                   </div>
@@ -2549,7 +2562,17 @@ const App: React.FC = () => {
                       </button>
                     </div>
                   ) : (
-                    <button onClick={() => { setEditingCompanyConfig(true); setCompanyDraft({ ...companyConfig }); }} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-[#00D9FF] border border-[#00D9FF]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#00D9FF] hover:text-[#020617] transition-all">
+                    <button 
+                      onClick={() => { 
+                        if (appMode === 'DEMO') {
+                          alert("ACTION RESTRICTED: Core protocol editing is locked in DEMO MODE.");
+                          return;
+                        }
+                        setEditingCompanyConfig(true); 
+                        setCompanyDraft({ ...companyConfig }); 
+                      }} 
+                      className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${appMode === 'DEMO' ? 'bg-[#1A2333] text-slate-500 border border-[#1e293b]/40 cursor-not-allowed' : 'bg-[#1A2333] text-[#00D9FF] border border-[#00D9FF]/30 hover:bg-[#00D9FF] hover:text-[#020617]'}`}
+                    >
                       <AdjustmentsHorizontalIcon className="w-4 h-4" /> Edit
                     </button>
                   )}
@@ -2606,7 +2629,17 @@ const App: React.FC = () => {
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => { setEditingProtocolLang(lang); setProtocolDraft({ ...(protocols as any) }); }} className="flex items-center gap-2 px-5 py-3 bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#66FF66] hover:text-[#020617] transition-all">
+                      <button 
+                        onClick={() => { 
+                          if (appMode === 'DEMO') {
+                            alert("ACTION RESTRICTED: Core protocol editing is locked in DEMO MODE.");
+                            return;
+                          }
+                          setEditingProtocolLang(lang); 
+                          setProtocolDraft({ ...(protocols as any) }); 
+                        }} 
+                        className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${appMode === 'DEMO' ? 'bg-[#1A2333] text-slate-500 border border-[#1e293b]/40 cursor-not-allowed' : 'bg-[#1A2333] text-[#66FF66] border border-[#66FF66]/30 hover:bg-[#66FF66] hover:text-[#020617]'}`}
+                      >
                         <AdjustmentsHorizontalIcon className="w-4 h-4" /> Edit
                       </button>
                     )}
@@ -2713,7 +2746,13 @@ const App: React.FC = () => {
                     <button onClick={resetBackendUrlToDefault} className="col-span-2 bg-[#1e293b]/30 text-[#66FF66] border border-[#66FF66]/20 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#66FF66]/10 transition-all">
                       Reset to Default Endpoint
                     </button>
-                    <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="col-span-2 bg-red-600/10 text-red-600 border border-red-600/20 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-red-600 hover:text-white transition-all">
+                    <button onClick={() => { 
+                      if (appMode === 'DEMO') {
+                        alert("ACTION RESTRICTED: Neural Hub resets are disabled in DEMO MODE.");
+                        return;
+                      }
+                      localStorage.clear(); window.location.reload(); 
+                    }} className={`col-span-2 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all ${appMode === 'DEMO' ? 'bg-[#1A2333] text-slate-500 border border-[#1e293b]/40 cursor-not-allowed' : 'bg-red-600/10 text-red-600 border border-red-600/20 hover:bg-red-600 hover:text-white'}`}>
                       Reset Neural Hub
                     </button>
                   </div>
@@ -2749,7 +2788,18 @@ const App: React.FC = () => {
                   <h4 className="text-xl font-black text-white uppercase tracking-tighter">Danger Zone</h4>
                 </div>
                 <p className="text-xs text-slate-500 mb-6">Resetting the system will wipe all local lead data, transcripts, and configuration settings. This action is irreversible.</p>
-                <button className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:underline">Wipe All System Data</button>
+                <button 
+                  onClick={() => {
+                    if (appMode === 'DEMO') {
+                      alert("ACTION RESTRICTED: System wipes are locked in DEMO MODE.");
+                      return;
+                    }
+                    localStorage.clear(); window.location.reload();
+                  }}
+                  className={`text-[10px] font-black uppercase tracking-widest ${appMode === 'DEMO' ? 'text-slate-500 cursor-not-allowed' : 'text-red-500 hover:underline'}`}
+                >
+                  Wipe All System Data
+                </button>
               </div>
             </div>
           </div>
@@ -2912,7 +2962,7 @@ const App: React.FC = () => {
       {/* === OS³ FOOTER STRIP === */}
       <footer className="h-9 bg-[#0d1117] border-t border-[#1e293b] flex items-center justify-between px-5 shrink-0 text-[11px] text-[#484f58] font-mono tracking-wide">
         <div className="flex items-center gap-4">
-          <span>v4.0.2-stable-mzanzi</span>
+          <span>v4.0.3-stable-mzanzi</span>
           <span className="hidden sm:inline opacity-40">|</span>
           <span className="hidden sm:inline">&copy; 2026 JB³Ai | OS³ GRID</span>
         </div>

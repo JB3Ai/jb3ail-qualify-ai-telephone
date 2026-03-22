@@ -1212,19 +1212,28 @@ app.post('/api/converse', async (req, res) => {
       systemPrompt = buildSystemPrompt(lang);
     }
 
+    systemPrompt += `\n\n=== POLYGLOT OVERRIDE ===
+CRITICAL INSTRUCTION: You are a highly advanced, multi-lingual AI. While this call was initialized in ${lang}, you are NOT restricted to it. 
+If the user replies in another language, you MUST immediately pivot to speaking their language.
+
+=== FORMATTING STRICT MODE ===
+CRITICAL INSTRUCTION: NEVER output raw JSON, markdown code blocks (like \`\`\`json), or internal reasoning into the spoken dialogue. ONLY output the natural language text you intend to speak to the user.`;
+
     if (history) {
       systemPrompt += `\n\n=== RECENT CONVERSATION HISTORY ===\n${history}\n\nCRITICAL INSTRUCTION: Read the history above. DO NOT repeat the greeting or steps you have already completed. Move strictly to the NEXT logical step in the CALL FLOW based on the user's last message.`;
     }
 
     const aiResponse = await aiService.generateResponse(text, systemPrompt);
 
-    // Strip JSON output contract block to get natural-language spoken text
-    let spokenText = aiResponse.replace(/\{[\s\S]*?"status"\s*:\s*"(QUALIFIED|FAILED)"[\s\S]*?\}/g, '').trim();
+    // Strip JSON output contract blocks and fenced markdown so only spoken text remains.
+    let spokenText = aiResponse.replace(/\{[\s\S]*?"status"\s*:\s*"(QUALIFIED|FAILED)"[\s\S]*?\}/g, '');
+    spokenText = spokenText.replace(/```(?:json)?[\s\S]*?```/gi, '').trim();
     if (!spokenText) {
+      const plainResponse = aiResponse.replace(/```(?:json)?\s*|```/gi, '').trim();
       try {
-        const parsed = JSON.parse(aiResponse);
-        spokenText = parsed.reasoning || aiResponse;
-      } catch { spokenText = aiResponse; }
+        const parsed = JSON.parse(plainResponse);
+        spokenText = parsed.reasoning || plainResponse;
+      } catch { spokenText = plainResponse; }
     }
 
     const audioBuffer = await voiceService.generateAudio(spokenText, { allowFallback: true, format: 'wav', language: lang });
