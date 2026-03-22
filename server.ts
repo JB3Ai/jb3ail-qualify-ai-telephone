@@ -772,7 +772,7 @@ function normalizeDemoLanguage(language: string): string {
   return languageMap[language] || language;
 }
 
-function generateDemoPrompt(demoConfig: { fullName?: string; company: string; objective: string; persona?: string; language: string }): string {
+function generateDemoPrompt(demoConfig: { fullName?: string; company: string; objective: string; persona?: string; language: string }, _language?: string): string {
   let objectiveText = '';
   if (demoConfig.objective === 'Receptionist & Routing') {
     objectiveText = 'acting as a front-desk receptionist. Greet the caller warmly, ask how you can direct their call, and take detailed messages if the person they want is unavailable.';
@@ -1195,21 +1195,32 @@ app.post('/api/test-logic', async (req, res) => {
 });
 
 // 8. INTERNAL NEURAL LINK — Browser-based conversational loop
-// Accepts { text, language }, runs full Zandi protocol (buildSystemPrompt),
+// Accepts { text, language, history, mode, demoConfig }, runs full Zandi protocol (buildSystemPrompt),
 // returns { success, text: spokenText, audioBase64 } for browser Audio playback.
 app.post('/api/converse', async (req, res) => {
-  const { text, language } = req.body;
+  const { text, language, history, mode, demoConfig } = req.body;
   if (!text) return res.status(400).json({ error: 'No text provided' });
+
   try {
     const lang = (language as string) || 'en-ZA';
-    console.log(`🔗 Internal Neural Link [${lang}]: ${text}`);
-    const systemPrompt = buildSystemPrompt(lang);
+    console.log(`🔗 Internal Neural Link [${lang}] Mode: ${mode} | User: ${text}`);
+
+    let systemPrompt = '';
+    if (mode === 'DEMO' && demoConfig) {
+      systemPrompt = generateDemoPrompt(demoConfig, lang);
+    } else {
+      systemPrompt = buildSystemPrompt(lang);
+    }
+
+    if (history) {
+      systemPrompt += `\n\n=== RECENT CONVERSATION HISTORY ===\n${history}\n\nCRITICAL INSTRUCTION: Read the history above. DO NOT repeat the greeting or steps you have already completed. Move strictly to the NEXT logical step in the CALL FLOW based on the user's last message.`;
+    }
+
     const aiResponse = await aiService.generateResponse(text, systemPrompt);
 
     // Strip JSON output contract block to get natural-language spoken text
     let spokenText = aiResponse.replace(/\{[\s\S]*?"status"\s*:\s*"(QUALIFIED|FAILED)"[\s\S]*?\}/g, '').trim();
     if (!spokenText) {
-      // Pure-JSON response — extract reasoning field for speech
       try {
         const parsed = JSON.parse(aiResponse);
         spokenText = parsed.reasoning || aiResponse;

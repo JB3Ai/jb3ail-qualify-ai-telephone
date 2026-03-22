@@ -21,7 +21,7 @@ export const CallArchive: React.FC<CallArchiveProps> = ({
   onShowInfo,
 }) => {
   return (
-    <section className="flex flex-col h-[calc(100vh-80px)] overflow-hidden p-4">
+    <section className="flex flex-col min-h-[600px] gap-4 p-0 sm:p-2">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0 mb-4 p-4 bg-[#0f1319] rounded-lg border border-gray-800">
         <div className="flex items-center gap-3">
           <div className="bg-gray-800 px-2 py-1 rounded text-xs text-white font-mono">06</div>

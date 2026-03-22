@@ -1161,12 +1161,24 @@ const App: React.FC = () => {
     if (!text || isInternalSending || !isCalling) return;
     setInternalInput('');
     setIsInternalSending(true);
+
+    const conversationHistory = transcriptions
+      .map(t => `${t.role === 'model' ? 'Zandi' : 'User'}: ${t.text}`)
+      .join('\n');
+
     setTranscriptions(prev => [...prev, { role: 'user', text, timestamp: Date.now() }]);
+    
     try {
       const r = await fetch(buildBackendApiUrl(backendUrl, API_ROUTES.converse), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, language: activeClient?.language || Language.ENGLISH })
+        body: JSON.stringify({
+          text,
+          language: activeClient?.language || Language.ENGLISH,
+          history: conversationHistory,
+          mode: appMode,
+          demoConfig: demoConfig
+        })
       });
       const d = await parseJsonResponse(r);
       if (r.ok && d.success) {
@@ -1766,7 +1778,7 @@ const App: React.FC = () => {
                   NO_LEADS_IN_PIPELINE. SYNC_FROM_INBOX_TO_INITIALIZE.
                 </div>
               ) : (
-                <div className="bg-[#1A2333] rounded-3xl border border-white/5 overflow-auto scrollbar-hide flex-1 min-h-0 shrink-0 min-h-[280px]">
+                <div className="bg-[#1A2333] rounded-3xl border border-white/5 overflow-auto scrollbar-hide flex-1 shrink-0 min-h-70">
                   {/* Desktop table */}
                   <table className="w-full text-left hidden sm:table">
                     <thead className="bg-[#020617] text-[10px] text-[#39FF88] font-orbitron sticky top-0 z-10">
@@ -1898,7 +1910,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0 mt-4">
-                  <div className="w-full md:w-[350px] shrink-0 flex flex-col gap-4">
+                    <div className="w-full md:w-87.5 shrink-0 flex flex-col gap-4">
                     <div className="bg-[#0d1117] p-6 rounded-lg border border-[#1e293b]/40 group hover:border-[#66FF66]/30 transition-all">
                       <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex justify-between items-center">
                         Call Duration <ClockIcon className="w-4 h-4 text-[#66FF66]" />
@@ -1938,7 +1950,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="w-full md:flex-1 flex flex-col bg-[#0d1117] rounded-lg border border-[#1e293b]/40 overflow-hidden shadow-2xl min-h-[500px] md:min-h-0">
+                  <div className="w-full md:flex-1 flex flex-col bg-[#0d1117] rounded-lg border border-[#1e293b]/40 overflow-hidden shadow-2xl min-h-125 md:min-h-0">
                     <div className="p-6 border-b border-[#1e293b]/30 bg-white/1 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CommandLineIcon className="w-5 h-5 text-[#66FF66]" />
@@ -2027,7 +2039,7 @@ const App: React.FC = () => {
                     <div className="mt-1 bg-green-500/20 text-green-500 p-1 rounded shrink-0">
                       <CommandLineIcon className="w-4 h-4" />
                     </div>
-                    <h2 className="text-white font-bold text-base tracking-widest break-words">
+                    <h2 className="text-white font-bold text-sm sm:text-base tracking-widest break-all sm:break-normal">
                       [ TERMINAL_COMMAND_CONSOLE ]
                     </h2>
                   </div>
