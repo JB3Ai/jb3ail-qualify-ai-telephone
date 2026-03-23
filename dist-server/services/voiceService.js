@@ -36,17 +36,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.voiceService = void 0;
 exports.synthesizeSpeechStream = synthesizeSpeechStream;
 const sdk = __importStar(require("microsoft-cognitiveservices-speech-sdk"));
-// Direct BCP-47 → Neural voice mapping. One voice per locale, no fallback chain.
-const PRIMARY_VOICES = {
-    'en-za': 'en-ZA-LukeNeural',
-    'zu-za': 'zu-ZA-ThandoNeural',
-    'xh-za': 'xh-ZA-AyandaNeural',
-    'af-za': 'af-ZA-AdriNeural',
-    'nso-za': 'zu-ZA-ThandoNeural', // closest Nguni approximation for Sepedi
-    'pt-br': 'pt-BR-AntonioNeural',
-    'pt-pt': 'pt-PT-RaquelNeural',
+// === THE VIRTUAL CALL CENTER: AZURE VOICE MATRIX ===
+// Supports both human-readable labels and the BCP-47 locales the frontend actually sends.
+const VOICE_MATRIX = {
+    'english': 'en-ZA-LeahNeural',
+    'en-za': 'en-ZA-LeahNeural',
+    'zulu': 'zu-ZA-ThembaNeural',
+    'zu-za': 'zu-ZA-ThembaNeural',
+    'afrikaans': 'af-ZA-WillemNeural',
+    'af-za': 'af-ZA-WillemNeural',
+    'xhosa': 'xh-ZA-SiyandaNeural',
+    'xh-za': 'xh-ZA-SiyandaNeural',
+    'sepedi': 'nso-ZA-LeboNeural',
+    'nso-za': 'nso-ZA-LeboNeural',
+    'greek': 'el-GR-NestorasNeural',
     'el-gr': 'el-GR-NestorasNeural',
+    'portuguese': 'pt-PT-RaquelNeural',
+    'pt-pt': 'pt-PT-RaquelNeural',
+    'pt-br': 'pt-BR-AntonioNeural',
+    'mandarin': 'zh-CN-YunxiNeural',
     'zh-cn': 'zh-CN-YunxiNeural',
+    'default': 'en-ZA-LeahNeural',
 };
 // Per-language SSML prosody — zero latency, prevents Azure hyper-articulation on Nguni voices
 const PROSODY = {
@@ -66,6 +76,10 @@ function toBcp47(normalized) {
         return `${lang}-${region.toUpperCase()}`;
     return normalized || 'en-ZA';
 }
+function resolveVoice(locale) {
+    const normalized = normalizeLocale(locale);
+    return VOICE_MATRIX[normalized] ?? VOICE_MATRIX['default'];
+}
 function escapeXml(v) {
     return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
@@ -83,7 +97,7 @@ async function synthesize(text, locale, outputFormat) {
         throw new Error('SPEECH_KEY or SPEECH_REGION missing');
     const normalizedLocale = normalizeLocale(locale);
     const bcp47Locale = toBcp47(normalizedLocale);
-    const voiceName = PRIMARY_VOICES[normalizedLocale] ?? PRIMARY_VOICES['en-za'];
+    const voiceName = resolveVoice(locale);
     const speechConfig = sdk.SpeechConfig.fromSubscription(key, region);
     speechConfig.speechSynthesisVoiceName = voiceName;
     speechConfig.speechSynthesisOutputFormat = outputFormat;

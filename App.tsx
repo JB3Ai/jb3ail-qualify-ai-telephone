@@ -1941,28 +1941,29 @@ const App: React.FC = () => {
                 ]}
               />
               {isCalling ? (
-              <div className="flex flex-col h-full overflow-y-auto md:overflow-hidden pb-20 md:pb-0">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 bg-[#0b0e14] p-4 border border-gray-800 rounded-lg">
-                  <div className="flex items-center gap-4 sm:gap-6">
-                    <div className="w-12 h-12 rounded-md bg-red-500/10 flex items-center justify-center text-red-500 animate-pulse border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
-                      {isInternalCall ? <CpuChipIcon className="w-6 h-6 text-[#66FF66]" /> : <PhoneIcon className="w-6 h-6" />}
+              <div className="flex flex-col h-full overflow-y-auto pb-20">
+                <div className="bg-[#111827] border border-gray-800 rounded-lg p-6 relative overflow-hidden">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="flex items-center gap-4 sm:gap-6">
+                      <div className="w-12 h-12 rounded-md bg-red-500/10 flex items-center justify-center text-red-500 animate-pulse border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                        {isInternalCall ? <CpuChipIcon className="w-6 h-6 text-[#66FF66]" /> : <PhoneIcon className="w-6 h-6" />}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">
+                          {isInternalCall ? 'Neural Hub: Internal Link' : 'Neural Lab: Live Session'}
+                        </h3>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+                          {isInternalCall ? 'LOCAL_CORE_LINK' : `${activeClient?.name} • ${activeClient?.phone}`}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-black text-white uppercase tracking-tighter">
-                        {isInternalCall ? 'Neural Hub: Internal Link' : 'Neural Lab: Live Session'}
-                      </h3>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                        {isInternalCall ? 'LOCAL_CORE_LINK' : `${activeClient?.name} • ${activeClient?.phone}`}
-                      </p>
-                    </div>
+
+                    <button onClick={endCall} className="w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-md text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
+                      <PhoneXMarkIcon className="w-4 h-4" /> {isInternalCall ? 'Sever Neural Link' : 'Terminate Session'}
+                    </button>
                   </div>
-                  
-                  <button onClick={endCall} className="w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-md text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
-                    <PhoneXMarkIcon className="w-4 h-4" /> {isInternalCall ? 'Sever Neural Link' : 'Terminate Session'}
-                  </button>
                 </div>
 
-                {/* === BIG MOBILE AUDIO/MIC TOGGLES === */}
                 <div className="grid grid-cols-2 gap-4 mt-6 mb-2">
                   <button
                     onClick={() => {
@@ -1990,7 +1991,21 @@ const App: React.FC = () => {
                   </button>
 
                   <button
-                    onClick={toggleMic}
+                    onClick={async () => {
+                      try {
+                        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                        if (AudioCtx) {
+                          const ctx = new AudioCtx();
+                          if (ctx.state === 'suspended') {
+                            await ctx.resume();
+                          }
+                        }
+                      } catch (err) {
+                        console.warn('Audio wake-up bypassed', err);
+                      }
+
+                      toggleMic();
+                    }}
                     className={`flex flex-col items-center justify-center py-5 rounded-xl border transition-all ${
                       isListening
                         ? 'bg-[#39ff88]/10 border-[#39ff88]/40 text-[#39ff88] shadow-[0_0_15px_rgba(57,255,136,0.15)]'
@@ -2004,109 +2019,85 @@ const App: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0 mt-4">
-                    <div className="w-full md:w-87.5 shrink-0 flex flex-col gap-4">
-                    <div className="bg-[#0d1117] p-6 rounded-lg border border-[#1e293b]/40 group hover:border-[#66FF66]/30 transition-all">
-                      <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex justify-between items-center">
-                        Call Duration <ClockIcon className="w-4 h-4 text-[#66FF66]" />
-                      </h5>
-                      <div className="text-4xl font-mono font-black text-[#66FF66] tracking-tighter text-glow">
-                        {formatDuration(callDuration)}
-                      </div>
-                    </div>
+                <div className="bg-[#0d1117] border border-[#1e293b] rounded-xl p-4 mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#484f58]">Call Duration</span>
+                    <ClockIcon className="w-4 h-4 text-[#39ff88]" />
+                  </div>
+                  <div className="text-3xl font-black text-[#39ff88] font-orbitron drop-shadow-[0_0_8px_rgba(57,255,136,0.5)]">
+                    {formatDuration(callDuration)}
+                  </div>
+                </div>
 
-                    <div className="bg-[#0d1117] p-6 rounded-lg border border-[#1e293b]/40">
-                      <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex justify-between items-center">
-                        {isInternalCall ? 'Neural Synapses' : 'Interaction Flow'} <ArrowsRightLeftIcon className="w-4 h-4 text-[#66FF66]" />
-                      </h5>
-                      <div className="text-4xl font-black text-white tracking-tighter">
-                        {transcriptions.length} <span className="text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">Turns</span>
+                <div className="mt-6 flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {transcriptions.map((t, i) => (
+                    <div key={i} className={`p-4 rounded-xl text-sm ${t.role === 'model' ? 'bg-[#39ff88]/10 border border-[#39ff88]/20 text-[#39ff88]' : 'bg-[#1e293b]/50 border border-[#1e293b] text-white'}`}>
+                      <div className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">
+                        {t.role === 'model' ? 'Neural Core' : 'Stimulus Input'}
                       </div>
+                      <div className="leading-relaxed">{t.text}</div>
                     </div>
+                  ))}
+                  <div ref={transcriptEndRef} />
+                </div>
 
-                    <div className="bg-[#0d1117] p-6 rounded-lg border border-[#1e293b]/40">
-                      <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex justify-between items-center">
-                        Detected Language <LanguageIcon className="w-4 h-4 text-[#66FF66]" />
-                      </h5>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#66FF66]/10 flex items-center justify-center text-[#66FF66] font-black text-xs border border-[#66FF66]/20">
-                          {detectedLanguage?.slice(0, 2).toUpperCase() || 'EN'}
-                        </div>
-                        <div className="text-xl font-black text-white uppercase tracking-tighter">
-                          {getLanguageName(detectedLanguage) || 'Auto-Sync'}
-                        </div>
-                      </div>
+                <div className="shrink-0 p-4 mt-4 border border-[#1e293b]/30 rounded-xl bg-black/10">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={internalInput}
+                      onChange={e => setInternalInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleInternalSend()}
+                      placeholder={isInternalCall ? 'Enter verification input...' : 'Inject operator message...'}
+                      disabled={isInternalSending}
+                      className="flex-1 h-12 bg-black/40 rounded-xl border border-[#66FF66]/30 px-4 sm:px-6 text-[#66FF66] text-xs font-mono focus:outline-none focus:border-[#66FF66]/70 placeholder:text-slate-600 disabled:opacity-50"
+                    />
+                    <button
+                      id="neural-send-btn"
+                      onClick={() => handleInternalSend()}
+                      disabled={isInternalSending || !internalInput.trim()}
+                      className="h-12 px-6 bg-[#66FF66]/10 hover:bg-[#66FF66]/20 border border-[#66FF66]/30 rounded-xl text-[#66FF66] text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isInternalSending ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Send'}
+                    </button>
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                      <button
+                        onClick={toggleMic}
+                        disabled={isInternalSending}
+                        className={`p-2 rounded-lg transition-all ${isListening ? 'bg-red-500/20 border border-red-500/50' : 'bg-[#66FF66]/10 border border-[#66FF66]/30 hover:bg-[#66FF66]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                        title={isListening ? 'Stop listening' : 'Start voice input'}
+                      >
+                        <MicrophoneIcon className={`w-5 h-5 ${isListening ? 'text-red-400 animate-pulse' : 'text-[#66FF66]'}`} />
+                      </button>
+                      <SpeakerWaveIcon className={`w-5 h-5 ${isCalling ? 'text-[#66FF66] animate-bounce' : 'text-slate-500 opacity-50'}`} />
+                      {isListening && <span className="text-[8px] font-black text-red-400 uppercase tracking-widest animate-pulse">Listening...</span>}
+                      {!isListening && <span className="text-[8px] font-black text-[#66FF66] uppercase tracking-widest">{isInternalCall ? 'Speakerphone Active' : 'Live Session'}</span>}
                     </div>
+                  </div>
+                </div>
 
-                    <div className="bg-[#0d1117] p-6 rounded-lg border border-[#1e293b]/40 h-32 flex items-center justify-center gap-1 overflow-hidden">
-                      {[...Array(20)].map((_, i) => (
-                        <div key={i} className="w-1 rounded-full bg-[#66FF66]/40 animate-waveform" style={{ height: `${Math.random() * 80 + 20}%`, animationDelay: `${i * 0.05}s` }} />
-                      ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                  <div className="bg-[#0d1117] border border-[#1e293b] rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#484f58]">Neural Synapses</span>
+                      <ArrowsRightLeftIcon className="w-4 h-4 text-[#39ff88]" />
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-black text-white">{transcriptions.filter(t => t.role === 'user').length}</span>
+                      <span className="text-xs text-[#484f58] font-bold tracking-widest uppercase">Turns</span>
                     </div>
                   </div>
 
-                  <div className="w-full md:flex-1 flex flex-col bg-[#0d1117] rounded-lg border border-[#1e293b]/40 overflow-hidden shadow-2xl min-h-125 md:min-h-0">
-                    <div className="p-6 border-b border-[#1e293b]/30 bg-white/1 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <CommandLineIcon className="w-5 h-5 text-[#66FF66]" />
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">Encrypted Session Metadata</span>
-                      </div>
+                  <div className="bg-[#0d1117] border border-[#1e293b] rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#484f58]">Detected Language</span>
+                      <LanguageIcon className="w-4 h-4 text-[#39ff88]" />
                     </div>
-
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 scrollbar-hide font-mono">
-                      {transcriptions.map((t, i) => (
-                        <div key={i} className={`flex ${t.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
-                          <div className="max-w-[70%]">
-                            <div className={`flex items-center gap-3 mb-3 ${t.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${t.role === 'user' ? 'bg-[#66FF66] text-[#0d1117] shadow-lg' : 'bg-[#1e293b]/40 text-slate-400 border border-[#1e293b]/30'}`}>
-                                  {t.role === 'user' ? <UserIcon className="w-4 h-4" /> : <CpuChipIcon className="w-4 h-4" />}
-                                </div>
-                                <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                                  {t.role === 'user' ? (isInternalCall ? 'Stimulus Input' : 'Remote Stream') : 'Neural Core'}
-                                </span>
-                            </div>
-                            <div className={`p-6 rounded-md text-sm leading-relaxed ${t.role === 'user' ? 'bg-[#66FF66]/10 border border-[#66FF66]/20 text-[#66FF66] rounded-tr-none' : 'bg-[#1e293b]/20 border border-[#1e293b]/30 text-slate-300 rounded-tl-none'}`}>
-                                {t.text}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      <div ref={transcriptEndRef} />
-                    </div>
-                    
-                    <div className="shrink-0 p-4 border-t border-[#1e293b]/30 bg-black/10">
-                      <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={internalInput}
-                                onChange={e => setInternalInput(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleInternalSend()}
-                                placeholder={isInternalCall ? 'Enter verification input...' : 'Inject operator message...'}
-                                disabled={isInternalSending}
-                                className="flex-1 h-12 bg-black/40 rounded-xl border border-[#66FF66]/30 px-4 sm:px-6 text-[#66FF66] text-xs font-mono focus:outline-none focus:border-[#66FF66]/70 placeholder:text-slate-600 disabled:opacity-50"
-                              />
-                              <button
-                                id="neural-send-btn"
-                                onClick={() => handleInternalSend()}
-                                disabled={isInternalSending || !internalInput.trim()}
-                                className="h-12 px-6 bg-[#66FF66]/10 hover:bg-[#66FF66]/20 border border-[#66FF66]/30 rounded-xl text-[#66FF66] text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-                              >
-                                {isInternalSending ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : 'Send'}
-                              </button>
-                          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                            <button
-                              onClick={toggleMic}
-                              disabled={isInternalSending}
-                              className={`p-2 rounded-lg transition-all ${isListening ? 'bg-red-500/20 border border-red-500/50' : 'bg-[#66FF66]/10 border border-[#66FF66]/30 hover:bg-[#66FF66]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}
-                              title={isListening ? 'Stop listening' : 'Start voice input'}
-                            >
-                              <MicrophoneIcon className={`w-5 h-5 ${isListening ? 'text-red-400 animate-pulse' : 'text-[#66FF66]'}`} />
-                            </button>
-                            <SpeakerWaveIcon className={`w-5 h-5 ${isCalling ? 'text-[#66FF66] animate-bounce' : 'text-slate-500 opacity-50'}`} />
-                            {isListening && <span className="text-[8px] font-black text-red-400 uppercase tracking-widest animate-pulse">Listening...</span>}
-                            {!isListening && <span className="text-[8px] font-black text-[#66FF66] uppercase tracking-widest">{isInternalCall ? 'Speakerphone Active' : 'Live Session'}</span>}
-                          </div>
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <span className="px-2 py-1 bg-[#39ff88]/10 text-[#39ff88] border border-[#39ff88]/30 rounded text-xs font-bold">
+                        {activeClient?.language === Language.ZULU ? 'ZU' : activeClient?.language === Language.AFRIKAANS ? 'AF' : activeClient?.language === Language.XHOSA ? 'XH' : 'EN'}
+                      </span>
+                      <span className="text-sm font-bold text-white tracking-widest uppercase">Auto-Sync</span>
                     </div>
                   </div>
                 </div>
