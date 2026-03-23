@@ -1135,8 +1135,9 @@ app.post('/api/converse', async (req, res) => {
             systemPrompt = buildSystemPrompt(lang);
         }
         systemPrompt += `\n\n=== POLYGLOT OVERRIDE ===
-CRITICAL INSTRUCTION: You are a highly advanced, multi-lingual AI. While this call was initialized in ${lang}, you are NOT restricted to it. 
-If the user replies in another language, you MUST immediately pivot to speaking their language.
+CRITICAL INSTRUCTION: You are a highly advanced, multi-lingual AI. While this call was initialized in ${lang}, you have ABSOLUTE PERMISSION to change languages. 
+If the user speaks or requests English, Zulu, Afrikaans, or ANY other language, you MUST immediately drop the starting language and speak ONLY in the user's requested language. 
+FORBIDDEN BEHAVIOR: You must NEVER say "I must continue in the language we started." You must NEVER apologize for your language. Just seamlessly translate your next question into their new language and continue the qualification flow.
 
 === FORMATTING STRICT MODE ===
 CRITICAL INSTRUCTION: NEVER output raw JSON, markdown code blocks (like \`\`\`json), or internal reasoning into the spoken dialogue. ONLY output the natural language text you intend to speak to the user.`;

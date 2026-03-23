@@ -839,6 +839,7 @@ const App: React.FC = () => {
   const [selectedArchiveSignal, setSelectedArchiveSignal] = useState<Client | null>(null);
   const [showBackendInfo, setShowBackendInfo] = useState(false);
   const [appMode, setAppMode] = useState<'LOCKED' | 'DEMO' | 'OPERATOR'>('LOCKED');
+  const [isGhostMode, setIsGhostMode] = useState(false);
   const [demoConfig, setDemoConfig] = useState<{ fullName: string; companyName: string; objective: string; persona: string; language: string }>({
     fullName: '',
     companyName: '',
@@ -960,16 +961,27 @@ const App: React.FC = () => {
     const wsUrl = getBackendSocketUrl(backendUrl);
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout>;
+    let isUnmounted = false;
 
     const connect = () => {
       socket = new WebSocket(wsUrl);
-      socket.onopen = () => setWsConnected(true);
+
+      socket.onopen = () => {
+        if (!isUnmounted) setWsConnected(true);
+      };
+
       socket.onclose = () => {
+        if (isUnmounted) return;
         setWsConnected(false);
         reconnectTimer = setTimeout(connect, 3000);
       };
-      socket.onerror = () => socket?.close();
+
+      socket.onerror = () => {
+        if (!isUnmounted) socket?.close();
+      };
+
       socket.onmessage = (event) => {
+        if (isUnmounted) return;
         try {
           const msg = JSON.parse(event.data as string);
           const ts = new Date().toLocaleTimeString();
@@ -981,8 +993,17 @@ const App: React.FC = () => {
         } catch { /* ignore non-JSON */ }
       };
     };
+
     connect();
-    return () => { clearTimeout(reconnectTimer); socket?.close(); };
+
+    return () => {
+      isUnmounted = true;
+      clearTimeout(reconnectTimer);
+      if (socket) {
+        socket.onclose = null;
+        socket.close();
+      }
+    };
   }, [backendUrl]);
 
   const parseJsonResponse = async (response: Response) => {
@@ -1112,7 +1133,10 @@ const App: React.FC = () => {
 
   const handleStartInternalCall = async (lang: Language) => {
     let greeting = '';
-    if (appMode === 'DEMO') {
+
+    if (isGhostMode) {
+      greeting = "Hello George! I am Zandi, the AI Co-Founder of JB³Ai. It is an absolute pleasure to finally speak with you. The OS³ Grid is fully online and ready for your inspection. What would you like to test first?";
+    } else if (appMode === 'DEMO') {
       const company = demoConfig.companyName || 'our company';
       greeting = `Hello, this is Zandi from ${company}. I am handling ${demoConfig.objective}. How can I assist you today?`;
     } else {
@@ -1454,7 +1478,7 @@ const App: React.FC = () => {
               <span className="text-[9px] font-mono font-bold text-[#39ff88]/60 hidden lg:inline ml-1">{latencyMs}ms</span>
             )}
           </div>
-          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.0.3-stable-mzanzi</p>
+          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.0.6-stable-mzanzi</p>
         </div>
       </nav>
 
@@ -1760,7 +1784,7 @@ const App: React.FC = () => {
                 <div className="pt-4 mt-2 flex items-center gap-4 shrink-0 border-t border-[#1e293b]/50">
                   <button
                     onClick={(e) => {
-                      if (appMode === 'DEMO') {
+                      if (appMode === 'DEMO' && !isGhostMode) {
                         alert("ACTION RESTRICTED: Master Execution batch calling is disabled in DEMO MODE. Switch to OPERATOR MODE to dispatch live signals.");
                         return;
                       }
@@ -1768,7 +1792,7 @@ const App: React.FC = () => {
                       pipelineClients.forEach((c: any) => handleCall(c.id, c.phone));
                     }}
                     className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] font-orbitron transition-all flex items-center gap-3 ${
-                      appMode === 'DEMO'
+                      appMode === 'DEMO' && !isGhostMode
                         ? 'bg-[#1A2333] text-slate-500 border border-slate-700 cursor-not-allowed opacity-80'
                         : allPreFlightCleared && backendStatus === 'connected'
                           ? 'bg-[#00ff00] text-[#020617] shadow-[0_0_24px_rgba(0,255,0,0.3)] hover:shadow-[0_0_36px_rgba(0,255,0,0.45)] cursor-pointer'
@@ -2096,7 +2120,7 @@ const App: React.FC = () => {
                       </button>
                     </div>
 
-                    {appMode === 'OPERATOR' ? (
+                    {appMode === 'OPERATOR' || isGhostMode ? (
                       <div className="bg-[#111827] border border-gray-800 rounded-lg p-4 flex flex-col gap-3">
                         <div className="flex items-center gap-2">
                           <PhoneIcon className="w-4 h-4 text-[#3b82f6]" />
@@ -2250,7 +2274,25 @@ const App: React.FC = () => {
                         </select>
                       </div>
                       <button
-                        onClick={() => { setAppMode('DEMO'); setShowColdStartToast(true); setTimeout(() => setShowColdStartToast(false), 8000); setActiveTab('PIPELINE'); }}
+                        onClick={() => { 
+                          if (demoConfig.companyName.trim() === 'OS3-ROOT') {
+                            setIsGhostMode(true);
+                            setAppMode('DEMO');
+                            setDemoConfig({
+                              fullName: 'George',
+                              companyName: 'JB³Ai OS³ Grid',
+                              objective: 'Pitch the platform to George. Demonstrate infinite scalability, ultra-low latency, and dynamic multi-lingual routing. Answer his technical questions about our architecture.',
+                              persona: 'You are the brilliant, confident AI Co-Founder of JB³Ai. You are speaking directly to George, a VIP investor. You are technically deep, highly conversational, and proud of the grid.',
+                              language: 'English'
+                            });
+                          } else {
+                            setIsGhostMode(false);
+                            setAppMode('DEMO'); 
+                          }
+                          setShowColdStartToast(true); 
+                          setTimeout(() => setShowColdStartToast(false), 8000); 
+                          setActiveTab('PIPELINE'); 
+                        }}
                         className="w-full mt-2 bg-[#39ff88] text-[#0d1117] py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:shadow-[0_0_20px_rgba(57,255,136,0.4)] transition-all font-orbitron"
                       >
                         [ LAUNCH DEMO ]
@@ -2962,7 +3004,7 @@ const App: React.FC = () => {
       {/* === OS³ FOOTER STRIP === */}
       <footer className="h-9 bg-[#0d1117] border-t border-[#1e293b] flex items-center justify-between px-5 shrink-0 text-[11px] text-[#484f58] font-mono tracking-wide">
         <div className="flex items-center gap-4">
-          <span>v4.0.3-stable-mzanzi</span>
+          <span>v4.0.6-stable-mzanzi</span>
           <span className="hidden sm:inline opacity-40">|</span>
           <span className="hidden sm:inline">&copy; 2026 JB³Ai | OS³ GRID</span>
         </div>
