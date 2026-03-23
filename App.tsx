@@ -1244,7 +1244,7 @@ const App: React.FC = () => {
     }
   };
 
-  const toggleMic = () => {
+  const toggleListening = () => {
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
@@ -1991,20 +1991,20 @@ const App: React.FC = () => {
                   </button>
 
                   <button
-                    onClick={async () => {
+                    onClick={() => {
+                      // 1. Sync trigger: Fire instantly on physical tap
+                      toggleListening();
+                      
+                      // 2. Background wake-up: Poke the audio engine
                       try {
                         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
                         if (AudioCtx) {
                           const ctx = new AudioCtx();
-                          if (ctx.state === 'suspended') {
-                            await ctx.resume();
-                          }
+                          if (ctx.state === 'suspended') ctx.resume();
                         }
                       } catch (err) {
                         console.warn('Audio wake-up bypassed', err);
                       }
-
-                      toggleMic();
                     }}
                     className={`flex flex-col items-center justify-center py-5 rounded-xl border transition-all ${
                       isListening
@@ -2029,7 +2029,8 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {/* 4. THE TRANSCRIPT OUTPUT BOX */}
+                <div className="mt-6 flex flex-col gap-3 h-[280px] overflow-y-auto p-4 rounded-xl border border-[#1e293b] bg-[#0d1117]/50 custom-scrollbar shrink-0">
                   {transcriptions.map((t, i) => (
                     <div key={i} className={`p-4 rounded-xl text-sm ${t.role === 'model' ? 'bg-[#39ff88]/10 border border-[#39ff88]/20 text-[#39ff88]' : 'bg-[#1e293b]/50 border border-[#1e293b] text-white'}`}>
                       <div className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">
@@ -2041,7 +2042,8 @@ const App: React.FC = () => {
                   <div ref={transcriptEndRef} />
                 </div>
 
-                <div className="shrink-0 p-4 mt-4 border border-[#1e293b]/30 rounded-xl bg-black/10">
+                {/* 5. THE INPUT BOX (Composer) */}
+                <div className="mt-4 shrink-0">
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
@@ -2062,7 +2064,7 @@ const App: React.FC = () => {
                     </button>
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                       <button
-                        onClick={toggleMic}
+                        onClick={toggleListening}
                         disabled={isInternalSending}
                         className={`p-2 rounded-lg transition-all ${isListening ? 'bg-red-500/20 border border-red-500/50' : 'bg-[#66FF66]/10 border border-[#66FF66]/30 hover:bg-[#66FF66]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}
                         title={isListening ? 'Stop listening' : 'Start voice input'}
@@ -3108,3 +3110,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
