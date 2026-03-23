@@ -70,7 +70,7 @@ const telemetryClient = appInsights.defaultClient ?? null;
 // __dirname is provided natively in CommonJS modules (no declaration needed)
 const app = (0, express_1.default)();
 const server = (0, http_1.createServer)(app);
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 10000;
 // Initialize WebSocket Server for live terminal uplink + Twilio Media Streams
 const wss = new ws_1.WebSocketServer({ server, path: '/ws' });
 let wsClients = [];
@@ -1195,8 +1195,10 @@ async function startServer() {
             res.sendFile(path_1.default.join(distDir, 'index.html'));
         });
     }
-    server.listen(PORT, "0.0.0.0", () => {
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`\n[STARTUP] Node v${process.versions.node} | ENV=${process.env.NODE_ENV || 'development'} | PORT=${PORT}`);
         console.log(`[MZANZI ENGINE] Live and listening on port ${PORT}`);
+        console.log(`🔄 Initializing Neural Link Recovery Sequence...`);
     });
     // ── Node 08: Pre-Flight Warm-Up ─────────────────────────────────────────
     // Keeps the SA North (Johannesburg) Azure Speech node and Google Sheets

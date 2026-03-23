@@ -40,7 +40,7 @@ const telemetryClient = appInsights.defaultClient ?? null;
 
 const app = express();
 const server = createServer(app);
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 10000;
 
 // Initialize WebSocket Server for live terminal uplink + Twilio Media Streams
 const wss = new WebSocketServer({ server, path: '/ws' });
@@ -1276,8 +1276,10 @@ async function startServer() {
     });
   }
 
-  server.listen(PORT, "0.0.0.0", () => {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n[STARTUP] Node v${process.versions.node} | ENV=${process.env.NODE_ENV || 'development'} | PORT=${PORT}`);
     console.log(`[MZANZI ENGINE] Live and listening on port ${PORT}`);
+    console.log(`🔄 Initializing Neural Link Recovery Sequence...`);
   });
 
   // ── Node 08: Pre-Flight Warm-Up ─────────────────────────────────────────
