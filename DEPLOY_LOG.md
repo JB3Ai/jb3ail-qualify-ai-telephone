@@ -1,3 +1,47 @@
+# OS³ Grid Deployment Log
+**Project:** JB³Ai Neural Telephone Grid
+**Architecture:** React UI (cPanel) -> Node.js + WebSockets (Render) -> Twilio / Azure Speech / Gemini Core
+
+---
+
+### [v4.0.7-stable-mzanzi] - 2026-03-23
+**Status:** Built and Pushed
+**Focus:** Virtual Call Center Handover & iOS Hardware Fixes
+
+| Change | Files Modified | Commit |
+| :--- | :--- | :--- |
+| **Virtual Call Center Handover:** Integrated Azure Voice Matrix mapping language outputs to distinct regional neural voices (Zandi, Sipho, Johan, Lebo, Kostas). | `server.ts`, `services/voiceService.ts` | `Pending` |
+| **Handover Prompt Logic:** Upgraded `/api/converse` system prompt to mandate seamless colleague handovers on explicit language switching. | `server.ts` | `Pending` |
+| **iOS Double-Tap Mic Fix:** Injected `AudioContext.resume()` hardware wake-up poke to bypass strict Safari battery-saving deep sleep. | `App.tsx` | `Pending` |
+| **Mobile UI Layout:** Reordered Live Terminal for mobile flow: Header -> Master Toggles -> Duration -> Transcript -> Secondary Stats. | `App.tsx` | `Pending` |
+
+---
+
+### [v4.0.6-stable-mzanzi] - 2026-03-23
+**Status:** Built and Pushed
+**Focus:** Mobile Audio Robustness & Render Stability
+
+| Change | Files Modified | Commit |
+| :--- | :--- | :--- |
+| **iOS Audio Pipeline:** Replaced one-off browser audio with persistent `os3-audio-player` element (`playsInline=true`) to bypass Apple's async media block. | `App.tsx` | `96e0da0` |
+| **Mobile HUD Toggles:** Added massive mobile-friendly, dual-state `SPEAKER` and `MIC` visual toggle blocks to Live Terminal. | `App.tsx` | `96e0da0` |
+| **Render Port Binding:** Hardened backend startup by explicitly binding `http.createServer` to `0.0.0.0` to clear Render's external health check timeouts. | `server.ts` | `dd23324` |
+| **Brand Identity Polish:** Injected custom neon OS³ `favicon.svg` and updated browser document title. | `index.html`, `public/favicon.svg` | `40c5f52` |
+
+---
+
+### [v4.0.5-stable-mzanzi] - 2026-03-23
+**Status:** Built and Pushed
+**Focus:** Enterprise Demo Architecture (Ghost Mode)
+
+| Change | Files Modified | Commit |
+| :--- | :--- | :--- |
+| **Ghost Mode Payload (Easter Egg):** Built stealth `OS3-ROOT` launch trigger mapping to a hidden `isGhostMode` state for investor pitches. | `App.tsx` | `d5061c6` |
+| **VIP Greeting Override:** Bypassed generic demo introductions for a hardcoded, highly personalized "AI Co-Founder" opening tailored to VIP (George). | `App.tsx` | `d5061c6` |
+| **Action Unlocking:** Mapped Ghost Mode state to bypass demo restrictions on the `[ MANUAL SIGNAL TRIGGER ]` and `Initiate Master Execution` interfaces. | `App.tsx` | `d5061c6` |
+| **Polyglot Constraints:** Strengthened Gemini system prompt to forbid language-lock apologies and enforce instantaneous language switching. | `server.ts` | `d5061c6` |
+| **WebSocket Hardening:** Upgraded global WS effect to be ghost-safe, preventing stale disconnect events from flagging false UI errors. | `App.tsx` | `d5061c6` |
+
 # Deploy Log
 
 ## Current Live
@@ -90,3 +134,4 @@
 ### Excluded Local Files
 - `.github/agents/test.agent.md`
 - `dist-server/BACKUPserver.js`
+

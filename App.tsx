@@ -1221,7 +1221,7 @@ const App: React.FC = () => {
           if (!player) {
             player = document.createElement('audio');
             player.id = 'os3-audio-player';
-            player.playsInline = true;
+            player.setAttribute('playsinline', 'true');
             document.body.appendChild(player);
           }
 
@@ -2029,8 +2029,8 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 4. THE TRANSCRIPT OUTPUT BOX */}
-                <div className="mt-6 flex flex-col gap-3 h-[280px] overflow-y-auto p-4 rounded-xl border border-[#1e293b] bg-[#0d1117]/50 custom-scrollbar shrink-0">
+                {/* 4. THE TRANSCRIPT OUTPUT BOX (FIXED HEIGHT) */}
+                <div className="mt-6 flex flex-col gap-3 h-70 overflow-y-auto p-4 rounded-xl border border-[#1e293b] bg-[#0d1117]/50 custom-scrollbar shrink-0">
                   {transcriptions.map((t, i) => (
                     <div key={i} className={`p-4 rounded-xl text-sm ${t.role === 'model' ? 'bg-[#39ff88]/10 border border-[#39ff88]/20 text-[#39ff88]' : 'bg-[#1e293b]/50 border border-[#1e293b] text-white'}`}>
                       <div className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">
@@ -2043,7 +2043,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* 5. THE INPUT BOX (Composer) */}
-                <div className="mt-4 shrink-0">
+                <div className="shrink-0 p-4 mt-4 border border-[#1e293b]/30 rounded-xl bg-black/10">
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
@@ -3081,33 +3081,13 @@ const App: React.FC = () => {
         .animate-waveform { animation: waveform 0.7s infinite ease-in-out; }
       `}</style>
 
-      {/* COLD-START TOAST */}
-      {showColdStartToast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-200 animate-toast-in">
-          <div className="rounded-lg px-6 py-4 max-w-sm bg-[#1a1a00] border border-yellow-500 text-yellow-500 z-9999 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
-            <div className="flex items-start gap-4">
-            <div className="mt-0.5">
-              <svg className="w-5 h-5 text-[#66FF66] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className="text-yellow-400 animate-pulse font-bold text-xs uppercase tracking-widest mb-1">Neural Engine Spooling Up</p>
-              <p className="text-yellow-500/80 text-xs leading-relaxed">First launch may take ~30 seconds while the system wakes. Your call is queued — stand by.</p>
-            </div>
-            <button onClick={() => setShowColdStartToast(false)} className="text-slate-600 hover:text-slate-300 transition-colors shrink-0">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
-            <div className="w-full h-1 bg-yellow-900 mt-3 overflow-hidden rounded">
-              <div className="w-1/2 h-full bg-yellow-500 animate-[pulse_1s_ease-in-out_infinite]" />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
 export default App;
+
+
+
+
 
