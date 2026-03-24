@@ -185,6 +185,26 @@ const TelemetryTicker: React.FC<{ backendStatus: string }> = ({ backendStatus })
   );
 };
 
+const WarmupBanner: React.FC<{ visible: boolean }> = ({ visible }) => {
+  if (!visible) return null;
+
+  return (
+    <div className="fixed top-24 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-[320px] z-40 rounded-md border-2 border-yellow-500 bg-[#1a1a00]/95 px-4 py-3 text-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)] backdrop-blur-sm pointer-events-none">
+      <div className="flex items-start gap-3">
+        <BoltIcon className="mt-0.5 h-4 w-4 shrink-0 text-yellow-400" />
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-yellow-400 animate-pulse">
+            Neural Engine Spooling Up
+          </p>
+          <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-yellow-500/90">
+            Initializing guided demo pathways and secure system overlays.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TelemetryStrip: React.FC<{
   backendStatus: string;
   pipelineCount: number;
@@ -866,6 +886,7 @@ const App: React.FC = () => {
   const [isInternalSending, setIsInternalSending] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const micPrimedRef = useRef(false);
   const languageMatrix = DEFAULT_CONFIG.enabledLanguages;
 
   // Editable Run Protocol state
@@ -1179,6 +1200,7 @@ const App: React.FC = () => {
 
   const endCall = () => {
     recognitionRef.current?.stop();
+    recognitionRef.current = null;
     setIsListening(false);
     setIsCalling(false);
     setIsInternalCall(false);
@@ -1244,10 +1266,54 @@ const App: React.FC = () => {
     }
   };
 
-  const toggleListening = () => {
+  const wakeAudioEngine = useCallback(async () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') await ctx.resume();
+
+      const source = ctx.createBufferSource();
+      source.buffer = ctx.createBuffer(1, 1, 22050);
+      source.connect(ctx.destination);
+      source.start(0);
+      source.stop(0);
+
+      setTimeout(() => {
+        source.disconnect();
+        void ctx.close();
+      }, 0);
+    } catch (err) {
+      console.warn('Audio wake-up bypassed', err);
+    }
+  }, []);
+
+  const primeMicrophone = useCallback(async () => {
+    if (micPrimedRef.current) return true;
+    if (!navigator.mediaDevices?.getUserMedia) return true;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      stream.getTracks().forEach(track => track.stop());
+      micPrimedRef.current = true;
+      return true;
+    } catch (err) {
+      console.error('Microphone prime failed:', err);
+      alert('Microphone access is required for voice input.');
+      return false;
+    }
+  }, []);
+
+  const toggleListening = async () => {
     if (isListening) {
       recognitionRef.current?.stop();
-      setIsListening(false);
       return;
     }
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -1255,10 +1321,16 @@ const App: React.FC = () => {
       alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
       return;
     }
+
+    await wakeAudioEngine();
+    const micReady = await primeMicrophone();
+    if (!micReady) return;
+
     const recognition = new SpeechRecognition();
     recognition.lang = activeClient?.language || Language.ENGLISH;
     recognition.interimResults = false;
     recognition.continuous = false;
+    recognition.onstart = () => setIsListening(true);
     recognition.onresult = (event: any) => {
       const transcript = event.results[0]?.[0]?.transcript;
       if (transcript) {
@@ -1268,12 +1340,21 @@ const App: React.FC = () => {
     };
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
+      recognitionRef.current = null;
       setIsListening(false);
     };
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      setIsListening(false);
+    };
     recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error('Speech recognition start failed:', err);
+      recognitionRef.current = null;
+      setIsListening(false);
+    }
   };
 
   const runNeuralTest = async () => {
@@ -1436,6 +1517,8 @@ const App: React.FC = () => {
           <UplinkBadge backendStatus={backendStatus} latencyMs={latencyMs} />
         </div>
       </header>
+
+      <WarmupBanner visible={activeTab === 'HOME'} />
 
       <div className="flex-1 flex flex-row overflow-hidden">
       
@@ -1991,21 +2074,7 @@ const App: React.FC = () => {
                   </button>
 
                   <button
-                    onClick={() => {
-                      // 1. Sync trigger: Fire instantly on physical tap
-                      toggleListening();
-                      
-                      // 2. Background wake-up: Poke the audio engine
-                      try {
-                        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-                        if (AudioCtx) {
-                          const ctx = new AudioCtx();
-                          if (ctx.state === 'suspended') ctx.resume();
-                        }
-                      } catch (err) {
-                        console.warn('Audio wake-up bypassed', err);
-                      }
-                    }}
+                    onClick={() => { void toggleListening(); }}
                     className={`flex flex-col items-center justify-center py-5 rounded-xl border transition-all ${
                       isListening
                         ? 'bg-[#39ff88]/10 border-[#39ff88]/40 text-[#39ff88] shadow-[0_0_15px_rgba(57,255,136,0.15)]'
@@ -2064,7 +2133,7 @@ const App: React.FC = () => {
                     </button>
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                       <button
-                        onClick={toggleListening}
+                        onClick={() => { void toggleListening(); }}
                         disabled={isInternalSending}
                         className={`p-2 rounded-lg transition-all ${isListening ? 'bg-red-500/20 border border-red-500/50' : 'bg-[#66FF66]/10 border border-[#66FF66]/30 hover:bg-[#66FF66]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}
                         title={isListening ? 'Stop listening' : 'Start voice input'}
@@ -2317,6 +2386,7 @@ const App: React.FC = () => {
                           <option value="Auto-Detect">Auto-Detect</option>
                           <option value="English">English</option>
                           <option value="Zulu">Zulu</option>
+                          <option value="Xhosa">Xhosa</option>
                           <option value="Afrikaans">Afrikaans</option>
                           <option value="Sepedi">Sepedi</option>
                           <option value="Greek">Greek</option>

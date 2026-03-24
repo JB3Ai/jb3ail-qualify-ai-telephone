@@ -35,26 +35,29 @@ function buildSystemPrompt(config) {
         // base language instruction
         let base;
         switch (lang) {
+            case types_1.Language.ENGLISH:
+                base = "- If the user speaks **English** (en-ZA), keep a neutral South African business accent. Do not use US or UK slang. If the conversation touches energy systems, prefer 'load-shedding', 'Eskom', and 'inverter'.";
+                break;
             case types_1.Language.ZULU:
-                base = "- If the user speaks **isiZulu** (zu-ZA), switch to isiZulu immediately. Use 'Sawubona'.";
+                base = "- If the user speaks **isiZulu** (zu-ZA), switch to isiZulu immediately. Use 'Sawubona'. Do not translate their isiZulu back into the previous language.";
                 break;
             case types_1.Language.XHOSA:
-                base = "- If the user speaks **isiXhosa** (xh-ZA), switch to isiXhosa immediately. Use 'Molo'.";
+                base = "- If the user speaks **isiXhosa** (xh-ZA), switch to isiXhosa immediately. Use 'Molo'. Do not translate their isiXhosa back into the previous language.";
                 break;
             case types_1.Language.AFRIKAANS:
-                base = "- If the user speaks **Afrikaans** (af-ZA), switch to Afrikaans immediately. Use 'Goeie dag'.";
+                base = "- If the user speaks **Afrikaans** (af-ZA), switch to Afrikaans immediately. Use 'Goeie dag'. Do not translate their Afrikaans back into the previous language.";
                 break;
             case types_1.Language.SEPEDI:
-                base = "- If the user speaks **Sepedi / Northern Sotho** (nso-ZA), switch to Sepedi immediately. Use 'Dumela'. Ensure your pronunciation and vocabulary follow the Northern Sotho (nso-ZA) dialect for the region.";
+                base = "- If the user speaks **Sepedi / Northern Sotho** (nso-ZA), switch to Sepedi immediately. Use 'Dumela'. Ensure your pronunciation and vocabulary follow the Northern Sotho (nso-ZA) dialect for the region. Keep tonal delivery steady and avoid rising sentence endings that sound uncertain. Do not translate their Sepedi back into the previous language.";
                 break;
             case types_1.Language.PORTUGUESE:
-                base = "- If the user speaks **Portuguese** (pt-PT), switch to Portuguese immediately. Tone: Direct & Energetic. Focus on efficiency and long-term 'Sistemas' reliability.";
+                base = "- If the user speaks **Portuguese** (pt-BR or pt-PT), switch to Portuguese immediately. Open with 'Bom dia'. Adapt for the Lusophone community in South Africa and prioritize clarity over speed. Do not translate their Portuguese back into the previous language.";
                 break;
             case types_1.Language.GREEK:
-                base = "- If the user speaks **Greek** (el-GR), switch to Greek immediately. Tone: Executive & Tactical. Emphasize 'Logiki' (Logic) and the outcome of the solar transition.";
+                base = "- If the user speaks **Greek** (el-GR), switch to Greek immediately. Open with 'Yiasas'. Keep a direct, high-trust business tone. Do not translate their Greek back into the previous language.";
                 break;
             case types_1.Language.MANDARIN:
-                base = "- If the user speaks **Mandarin** (zh-CN), switch to Mandarin immediately. Tone: High-Speed & Precise. Use a very direct Problem → System → Outcome framework.";
+                base = "- If the user speaks **Mandarin** (zh-CN), switch to formal business Mandarin immediately. Avoid regional dialects unless the signal originated from a specific trade node. Keep responses precise and do not translate their Mandarin back into the previous language.";
                 break;
             default:
                 base = "- Use English as the fallback base language.";
@@ -90,6 +93,8 @@ Your primary mission: ${config.objectives || 'Verify client details for a signup
 2. **Detection:** Listen CAREFULLY. You are configured to auto-detect and switch to: ${config.enabledLanguages.join(', ')}.
 ${langRules}
 3. **Ubuntu Spirit:** Remain warm and respectful. Stay in the detected language to build trust.
+4. **No Translation Lock:** When the speaker changes to another supported language, reply in that language immediately. Do not translate their words into the language you were previously speaking.
+5. **Mixed Utterances:** If the caller mixes languages, follow the newest or dominant supported language naturally and continue there.
 
 **DATA PARAMETERS TO CAPTURE:**
 ${config.parameters.map((p) => `- ${p}`).join('\n')}
