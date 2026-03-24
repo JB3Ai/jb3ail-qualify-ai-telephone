@@ -36,23 +36,33 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.voiceService = void 0;
 exports.synthesizeSpeechStream = synthesizeSpeechStream;
 const sdk = __importStar(require("microsoft-cognitiveservices-speech-sdk"));
+const textNormalizer_js_1 = require("../utils/textNormalizer.js");
 // === THE VIRTUAL CALL CENTER: AZURE VOICE MATRIX ===
 // Supports both human-readable labels and the BCP-47 locales the frontend actually sends.
 const VOICE_MATRIX = {
     'english': 'en-ZA-LeahNeural',
     'en-za': 'en-ZA-LeahNeural',
+    'zandi': 'en-ZA-LeahNeural',
+    'luke': 'en-ZA-LukeNeural',
     'zulu': 'zu-ZA-ThembaNeural',
     'zu-za': 'zu-ZA-ThembaNeural',
+    'thando': 'zu-ZA-ThembaNeural',
     'afrikaans': 'af-ZA-WillemNeural',
     'af-za': 'af-ZA-WillemNeural',
+    'christiaan': 'af-ZA-WillemNeural',
+    'adri': 'af-ZA-AdriNeural',
     'xhosa': 'xh-ZA-SiyandaNeural',
     'xh-za': 'xh-ZA-SiyandaNeural',
+    'ayanda': 'xh-ZA-SiyandaNeural',
     'sepedi': 'nso-ZA-LeboNeural',
     'nso-za': 'nso-ZA-LeboNeural',
+    'lebo': 'nso-ZA-LeboNeural',
     'greek': 'el-GR-NestorasNeural',
     'el-gr': 'el-GR-NestorasNeural',
+    'kostas': 'el-GR-NestorasNeural',
     'portuguese': 'pt-PT-RaquelNeural',
     'pt-pt': 'pt-PT-RaquelNeural',
+    'raquel': 'pt-PT-RaquelNeural',
     'pt-br': 'pt-BR-AntonioNeural',
     'mandarin': 'zh-CN-YunxiNeural',
     'zh-cn': 'zh-CN-YunxiNeural',
@@ -60,13 +70,19 @@ const VOICE_MATRIX = {
 };
 // Per-language SSML prosody — zero latency, prevents Azure hyper-articulation on Nguni voices
 const PROSODY = {
+    'en-za': { rate: '-2%' },
     'xh-za': { pitch: '-12%', rate: '-5%' },
     'zu-za': { pitch: '-5%', rate: '-5%' },
-    'nso-za': { pitch: '-15%', rate: '-5%' },
+    'nso-za': { pitch: '-18%', rate: '-7%' },
     'af-za': { rate: '-3%' },
-    'zh-cn': { rate: '+2%' },
+    'pt-pt': { rate: '-8%' },
+    'pt-br': { rate: '-8%' },
+    'el-gr': { rate: '-4%' },
+    'zh-cn': { rate: '-2%' },
 };
 const DEFAULT_PROSODY = { rate: '-3%' };
+const PHONETIC_BREAK_LOCALES = new Set(['nso-za', 'zh-cn']);
+const TECHNICAL_TERM_PATTERN = /\b(Solar|Battery|Inverter|Eskom)\b([,:;]?)/gi;
 function normalizeLocale(locale) {
     return (locale || '').trim().toLowerCase();
 }
@@ -80,15 +96,28 @@ function resolveVoice(locale) {
     const normalized = normalizeLocale(locale);
     return VOICE_MATRIX[normalized] ?? VOICE_MATRIX['default'];
 }
-function escapeXml(v) {
-    return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+function buildSsmlText(text, normalizedLocale) {
+    const normalizedText = (0, textNormalizer_js_1.normalizeBrandText)(text);
+    if (!PHONETIC_BREAK_LOCALES.has(normalizedLocale)) {
+        return (0, textNormalizer_js_1.normalizeScript)(normalizedText);
+    }
+    let output = '';
+    let lastIndex = 0;
+    let match;
+    TECHNICAL_TERM_PATTERN.lastIndex = 0;
+    while ((match = TECHNICAL_TERM_PATTERN.exec(normalizedText)) !== null) {
+        output += (0, textNormalizer_js_1.escapeXml)(normalizedText.slice(lastIndex, match.index));
+        output += `${(0, textNormalizer_js_1.escapeXml)(match[1])}${(0, textNormalizer_js_1.escapeXml)(match[2] || '')}<break time='200ms'/>`;
+        lastIndex = match.index + match[0].length;
+    }
+    output += (0, textNormalizer_js_1.escapeXml)(normalizedText.slice(lastIndex));
+    return output;
 }
 function buildSsml(text, voiceName, bcp47Locale, normalizedLocale) {
     const p = PROSODY[normalizedLocale] ?? DEFAULT_PROSODY;
     const attrs = [p.rate ? `rate='${p.rate}'` : '', p.pitch ? `pitch='${p.pitch}'` : '']
         .filter(Boolean).join(' ');
-    return `<speak version='1.0' xml:lang='${bcp47Locale}'><voice xml:lang='${bcp47Locale}' name='${voiceName}'><prosody ${attrs}>${escapeXml(text)}</prosody></voice></speak>`;
+    return `<speak version='1.0' xml:lang='${bcp47Locale}'><voice xml:lang='${bcp47Locale}' name='${voiceName}'><prosody ${attrs}>${buildSsmlText(text, normalizedLocale)}</prosody></voice></speak>`;
 }
 async function synthesize(text, locale, outputFormat) {
     const key = (process.env.SPEECH_KEY || '').trim();

@@ -56,7 +56,7 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const appInsights = __importStar(require("applicationinsights"));
 const ws_1 = require("ws");
-const events_1 = require("events");
+const TextBufferQueue_js_1 = require("./utils/TextBufferQueue.js");
 // Only initialise Application Insights when the connection string is configured
 if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
     appInsights.setup(process.env.APPLICATIONINSIGHTS_CONNECTION_STRING)
@@ -76,12 +76,60 @@ const wss = new ws_1.WebSocketServer({ server, path: '/ws' });
 let wsClients = [];
 // Separate WebSocket server for Twilio Media Streams (Node 08: Backend Stream Logic)
 const twilioWss = new ws_1.WebSocketServer({ server, path: '/media-stream' });
-// ── CHUNK_SIZE_MS: 320ms at 8kHz mu-law = 2560 bytes per chunk ────────────────
+const EXPECTED_AZURE_REGION = 'southafricanorth';
+// ── PRE_BUFFER_CHUNK_SIZE_MS: 320ms at 8kHz mu-law = 2560 bytes per chunk ─────
 // This matches Twilio's preferred inbound chunk size and minimises Jitter Buffer
 // artefacts on SA networks while staying well under the 24ms latency target.
-const CHUNK_SIZE_MS = 320;
+const PRE_BUFFER_CHUNK_SIZE_MS = 320;
+const CHUNK_SIZE_MS = PRE_BUFFER_CHUNK_SIZE_MS;
 const MULAW_SAMPLE_RATE = 8000;
 const CHUNK_SIZE_BYTES = Math.floor((MULAW_SAMPLE_RATE * CHUNK_SIZE_MS) / 1000); // 2560
+const CADENCE_GAP_MS = 1200;
+const SUPPORTED_SWITCH_LANGUAGES = ['en-ZA', 'zu-ZA', 'xh-ZA', 'af-ZA', 'nso-ZA', 'pt-PT', 'pt-BR', 'el-GR', 'zh-CN'];
+function parseAzureRegionFromEndpoint(endpoint) {
+    if (!endpoint)
+        return null;
+    try {
+        const hostname = new URL(endpoint).hostname.toLowerCase();
+        const match = hostname.match(/^([a-z0-9-]+)\.openai\.azure\.com$/);
+        return match?.[1] || null;
+    }
+    catch {
+        return null;
+    }
+}
+function logAzureTopologyDiagnostics() {
+    const speechRegion = (process.env.SPEECH_REGION || '').trim().toLowerCase();
+    const openAiRegion = parseAzureRegionFromEndpoint(process.env.AZURE_OPENAI_ENDPOINT);
+    const sharedResourceGroup = (process.env.AZURE_RESOURCE_GROUP || '').trim();
+    const speechResourceGroup = (process.env.AZURE_SPEECH_RESOURCE_GROUP || '').trim();
+    const openAiResourceGroup = (process.env.AZURE_OPENAI_RESOURCE_GROUP || '').trim();
+    console.log(`[STARTUP] NODE08_PREBUFFER=${PRE_BUFFER_CHUNK_SIZE_MS}ms | SPEECH_REGION=${speechRegion || 'UNSET'} | OPENAI_REGION=${openAiRegion || 'UNSET'}`);
+    if (speechRegion && speechRegion !== EXPECTED_AZURE_REGION) {
+        console.warn(`[STARTUP WARNING] Speech region is ${speechRegion}. For Pretoria Hub latency targets, use ${EXPECTED_AZURE_REGION}.`);
+    }
+    if (openAiRegion && openAiRegion !== EXPECTED_AZURE_REGION) {
+        console.warn(`[STARTUP WARNING] Azure OpenAI endpoint resolves to ${openAiRegion}. Cross-region hops from SA North can add 200ms+ latency.`);
+    }
+    if (speechRegion && openAiRegion && speechRegion !== openAiRegion) {
+        console.warn(`[STARTUP WARNING] Azure Speech (${speechRegion}) and Azure OpenAI (${openAiRegion}) are not co-located. Keep both in ${EXPECTED_AZURE_REGION}.`);
+    }
+    if (sharedResourceGroup) {
+        console.log(`[STARTUP] Shared Azure resource group configured: ${sharedResourceGroup}`);
+    }
+    else if (speechResourceGroup && openAiResourceGroup) {
+        if (speechResourceGroup !== openAiResourceGroup) {
+            console.warn(`[STARTUP WARNING] Azure Speech RG (${speechResourceGroup}) and Azure OpenAI RG (${openAiResourceGroup}) differ. Keep both services in the same South Africa North resource group for clean ops.`);
+        }
+        else {
+            console.log(`[STARTUP] Azure Speech and OpenAI resource group aligned: ${speechResourceGroup}`);
+        }
+    }
+    else {
+        console.warn('[STARTUP NOTICE] Resource group alignment is not verifiable from current env. Set AZURE_RESOURCE_GROUP or both AZURE_SPEECH_RESOURCE_GROUP and AZURE_OPENAI_RESOURCE_GROUP to enforce same-RG diagnostics.');
+    }
+}
+logAzureTopologyDiagnostics();
 twilioWss.on('connection', (socket, req) => {
     let streamSid = null;
     broadcastLog('INFO', `📡 TWILIO_MEDIA_STREAM_CONNECTED: ${req.socket.remoteAddress}`);
@@ -143,51 +191,32 @@ wss.on('connection', (ws) => {
         wsClients = wsClients.filter(c => c !== ws);
     });
 });
-// ── OS³ Fast-Stream: Token Streamer & Async TTS Dispatcher ───────────────────
-// Uses an EventEmitter to trigger TTS the moment a sentence is ready,
-// running concurrently alongside the LLM stream for ultra-low latency.
-const ttsEmitter = new events_1.EventEmitter();
-async function streamNeuralResponse(userSpeech, systemPrompt, streamSid, ws, callLang) {
-    let tokenBuffer = '';
+// ── OS³ Fast-Stream: token streaming with smart phrase buffering ──────────────
+async function streamNeuralResponse(userSpeech, systemPrompt, textBuffer, onReadyPhrase) {
     let fullResponse = '';
     try {
         for await (const token of azureOpenAiService_js_1.aiService.streamResponse(userSpeech, systemPrompt)) {
-            tokenBuffer += token;
             fullResponse += token;
-            // THE TRIGGER: If the token is punctuation, dispatch the chunk immediately!
-            if (token.match(/[.!?,;:\n]/)) {
-                const chunkToSpeak = tokenBuffer.trim();
-                if (chunkToSpeak.length > 2) {
-                    console.log(`[OS³ FAST-STREAM] Dispatched Chunk: "${chunkToSpeak}"`);
-                    ttsEmitter.emit('speak_chunk', { text: chunkToSpeak, streamSid, ws, locale: callLang });
+            for (const phrase of textBuffer.enqueue(token)) {
+                if (phrase.length > 2) {
+                    console.log(`[OS³ FAST-STREAM] Buffered Phrase: "${phrase}"`);
+                    onReadyPhrase(phrase);
                 }
-                tokenBuffer = '';
             }
         }
-        // FLUSH: If the AI finishes but didn't end with punctuation, send the rest
-        if (tokenBuffer.trim().length > 0) {
-            console.log(`[OS³ FAST-STREAM] Dispatched Final Chunk: "${tokenBuffer.trim()}"`);
-            ttsEmitter.emit('speak_chunk', { text: tokenBuffer.trim(), streamSid, ws, locale: callLang });
+        for (const phrase of textBuffer.flush()) {
+            if (phrase.length > 2) {
+                console.log(`[OS³ FAST-STREAM] Flushed Phrase: "${phrase}"`);
+                onReadyPhrase(phrase);
+            }
         }
     }
     catch (error) {
         console.error('[OS³ ERROR] LLM Streaming Failed:', error);
+        textBuffer.cleanup();
     }
     return fullResponse;
 }
-// ── Async TTS Dispatcher — fires concurrently alongside the LLM ──────────────
-ttsEmitter.on('speak_chunk', async ({ text, streamSid, ws, locale }) => {
-    if (ws.readyState !== ws_1.WebSocket.OPEN)
-        return;
-    try {
-        const audioBuffer = await voiceService_js_1.voiceService.generateAudio(text, { format: 'mulaw', language: locale });
-        await streamAudioToTwilio(ws, streamSid, audioBuffer);
-        broadcastLog('INFO', `[FAST-STREAM TTS] Chunk sent: "${text.slice(0, 40)}..."`);
-    }
-    catch (err) {
-        console.error('[OS³ TTS ERROR]:', err?.message);
-    }
-});
 // ── /api/twilio/stream — Zero-Latency WebSocket Bridge ───────────────────────
 // Azure TTS → raw mu-law in RAM → base64 → Twilio, no disk I/O
 const streamWss = new ws_1.WebSocketServer({ server, path: '/api/twilio/stream' });
@@ -196,12 +225,30 @@ streamWss.on('connection', (ws) => {
     let callSid = '';
     let callLang = 'en-ZA';
     let isBusy = false;
+    const ttsBuffer = new TextBufferQueue_js_1.TextBufferQueue();
+    let speechChain = Promise.resolve();
     // ── 1. Azure Speech SDK ear: PushStream for 8kHz 16-bit PCM ───────────────
     // SDK v1.48 does not expose getCompressedFormat/AudioStreamContainerFormat.
     // Twilio sends 8kHz 8-bit mu-law; we decode to 16-bit PCM before each write.
     const pushStream = sdk.AudioInputStream.createPushStream(sdk.AudioStreamFormat.getWaveFormatPCM(8000, 16, 1));
     const speechCfg = sdk.SpeechConfig.fromSubscription((process.env.SPEECH_KEY || '').trim(), (process.env.SPEECH_REGION || '').trim().toLowerCase());
     let recognizer = null;
+    let pushStreamClosed = false;
+    const closePushStream = () => {
+        if (pushStreamClosed)
+            return;
+        pushStreamClosed = true;
+        try {
+            pushStream.close();
+        }
+        catch {
+            // Ignore duplicate close attempts during multi-path cleanup.
+        }
+    };
+    const cleanupCallBuffers = () => {
+        ttsBuffer.cleanup();
+        speechChain = Promise.resolve();
+    };
     // ── 2. TTS → Twilio ────────────────────────────────────────────────────────
     const sendAudioToTwilio = async (textToSpeak, locale) => {
         if (ws.readyState !== ws_1.WebSocket.OPEN)
@@ -220,6 +267,21 @@ streamWss.on('connection', (ws) => {
             broadcastLog('ERROR', `[STREAM_BRIDGE] Synthesis failed: ${err?.message}`);
         }
     };
+    const queuePhraseForPlayback = (textToSpeak, locale) => {
+        const phrase = textToSpeak.trim();
+        if (!phrase)
+            return;
+        speechChain = speechChain
+            .then(async () => {
+            if (ws.readyState !== ws_1.WebSocket.OPEN)
+                return;
+            await sendAudioToTwilio(phrase, locale);
+            broadcastLog('INFO', `[FAST-STREAM TTS] Phrase sent: "${phrase.slice(0, 40)}..."`);
+        })
+            .catch((err) => {
+            broadcastLog('ERROR', `[FAST-STREAM TTS] Queue failure: ${err?.message || String(err)}`);
+        });
+    };
     // ── 3. Neural loop: fires on each recognised phrase ────────────────────────
     const onRecognized = async (_s, e) => {
         if (e.result.reason !== sdk.ResultReason.RecognizedSpeech)
@@ -232,6 +294,20 @@ streamWss.on('connection', (ws) => {
             isBusy = false;
             return;
         }
+        try {
+            const detectedLanguage = sdk.AutoDetectSourceLanguageResult.fromResult(e.result)?.language;
+            if (detectedLanguage && SUPPORTED_SWITCH_LANGUAGES.includes(detectedLanguage) && detectedLanguage !== callLang) {
+                const previousLanguage = callLang;
+                callLang = detectedLanguage;
+                if (callSid && activeCalls.has(callSid)) {
+                    activeCalls.get(callSid).language = detectedLanguage;
+                }
+                broadcastLog('INFO', `[STREAM_BRIDGE] LANGUAGE_SWITCH: ${previousLanguage} -> ${detectedLanguage}`);
+            }
+        }
+        catch {
+            // Continue with the current language node if detection metadata is unavailable.
+        }
         broadcastLog('INFO', `[STREAM_BRIDGE] STT: "${userSpeech}"`);
         try {
             if (callSid && activeCalls.has(callSid)) {
@@ -239,12 +315,13 @@ streamWss.on('connection', (ws) => {
             }
             const callMetaForPrompt = callSid ? activeCalls.get(callSid) : undefined;
             const systemPrompt = buildSystemPrompt(callLang, callMetaForPrompt);
-            // ── OS³ Fast-Stream: LLM tokens stream → punctuation-chunked TTS ──────
-            const aiResponse = await streamNeuralResponse(userSpeech, systemPrompt, streamSid, ws, callLang);
+            // ── OS³ Fast-Stream: LLM tokens stream → smart buffered TTS ───────────
+            const aiResponse = await streamNeuralResponse(userSpeech, systemPrompt, ttsBuffer, (phrase) => queuePhraseForPlayback(phrase, callLang));
             if (callSid && activeCalls.has(callSid)) {
                 activeCalls.get(callSid).aiConversation.push(`AI: ${aiResponse}`);
             }
             broadcastLog('INFO', `[STREAM_BRIDGE] AI: "${aiResponse.slice(0, 80)}"`);
+            await speechChain;
             const completionKeywords = ['verified', 'qualified', 'thank you for your time', 'goodbye', 'have a great day', 'call complete'];
             let outputContract = null;
             const jsonMatch = aiResponse.match(/\{[\s\S]*"status"\s*:\s*"(QUALIFIED|FAILED)"[\s\S]*\}/);
@@ -265,12 +342,14 @@ streamWss.on('connection', (ws) => {
                 logCallToIntelligenceLedger(callMeta?.phone || '', status, ledgerOutput, callSid)
                     .catch(err => broadcastLog('ERROR', `[STREAM_BRIDGE] Ledger failed: ${err.message}`));
                 recognizer?.stopContinuousRecognitionAsync();
-                pushStream.close();
+                closePushStream();
+                cleanupCallBuffers();
                 ws.close();
             }
         }
         catch (err) {
             broadcastLog('ERROR', `[STREAM_BRIDGE] Pipeline error: ${err?.message}`);
+            cleanupCallBuffers();
         }
         finally {
             isBusy = false;
@@ -309,9 +388,11 @@ streamWss.on('connection', (ws) => {
                     ? normalizeDemoLanguage(demoConfig.language)
                     : (callSid && activeCalls.get(callSid)?.language) || 'en-ZA';
                 console.log(`[OS³] Agent Persona Locked: ${demoConfig.company || '—'} | ${demoConfig.objective || '—'} | mode=${mode}`);
-                // Start continuous recognition for this call's language
-                speechCfg.speechRecognitionLanguage = callLang;
-                recognizer = new sdk.SpeechRecognizer(speechCfg, sdk.AudioConfig.fromStreamInput(pushStream));
+                // Enable continuous language identification and a cadence gap that tolerates SA multilingual pauses.
+                speechCfg.setProperty(sdk.PropertyId.SpeechServiceConnection_LanguageIdMode, 'Continuous');
+                speechCfg.setProperty(sdk.PropertyId.Speech_SegmentationSilenceTimeoutMs, String(CADENCE_GAP_MS));
+                const autoDetectConfig = sdk.AutoDetectSourceLanguageConfig.fromLanguages(SUPPORTED_SWITCH_LANGUAGES);
+                recognizer = sdk.SpeechRecognizer.FromConfig(speechCfg, autoDetectConfig, sdk.AudioConfig.fromStreamInput(pushStream));
                 recognizer.recognized = onRecognized;
                 recognizer.startContinuousRecognitionAsync(() => broadcastLog('INFO', `[STREAM_BRIDGE] Recognizer started: ${streamSid} lang=${callLang} mode=${mode}`), (err) => broadcastLog('ERROR', `[STREAM_BRIDGE] Recognizer failed: ${String(err)}`));
                 // Language-appropriate greeting
@@ -332,7 +413,8 @@ streamWss.on('connection', (ws) => {
             if (msg.event === 'stop') {
                 broadcastLog('INFO', `[STREAM_BRIDGE] Stop: ${streamSid}`);
                 recognizer?.stopContinuousRecognitionAsync();
-                pushStream.close();
+                closePushStream();
+                cleanupCallBuffers();
             }
         }
         catch (err) {
@@ -342,6 +424,8 @@ streamWss.on('connection', (ws) => {
     ws.sendAudioToTwilio = sendAudioToTwilio;
     ws.on('close', () => {
         recognizer?.stopContinuousRecognitionAsync();
+        closePushStream();
+        cleanupCallBuffers();
         broadcastLog('INFO', `[STREAM_BRIDGE] Disconnected: ${streamSid}`);
     });
 });
@@ -706,15 +790,50 @@ app.post('/api/twilio/twiml', (req, res) => {
 function normalizeDemoLanguage(language) {
     const languageMap = {
         'Auto-Detect': 'auto',
+        'auto-detect': 'auto',
         'English': 'en-ZA',
+        'english': 'en-ZA',
         'Zulu': 'zu-ZA',
+        'isiZulu': 'zu-ZA',
+        'zulu': 'zu-ZA',
+        'isizulu': 'zu-ZA',
+        'Xhosa': 'xh-ZA',
+        'isiXhosa': 'xh-ZA',
+        'xhosa': 'xh-ZA',
+        'isixhosa': 'xh-ZA',
         'Afrikaans': 'af-ZA',
+        'afrikaans': 'af-ZA',
         'Sepedi': 'nso-ZA',
+        'sepedi': 'nso-ZA',
         'Greek': 'el-GR',
+        'greek': 'el-GR',
         'Portuguese': 'pt-PT',
-        'Mandarin': 'zh-CN'
+        'portuguese': 'pt-PT',
+        'Portuguese (Brazil)': 'pt-BR',
+        'Portuguese (Portugal)': 'pt-PT',
+        'portuguese (brazil)': 'pt-BR',
+        'portuguese (portugal)': 'pt-PT',
+        'Mandarin': 'zh-CN',
+        'mandarin': 'zh-CN'
     };
     return languageMap[language] || language;
+}
+function buildLanguageLogicGate(language) {
+    switch (language) {
+        case 'nso-ZA':
+            return 'Sepedi gate: open with "Dumela." Keep tonal delivery steady and confident. Avoid rising sentence endings that sound uncertain.';
+        case 'en-ZA':
+            return 'English gate: maintain a neutral South African accent. Do not use US or UK slang. When discussing energy, prefer "load-shedding," "Eskom," and "inverter."';
+        case 'pt-PT':
+        case 'pt-BR':
+            return 'Portuguese gate: open with "Bom dia." Adapt for the Lusophone community in South Africa and prioritize clarity over speed.';
+        case 'zh-CN':
+            return 'Mandarin gate: use formal business Mandarin. Avoid regional dialects unless the signal originated from a specific trade node.';
+        case 'el-GR':
+            return 'Greek gate: open with "Yiasas." Keep a direct, high-trust business tone.';
+        default:
+            return 'Maintain Ubuntu-Business delivery with clear regional pronunciation and stable confidence.';
+    }
 }
 function generateDemoPrompt(demoConfig, _language) {
     let objectiveText = '';
@@ -734,16 +853,55 @@ function generateDemoPrompt(demoConfig, _language) {
         ? 'Your tone is strict, ultra-professional, concise, and highly controlled.'
         : 'Your tone is extremely friendly, conversational, warm, and highly engaging.';
     const normalizedLanguage = normalizeDemoLanguage(demoConfig.language);
-    return `You are Zandi, an extremely friendly, conversational, and highly professional AI voice agent representing ${demoConfig.company || 'our company'}.
+    const languageBehavior = normalizedLanguage === 'auto'
+        ? 'Start in the caller language you detect first. If the caller changes to another supported language, switch immediately and continue in that new language from your very next sentence. Do not translate the caller back into the previous language.'
+        : `Start in ${demoConfig.language}. If the caller clearly changes to another supported language, pivot immediately into that language instead of translating it back into ${demoConfig.language}.`;
+    return `# PROTOCOL // NEURAL_INJECTION_TEMPLATE
+# MODE: DYNAMIC_CONTEXTUAL_QUALIFIER
+# MISSION: MZANZI_OS_GRID_UNIVERSAL_V3.4.1
+# NODE_TYPE: DYNAMIC_QUALIFIER
 
-Your primary objective is to be ${objectiveText}
+You are Zandi, an adaptive professional AI voice agent representing ${demoConfig.company || 'our company'}.
+
+[SYSTEM_PROMPT_STRUCTURE]
+1. Context: You are Zandi, an AI specialist for ${demoConfig.company || 'the active client account'}.
+2. Mission: ${objectiveText}
+3. Governance: Strictly enforce POPIA consent before data persistence.
+4. Handoff: On successful capture, flag status as "QUALIFIED" for the ledger.
+
+[DYNAMIC_INJECTION]
+- SCENARIO: ${demoConfig.objective || 'Dynamic business interaction'}
+- OBJECTIVE: ${objectiveText}
+
+[UNIVERSAL_BEHAVIOR]
+1. IDENTITY: "Zandi" - Adaptive Professional Agent.
+2. TONE: Ubuntu-Business (Professional, Warm, Efficient).
+3. FLOW:
+   - Greeting matched to the active regional language node
+   - Value proposition aligned to the injected objective
+   - Information gathering
+   - POPIA consent gate
+   - Conclusion and ledger write
+
+[LANGUAGE_SPECIFIC_LOGIC_GATES]
+- Sepedi (nso-ZA): Use "Dumela." Keep tonal delivery steady. Avoid rising sentence endings that sound uncertain.
+- English (en-ZA): Maintain a neutral South African accent. Do not use US or UK slang. When discussing energy, prefer "load-shedding," "Eskom," and "inverter."
+- Portuguese (pt-BR/PT): Use "Bom dia." Adapt for the Lusophone community in South Africa. Prioritize clarity over speed.
+- Mandarin (zh-CN): Use formal business Mandarin. Avoid regional dialects unless the signal originated from a specific trade node.
+- Greek (el-GR): Use "Yiasas." Maintain a direct, high-trust business tone.
 
 CRITICAL RULES:
 1. ${personaText}
 2. Keep your responses concise (1-2 sentences max) so the conversation flows rapidly.
 3. Never break character. You work for ${demoConfig.company || 'this company'}.
 4. ${demoConfig.fullName ? `You are operating this demo for ${demoConfig.fullName}.` : 'You are operating this demo for the current user.'}
-5. Language Matrix: ${normalizedLanguage === 'auto' ? 'Listen to the user and automatically seamlessly switch to whatever language they are speaking.' : `Strictly speak in ${demoConfig.language}.`}`;
+5. Language Matrix: ${languageBehavior}
+6. Supported live switching languages: ${SUPPORTED_SWITCH_LANGUAGES.join(', ')}.
+7. If the caller speaks another supported language, respond in that language immediately. Do not summarize or translate their words into the old language first.
+8. If the caller mixes languages, follow the newest or dominant supported language naturally.
+9. Keep an Ubuntu-Business tone: professional, warm, and efficient.
+10. Pronounce South African names and places carefully.
+11. Active language gate: ${buildLanguageLogicGate(normalizedLanguage === 'auto' ? 'en-ZA' : normalizedLanguage)}.`;
 }
 // ─── ZANDI RUN PROTOCOL ─── Language-Aware Greeting & System Prompt ───
 const LANGUAGE_PROTOCOLS = {
@@ -762,7 +920,7 @@ const LANGUAGE_PROTOCOLS = {
     'en-ZA': {
         greeting: 'Hello! This is Zandi from Mzansi Solutions. Am I speaking with the homeowner?',
         speechLang: 'en-ZA',
-        personality: 'Executive, tactical, and high-speed clarity.',
+        personality: 'Neutral South African, business-trusted, and crisp without US or UK slang.',
         languageName: 'English'
     },
     'xh-ZA': {
@@ -774,29 +932,39 @@ const LANGUAGE_PROTOCOLS = {
     'nso-ZA': {
         greeting: 'Dumela! Ke Zandi go tšwa go Mzansi Solutions. Na ke bolela le mong wa ntlo?',
         speechLang: 'nso-ZA',
-        personality: 'Warm, measured, and community-oriented in Sepedi tradition.',
+        personality: 'Warm, measured, tonally grounded, and community-oriented in Sepedi tradition.',
         languageName: 'Sepedi'
     },
     'pt-PT': {
-        greeting: 'Olá! Aqui é a Zandi da Mzansi Solutions. Estou a falar com o proprietário da casa?',
+        greeting: 'Bom dia! Aqui é a Zandi da Mzansi Solutions. Estou a falar com o proprietário da casa?',
         speechLang: 'pt-PT',
-        personality: 'Professional, warm, and articulate in Portuguese.',
+        personality: 'Clear, calm, and businesslike for the Lusophone community in South Africa.',
+        languageName: 'Portuguese'
+    },
+    'pt-BR': {
+        greeting: 'Bom dia! Aqui e a Zandi da Mzansi Solutions. Estou falando com o proprietario da casa?',
+        speechLang: 'pt-BR',
+        personality: 'Clear, calm, and businesslike for the Lusophone community in South Africa.',
         languageName: 'Portuguese'
     },
     'el-GR': {
-        greeting: 'Γεια σας! Είμαι η Zandi από τη Mzansi Solutions. Μιλώ με τον ιδιοκτήτη του σπιτιού;',
+        greeting: 'Yiasas! Είμαι η Zandi από τη Mzansi Solutions. Μιλώ με τον ιδιοκτήτη του σπιτιού;',
         speechLang: 'el-GR',
-        personality: 'Authoritative, precise, and courteous in Greek.',
+        personality: 'Direct, high-trust, authoritative, and precise in Greek.',
         languageName: 'Greek'
     },
     'zh-CN': {
         greeting: '您好！我是Mzansi Solutions的Zandi。请问我是在和房屋业主通话吗？',
         speechLang: 'zh-CN',
-        personality: 'Efficient, technically precise, and respectful in Mandarin.',
+        personality: 'Formal, technically precise, and respectful in business Mandarin.',
         languageName: 'Mandarin Chinese'
     }
 };
 const BASE_SYSTEM_PROMPT = `You are Zandi, an elite qualification specialist for Mzansi Solutions.
+
+=== NEURAL ROLE ===
+- ROLE: Global-Local Neural Optimizer
+- CONTEXT: Multi-Language Solar Grid (Pretoria Hub)
 
 === GLOBAL GUARDRAILS ===
 - NEVER share or repeat internal PII such as full ID numbers, addresses, or account details.
@@ -819,6 +987,13 @@ const BASE_SYSTEM_PROMPT = `You are Zandi, an elite qualification specialist for
 - Value: Eskom-Independence and Load-Shedding Security.
 - Frame the offer around freedom from load-shedding and energy cost savings.
 
+=== LANGUAGE-SPECIFIC LOGIC GATES ===
+- Sepedi (nso-ZA): Use "Dumela." Keep tonal delivery steady and avoid rising sentence endings that sound uncertain.
+- English (en-ZA): Maintain a neutral South African accent. Do not use US or UK slang. Use "load-shedding," "Eskom," and "inverter."
+- Portuguese (pt-BR/PT): Use "Bom dia." Adapt for the Lusophone community in South Africa and prioritize clarity over speed.
+- Mandarin (zh-CN): Use formal business Mandarin. Avoid regional dialects unless the signal originated from a specific trade node.
+- Greek (el-GR): Use "Yiasas." Keep a direct, high-trust business tone.
+
 === CALL FLOW ===
 Step 1 — Greeting & compliance notice (call recording disclosure).
 Step 2 — Identity verification: "Am I speaking with the homeowner?"
@@ -836,13 +1011,26 @@ function buildSystemPrompt(language, callMeta) {
     if (callMeta?.mode === 'DEMO' && callMeta.demoConfig) {
         const demoBase = generateDemoPrompt(callMeta.demoConfig);
         const protocol = LANGUAGE_PROTOCOLS[language] || LANGUAGE_PROTOCOLS['en-ZA'];
-        return `${demoBase}\n=== LANGUAGE NODE: ${language} ===\nPersonality: ${protocol.personality}\nGreet the caller in this language style.`;
+        return `${demoBase}
+=== LANGUAGE NODE: ${language} ===
+Personality: ${protocol.personality}
+Active language at call start: ${protocol.languageName}
+Language switching directive: If the caller moves into another supported language, switch with them immediately and continue in that language. Never translate the caller back into the previous language.
+Greet the caller in this language style.`;
     }
     // OPERATOR mode: full Mzansi Solutions qualification prompt
     const protocol = LANGUAGE_PROTOCOLS[language] || LANGUAGE_PROTOCOLS['en-ZA'];
-    const langDirective = protocol.languageName !== 'English'
-        ? `\n=== MANDATORY LANGUAGE DIRECTIVE ===\nYou MUST respond ENTIRELY in ${protocol.languageName}. Every word of every response must be in ${protocol.languageName}. Do NOT switch to English under any circumstances, even if the caller speaks English. The ONLY exception is the final JSON output contract block which remains in English keys.`
-        : '';
+    const langDirective = `
+=== LANGUAGE SWITCHING PROTOCOL ===
+- Active language at call start: ${protocol.languageName}.
+- Supported live switching languages: ${SUPPORTED_SWITCH_LANGUAGES.join(', ')}.
+- If the caller begins speaking another supported language, switch immediately and continue in that language.
+- Do NOT translate the caller's words back into the previous language.
+- Do NOT force the conversation to stay in the starting language if the caller has clearly changed language.
+- If the utterance is mixed, follow the dominant or most recent supported language.
+- Keep the same professional Ubuntu-Business tone after switching.
+- Apply this active language gate: ${buildLanguageLogicGate(language)}.
+- The ONLY exception that remains in English is the final JSON output contract keys.`;
     return `${BASE_SYSTEM_PROMPT}\n=== LANGUAGE NODE: ${language} ===\nPersonality: ${protocol.personality}${langDirective}\nGreet the caller in this language style.`;
 }
 // 3. VOICE HANDLER
