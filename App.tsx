@@ -186,7 +186,30 @@ const TelemetryTicker: React.FC<{ backendStatus: string }> = ({ backendStatus })
 };
 
 const WarmupBanner: React.FC<{ visible: boolean }> = ({ visible }) => {
-  if (!visible) return null;
+  const warmupWindowSeconds = 60;
+  const [remainingSeconds, setRemainingSeconds] = useState(warmupWindowSeconds);
+
+  useEffect(() => {
+    if (!visible) {
+      setRemainingSeconds(warmupWindowSeconds);
+      return;
+    }
+
+    setRemainingSeconds(warmupWindowSeconds);
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+      const nextRemaining = Math.max(warmupWindowSeconds - elapsedSeconds, 0);
+      setRemainingSeconds(nextRemaining);
+      if (nextRemaining <= 0) {
+        window.clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [visible]);
+
+  if (!visible || remainingSeconds <= 0) return null;
 
   return (
     <div className="fixed top-24 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-[320px] z-40 rounded-md border-2 border-yellow-500 bg-[#1a1a00]/95 px-4 py-3 text-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)] backdrop-blur-sm pointer-events-none">
@@ -197,7 +220,10 @@ const WarmupBanner: React.FC<{ visible: boolean }> = ({ visible }) => {
             Neural Engine Spooling Up
           </p>
           <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-yellow-500/90">
-            Initializing guided demo pathways and secure system overlays.
+            Startup can take up to 60 seconds. This warning clears automatically.
+          </p>
+          <p className="mt-2 text-[9px] font-mono uppercase tracking-[0.2em] text-yellow-300/80">
+            Auto-clears in {remainingSeconds}s
           </p>
         </div>
       </div>
@@ -1577,7 +1603,7 @@ const App: React.FC = () => {
               <span className="text-[9px] font-mono font-bold text-[#39ff88]/60 hidden lg:inline ml-1">{latencyMs}ms</span>
             )}
           </div>
-          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.0.6-stable-mzanzi</p>
+          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.0.7-stable-mzanzi</p>
         </div>
       </nav>
 
@@ -3125,7 +3151,7 @@ const App: React.FC = () => {
       {/* === OS³ FOOTER STRIP === */}
       <footer className="h-9 bg-[#0d1117] border-t border-[#1e293b] flex items-center justify-between px-5 shrink-0 text-[11px] text-[#484f58] font-mono tracking-wide">
         <div className="flex items-center gap-4">
-          <span>v4.0.6-stable-mzanzi</span>
+          <span>v4.0.7-stable-mzanzi</span>
           <span className="hidden sm:inline opacity-40">|</span>
           <span className="hidden sm:inline">&copy; 2026 JB³Ai | OS³ GRID</span>
         </div>
@@ -3156,6 +3182,8 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
 
 
 
