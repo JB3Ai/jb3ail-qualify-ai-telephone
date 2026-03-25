@@ -9,6 +9,10 @@ services/.env.local
 # Google service account key (sensitive credentials — POPIA compliance)
 google-key.json
 os3grid-neural-hub-bfeb425b03a1.json
+*.service-account.json
+*-service-account.json
+*-credentials.json
+*.credentials.json
 
 # Generated archives
 *.zip
