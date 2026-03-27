@@ -1,0 +1,18 @@
+{
+  "name": "OS3 VoiceGrid",
+  "short_name": "VoiceGrid",
+  "description": "JB3Ai OS3 VoiceGrid live telephony console.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

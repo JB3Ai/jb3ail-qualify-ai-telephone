@@ -835,6 +835,47 @@ function buildLanguageLogicGate(language) {
             return 'Maintain Ubuntu-Business delivery with clear regional pronunciation and stable confidence.';
     }
 }
+function detectSupportedLanguageFromText(text, fallback = 'en-ZA') {
+    const normalized = (text || '').trim().toLowerCase();
+    if (!normalized)
+        return fallback;
+    const languageHints = [
+        {
+            language: 'af-ZA',
+            patterns: [/\b(afrikaans|goeiedag|hallo|ek\b|jy\b|nie\b|praat|dankie|asseblief|m[ôo]re)\b/i]
+        },
+        {
+            language: 'zu-ZA',
+            patterns: [/\b(zulu|sawubona|ngikhuluma|ngiyacela|ngiyabonga|yebo|cha|uxolo|ngifuna)\b/i]
+        },
+        {
+            language: 'xh-ZA',
+            patterns: [/\b(xhosa|molo|enkosi|ndiyacela|ewe|hayi|ndifuna)\b/i]
+        },
+        {
+            language: 'nso-ZA',
+            patterns: [/\b(sepedi|dumela|ke a leboga|ke kopa|ee|aowa)\b/i]
+        },
+        {
+            language: 'pt-PT',
+            patterns: [/\b(portuguese|português|bom dia|obrigado|obrigada|ol[áa]|estou|voc[eê])\b/i]
+        },
+        {
+            language: 'el-GR',
+            patterns: [/\b(greek|γειά|γεια|ευχαριστώ|παρακαλώ)\b/i]
+        },
+        {
+            language: 'zh-CN',
+            patterns: [/[你我他她们您好谢谢请问]/]
+        }
+    ];
+    for (const hint of languageHints) {
+        if (hint.patterns.some((pattern) => pattern.test(normalized))) {
+            return hint.language;
+        }
+    }
+    return fallback;
+}
 function generateDemoPrompt(demoConfig, _language) {
     let objectiveText = '';
     if (demoConfig.objective === 'Receptionist & Routing') {
@@ -1313,7 +1354,8 @@ app.post('/api/converse', async (req, res) => {
     if (!text)
         return res.status(400).json({ error: 'No text provided' });
     try {
-        const lang = language || 'en-ZA';
+        const requestedLanguage = language || 'en-ZA';
+        const lang = detectSupportedLanguageFromText(text, requestedLanguage);
         console.log(`🔗 Internal Neural Link [${lang}] Mode: ${mode} | User: ${text}`);
         let systemPrompt = '';
         if (mode === 'DEMO' && demoConfig) {
@@ -1322,17 +1364,11 @@ app.post('/api/converse', async (req, res) => {
         else {
             systemPrompt = buildSystemPrompt(lang);
         }
-        systemPrompt += `\n\n=== POLYGLOT OVERRIDE & TEAM DYNAMICS ===
-CRITICAL INSTRUCTION: You are not just one person; you are a seamless Virtual Call Center team. 
-- If speaking English, you are Zandi (Female).
-- If the user switches to Zulu, you become Sipho (Male).
-- If Afrikaans, you become Johan (Male).
-- If Sepedi, you become Lebo (Female).
-- If Greek, you become Kostas (Male).
-
-THE HANDOVER PROTOCOL: If the user changes languages, your VERY NEXT RESPONSE must be a handover. 
-For example, if the user speaks Afrikaans to Zandi, reply IN AFRIKAANS saying: "My Afrikaans isn't great, let me pass you to Johan." Then, immediately continue Johan's persona and answer their question. 
-NEVER output raw JSON or code blocks.`;
+        systemPrompt += `\n\n=== INTERNAL NEURAL LINK FAST PATH ===
+- Reply in the caller's latest supported language immediately.
+- Do not narrate a handover or mention switching to another agent.
+- Keep the reply to one or two sharp sentences unless the caller explicitly asks for more detail.
+- Never output raw JSON or code blocks unless the call is finishing under the protocol contract.`;
         if (history) {
             systemPrompt += `\n\n=== RECENT CONVERSATION HISTORY ===\n${history}\n\nCRITICAL INSTRUCTION: Read the history above. DO NOT repeat the greeting or steps you have already completed. Move strictly to the NEXT logical step in the CALL FLOW based on the user's last message.`;
         }
@@ -1351,7 +1387,7 @@ NEVER output raw JSON or code blocks.`;
             }
         }
         const audioBuffer = await voiceService_js_1.voiceService.generateAudio(spokenText, { allowFallback: true, format: 'wav', language: lang });
-        res.json({ success: true, text: spokenText, audioBase64: buffer_1.Buffer.from(audioBuffer).toString('base64') });
+        res.json({ success: true, text: spokenText, language: lang, audioBase64: buffer_1.Buffer.from(audioBuffer).toString('base64') });
     }
     catch (err) {
         console.error('❌ Internal Neural Link Error:', err);

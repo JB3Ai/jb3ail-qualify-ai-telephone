@@ -913,6 +913,7 @@ const App: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const micPrimedRef = useRef(false);
+  const micStreamRef = useRef<MediaStream | null>(null);
   const languageMatrix = DEFAULT_CONFIG.enabledLanguages;
 
   // Editable Run Protocol state
@@ -1192,6 +1193,9 @@ const App: React.FC = () => {
       greeting = proto?.greeting || `[INTERNAL LINK ESTABLISHED] Opening call language set to ${getLanguageName(lang)}. Speakerphone active. Ready for verification.`;
     }
 
+    await wakeAudioEngine();
+    await primeMicrophone();
+
     setIsInternalCall(true);
     setIsCalling(true);
     setActiveClient({
@@ -1227,6 +1231,7 @@ const App: React.FC = () => {
   const endCall = () => {
     recognitionRef.current?.stop();
     recognitionRef.current = null;
+    releaseMicrophone();
     setIsListening(false);
     setIsCalling(false);
     setIsInternalCall(false);
@@ -1262,6 +1267,9 @@ const App: React.FC = () => {
       });
       const d = await parseJsonResponse(r);
       if (r.ok && d.success) {
+        if (d.language && d.language !== activeClient?.language) {
+          setActiveClient(prev => prev ? { ...prev, language: d.language as Language } : prev);
+        }
         setTranscriptions(prev => [...prev, { role: 'model', text: d.text, timestamp: Date.now() }]);
         if (d.audioBase64) {
           // Reuse a persistent inline player so iOS Safari can keep audio routed correctly.
@@ -1320,14 +1328,13 @@ const App: React.FC = () => {
     if (!navigator.mediaDevices?.getUserMedia) return true;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      micStreamRef.current = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true
         }
       });
-      stream.getTracks().forEach(track => track.stop());
       micPrimedRef.current = true;
       return true;
     } catch (err) {
@@ -1335,6 +1342,12 @@ const App: React.FC = () => {
       alert('Microphone access is required for voice input.');
       return false;
     }
+  }, []);
+
+  const releaseMicrophone = useCallback(() => {
+    micStreamRef.current?.getTracks().forEach(track => track.stop());
+    micStreamRef.current = null;
+    micPrimedRef.current = false;
   }, []);
 
   const toggleListening = async () => {
@@ -1351,6 +1364,7 @@ const App: React.FC = () => {
     await wakeAudioEngine();
     const micReady = await primeMicrophone();
     if (!micReady) return;
+    await new Promise(resolve => setTimeout(resolve, 150));
 
     const recognition = new SpeechRecognition();
     recognition.lang = activeClient?.language || Language.ENGLISH;

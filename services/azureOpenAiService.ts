@@ -26,7 +26,7 @@ export class AzureOpenAiService {
     const startTime = Date.now();
 
     const systemPrompt = protocolSection
-      ? `<protocol_context>\n${protocolSection}\n</protocol_context>\n\n<contract>\nRespond in clear, professional prosody under three concise sentences.\nIf the interaction is complete, append the JSON output contract specified in the protocol.\n</contract>`
+      ? `<protocol_context>\n${protocolSection}\n</protocol_context>\n\n<contract>\nRespond in clear, professional prosody under two concise sentences.\nStart with the answer immediately.\nIf the interaction is complete, append the JSON output contract specified in the protocol.\n</contract>`
       : "You are Zandi, a professional qualification agent for Mzansi Solutions.";
 
     try {
@@ -36,8 +36,8 @@ export class AzureOpenAiService {
           { role: "system", content: systemPrompt },
           { role: "user", content: userText }
         ],
-        max_tokens: 1000,
-        temperature: 0.7,
+        max_tokens: 220,
+        temperature: 0.45,
       });
       telemetryClient?.trackMetric({ name: "AI_Logic_Latency", value: Date.now() - startTime });
       return response.choices[0].message.content || "";
@@ -53,7 +53,7 @@ export class AzureOpenAiService {
    */
   async *streamResponse(userText: string, protocolSection?: string): AsyncGenerator<string> {
     const systemPrompt = protocolSection
-      ? `<protocol_context>\n${protocolSection}\n</protocol_context>\n\n<contract>\nRespond in clear, professional prosody under three concise sentences.\nIf the interaction is complete, append the JSON output contract specified in the protocol.\n</contract>`
+      ? `<protocol_context>\n${protocolSection}\n</protocol_context>\n\n<contract>\nRespond in clear, professional prosody under two concise sentences.\nStart with the answer immediately.\nIf the interaction is complete, append the JSON output contract specified in the protocol.\n</contract>`
       : "You are Zandi, a professional qualification agent for Mzansi Solutions.";
 
     const stream = await this.client.chat.completions.create({
@@ -62,8 +62,8 @@ export class AzureOpenAiService {
         { role: "system", content: systemPrompt },
         { role: "user", content: userText }
       ],
-      max_tokens: 150,
-      temperature: 0.7,
+      max_tokens: 120,
+      temperature: 0.45,
       stream: true,
     });
 
