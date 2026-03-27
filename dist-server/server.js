@@ -45,9 +45,9 @@ const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 const twilio_1 = __importDefault(require("twilio"));
 const cors_1 = __importDefault(require("cors")); // Added CORS for frontend-backend communication
-const voiceService_js_1 = require("./services/voiceService.js");
-const azureOpenAiService_js_1 = require("./services/azureOpenAiService.js");
-const clientService_js_1 = require("./services/clientService.js");
+const voiceService_1 = require("./services/voiceService");
+const azureOpenAiService_1 = require("./services/azureOpenAiService");
+const clientService_1 = require("./services/clientService");
 const googleapis_1 = require("googleapis");
 // Fix: Import Buffer explicitly for Node.js environments where it might not be globally available in the TypeScript context
 const buffer_1 = require("buffer");
@@ -56,7 +56,7 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const appInsights = __importStar(require("applicationinsights"));
 const ws_1 = require("ws");
-const TextBufferQueue_js_1 = require("./utils/TextBufferQueue.js");
+const TextBufferQueue_1 = require("./utils/TextBufferQueue");
 // Only initialise Application Insights when the connection string is configured
 if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
     appInsights.setup(process.env.APPLICATIONINSIGHTS_CONNECTION_STRING)
@@ -195,7 +195,7 @@ wss.on('connection', (ws) => {
 async function streamNeuralResponse(userSpeech, systemPrompt, textBuffer, onReadyPhrase) {
     let fullResponse = '';
     try {
-        for await (const token of azureOpenAiService_js_1.aiService.streamResponse(userSpeech, systemPrompt)) {
+        for await (const token of azureOpenAiService_1.aiService.streamResponse(userSpeech, systemPrompt)) {
             fullResponse += token;
             for (const phrase of textBuffer.enqueue(token)) {
                 if (phrase.length > 2) {
@@ -225,7 +225,7 @@ streamWss.on('connection', (ws) => {
     let callSid = '';
     let callLang = 'en-ZA';
     let isBusy = false;
-    const ttsBuffer = new TextBufferQueue_js_1.TextBufferQueue();
+    const ttsBuffer = new TextBufferQueue_1.TextBufferQueue();
     let speechChain = Promise.resolve();
     // ── 1. Azure Speech SDK ear: PushStream for 8kHz 16-bit PCM ───────────────
     // SDK v1.48 does not expose getCompressedFormat/AudioStreamContainerFormat.
@@ -254,7 +254,7 @@ streamWss.on('connection', (ws) => {
         if (ws.readyState !== ws_1.WebSocket.OPEN)
             return;
         try {
-            const audioBuffer = await voiceService_js_1.voiceService.generateAudio(textToSpeak, { format: 'mulaw', language: locale });
+            const audioBuffer = await voiceService_1.voiceService.generateAudio(textToSpeak, { format: 'mulaw', language: locale });
             await streamAudioToTwilio(ws, streamSid, audioBuffer);
             ws.send(JSON.stringify({
                 event: 'mark',
@@ -663,7 +663,7 @@ app.all(['/api/clients/sync-sheets', '/api/clients/sync-sheets/'], async (req, r
                 signup_date: new Date().toISOString(),
                 collected_data: {}
             };
-            clientService_js_1.clientService.importClients([fallbackLead]);
+            clientService_1.clientService.importClients([fallbackLead]);
             return res.status(200).json({
                 success: false,
                 message: `Lead injection sequence failed. Reason: ${apiErr.message}`,
@@ -687,7 +687,7 @@ app.all(['/api/clients/sync-sheets', '/api/clients/sync-sheets/'], async (req, r
             collected_data: {}
         });
     }
-    allLeads.forEach(lead => clientService_js_1.clientService.importClients([lead]));
+    allLeads.forEach(lead => clientService_1.clientService.importClients([lead]));
     res.json({
         success: true,
         message: `Successfully synced ${allLeads.length} leads via ${syncSource}.`,
@@ -697,12 +697,12 @@ app.all(['/api/clients/sync-sheets', '/api/clients/sync-sheets/'], async (req, r
 });
 // 1.3 Active Lead List
 app.get('/api/clients', (req, res) => {
-    res.json(clientService_js_1.clientService.getClients());
+    res.json(clientService_1.clientService.getClients());
 });
 // 2. TRIGGER CALL
 app.all('/make-call', async (req, res) => {
     try {
-        const clients = clientService_js_1.clientService.getClients();
+        const clients = clientService_1.clientService.getClients();
         const clientId = req.body.clientId;
         const phone = req.body.phone;
         const name = req.body.name || 'Manual';
@@ -1118,7 +1118,7 @@ app.all('/handle-response', async (req, res) => {
     const callMetaForPrompt = callSid ? activeCalls.get(callSid) : undefined;
     const systemPrompt = buildSystemPrompt(callLang, callMetaForPrompt);
     // AI logic — Azure OpenAI with full RUN PROTOCOL
-    const aiResponse = await azureOpenAiService_js_1.aiService.generateResponse(userSpeech, systemPrompt);
+    const aiResponse = await azureOpenAiService_1.aiService.generateResponse(userSpeech, systemPrompt);
     // Track conversation for Intelligence Ledger
     if (callSid && activeCalls.has(callSid)) {
         activeCalls.get(callSid).aiConversation.push(`User: ${userSpeech}`, `AI: ${aiResponse}`);
@@ -1246,7 +1246,7 @@ app.get('/audio-stream', async (req, res) => {
     if (!text)
         return res.sendStatus(400);
     try {
-        const audioBuffer = await voiceService_js_1.voiceService.generateAudio(text, { language });
+        const audioBuffer = await voiceService_1.voiceService.generateAudio(text, { language });
         res.set({
             'Content-Type': 'audio/basic',
             'Content-Length': audioBuffer.length
@@ -1322,7 +1322,7 @@ app.post('/api/test-voice', async (req, res) => {
         return res.status(400).json({ error: "No text provided" });
     try {
         console.log(`🧪 Testing Voice: ${text}`);
-        const audioBuffer = await voiceService_js_1.voiceService.generateAudio(text, { allowFallback: false, format: 'wav', language });
+        const audioBuffer = await voiceService_1.voiceService.generateAudio(text, { allowFallback: false, format: 'wav', language });
         res.json({ success: true, audioBase64: buffer_1.Buffer.from(audioBuffer).toString('base64') });
     }
     catch (err) {
@@ -1338,7 +1338,7 @@ app.post('/api/test-logic', async (req, res) => {
         return res.status(400).json({ error: "No text provided" });
     try {
         console.log(`🧠 Testing Logic: ${text}`);
-        const aiResponse = await azureOpenAiService_js_1.aiService.generateResponse(text);
+        const aiResponse = await azureOpenAiService_1.aiService.generateResponse(text);
         res.json({ success: true, response: aiResponse });
     }
     catch (err) {
@@ -1372,7 +1372,7 @@ app.post('/api/converse', async (req, res) => {
         if (history) {
             systemPrompt += `\n\n=== RECENT CONVERSATION HISTORY ===\n${history}\n\nCRITICAL INSTRUCTION: Read the history above. DO NOT repeat the greeting or steps you have already completed. Move strictly to the NEXT logical step in the CALL FLOW based on the user's last message.`;
         }
-        const aiResponse = await azureOpenAiService_js_1.aiService.generateResponse(text, systemPrompt);
+        const aiResponse = await azureOpenAiService_1.aiService.generateResponse(text, systemPrompt);
         // Strip JSON output contract blocks and fenced markdown so only spoken text remains.
         let spokenText = aiResponse.replace(/\{[\s\S]*?"status"\s*:\s*"(QUALIFIED|FAILED)"[\s\S]*?\}/g, '');
         spokenText = spokenText.replace(/```(?:json)?[\s\S]*?```/gi, '').trim();
@@ -1386,7 +1386,7 @@ app.post('/api/converse', async (req, res) => {
                 spokenText = plainResponse;
             }
         }
-        const audioBuffer = await voiceService_js_1.voiceService.generateAudio(spokenText, { allowFallback: true, format: 'wav', language: lang });
+        const audioBuffer = await voiceService_1.voiceService.generateAudio(spokenText, { allowFallback: true, format: 'wav', language: lang });
         res.json({ success: true, text: spokenText, language: lang, audioBase64: buffer_1.Buffer.from(audioBuffer).toString('base64') });
     }
     catch (err) {
@@ -1439,7 +1439,7 @@ async function startServer() {
         //    SA North TTS node without generating usable audio or spending quota.
         if (process.env.SPEECH_KEY && process.env.SPEECH_REGION) {
             try {
-                await voiceService_js_1.voiceService.generateAudio(' ', { allowFallback: false });
+                await voiceService_1.voiceService.generateAudio(' ', { allowFallback: false });
                 broadcastLog('SYSTEM', '[SYS] UPLINK_WARM_HEARTBEAT_SUCCESS');
             }
             catch {

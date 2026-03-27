@@ -9,9 +9,9 @@ import express from 'express';
 import { createServer } from 'http';
 import Twilio from 'twilio';
 import cors from 'cors'; // Added CORS for frontend-backend communication
-import { voiceService } from './services/voiceService.js';
-import { aiService } from './services/azureOpenAiService.js';
-import { clientService } from './services/clientService.js';
+import { voiceService } from './services/voiceService';
+import { aiService } from './services/azureOpenAiService';
+import { clientService } from './services/clientService';
 import { google } from 'googleapis';
 import { Language } from './types';
 // Fix: Import Buffer explicitly for Node.js environments where it might not be globally available in the TypeScript context
@@ -22,7 +22,7 @@ import path from 'path';
 import fs from 'fs';
 import * as appInsights from 'applicationinsights';
 import { WebSocketServer, WebSocket } from 'ws';
-import { TextBufferQueue } from './utils/TextBufferQueue.js';
+import { TextBufferQueue } from './utils/TextBufferQueue';
 
 // Only initialise Application Insights when the connection string is configured
 if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
