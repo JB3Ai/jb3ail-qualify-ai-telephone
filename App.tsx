@@ -98,6 +98,33 @@ const API_ROUTES = {
 
 const FRONTEND_ONLY_HOSTS = new Set(['www.jb3ai.com', 'jb3ai.com']);
 
+const safeLocalStorageGet = (key: string) => {
+  try {
+    return window.localStorage.getItem(key);
+  } catch (error) {
+    console.warn(`Local storage read failed for ${key}:`, error);
+    return null;
+  }
+};
+
+const safeLocalStorageSet = (key: string, value: string) => {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    console.warn(`Local storage write failed for ${key}:`, error);
+  }
+};
+
+const safeJsonParse = <T,>(raw: string | null, fallback: T): T => {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    console.warn('Stored JSON parse failed, using fallback value.', error);
+    return fallback;
+  }
+};
+
 const normalizeBackendUrl = (url?: string | null) => {
   const raw = (url || '').trim();
   if (!raw) return RENDER_BACKEND_URL;
@@ -918,15 +945,14 @@ const App: React.FC = () => {
 
   // Editable Run Protocol state
   const [languageProtocols, setLanguageProtocols] = useState<Record<string, { greeting: string; objection: string; closing: string; switch: string }>>(() => {
-    const stored = localStorage.getItem('mzansi_language_protocols');
-    return stored ? JSON.parse(stored) : LANGUAGE_PROTOCOLS;
+    return safeJsonParse(safeLocalStorageGet('mzansi_language_protocols'), LANGUAGE_PROTOCOLS);
   });
   const [editingProtocolLang, setEditingProtocolLang] = useState<string | null>(null);
   const [protocolDraft, setProtocolDraft] = useState({ greeting: '', objection: '', closing: '', switch: '' });
   const [editingCompanyConfig, setEditingCompanyConfig] = useState(false);
   const [companyConfig, setCompanyConfig] = useState<Record<string, string>>(() => {
-    const stored = localStorage.getItem('mzansi_company_config');
-    if (stored) return JSON.parse(stored);
+    const stored = safeJsonParse<Record<string, string> | null>(safeLocalStorageGet('mzansi_company_config'), null);
+    if (stored) return stored;
     return {
       companyName: DEFAULT_CONFIG.companyName,
       objectives: DEFAULT_CONFIG.objectives,
@@ -956,22 +982,22 @@ const App: React.FC = () => {
   const saveProtocol = (lang: string) => {
     const updated = { ...languageProtocols, [lang]: { ...protocolDraft } };
     setLanguageProtocols(updated);
-    localStorage.setItem('mzansi_language_protocols', JSON.stringify(updated));
+    safeLocalStorageSet('mzansi_language_protocols', JSON.stringify(updated));
     setEditingProtocolLang(null);
   };
 
   const saveCompanyConfig = () => {
     setCompanyConfig({ ...companyDraft });
-    localStorage.setItem('mzansi_company_config', JSON.stringify(companyDraft));
+    safeLocalStorageSet('mzansi_company_config', JSON.stringify(companyDraft));
     setEditingCompanyConfig(false);
   };
 
   const [backendUrl, setBackendUrl] = useState<string>(() => {
-    const stored = localStorage.getItem('mzansi_backend_url');
+    const stored = safeLocalStorageGet('mzansi_backend_url');
     return normalizeBackendUrl(stored || getDefaultBackendUrl());
   });
   const [backendStatus, setBackendStatus] = useState<'connected' | 'error' | 'loading'>('loading');
-  const [isProtocolAccepted, setIsProtocolAccepted] = useState<boolean>(localStorage.getItem('mzansi_protocol_accepted') === 'true');
+  const [isProtocolAccepted, setIsProtocolAccepted] = useState<boolean>(safeLocalStorageGet('mzansi_protocol_accepted') === 'true');
 
   const handleAcceptProtocol = async () => {
     try {
@@ -981,7 +1007,7 @@ const App: React.FC = () => {
       });
       if (response.ok) {
         setIsProtocolAccepted(true);
-        localStorage.setItem('mzansi_protocol_accepted', 'true');
+        safeLocalStorageSet('mzansi_protocol_accepted', 'true');
         setShowPopiaModal(false);
       } else {
         throw new Error('Compliance endpoint returned non-OK status.');
@@ -990,7 +1016,7 @@ const App: React.FC = () => {
       console.error('Failed to log compliance:', error);
       // Fallback for demo
       setIsProtocolAccepted(true);
-      localStorage.setItem('mzansi_protocol_accepted', 'true');
+      safeLocalStorageSet('mzansi_protocol_accepted', 'true');
       setShowPopiaModal(false);
     }
   };
@@ -1492,7 +1518,7 @@ const App: React.FC = () => {
   const saveBackendUrl = (url: string) => {
     const cleanUrl = normalizeBackendUrl(url);
     setBackendUrl(cleanUrl);
-    localStorage.setItem('mzansi_backend_url', cleanUrl);
+    safeLocalStorageSet('mzansi_backend_url', cleanUrl);
   };
 
   const resetBackendUrlToDefault = () => {
