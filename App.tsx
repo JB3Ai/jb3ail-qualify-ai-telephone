@@ -172,7 +172,7 @@ const getDefaultBackendUrl = () => {
   if (configuredUrl) return normalizeBackendUrl(configuredUrl);
   const isLocalhost =
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return normalizeBackendUrl(isLocalhost ? 'http://localhost:3000' : FLY_BACKEND_URL);
+  return normalizeBackendUrl(isLocalhost ? 'http://localhost:3000' : RENDER_BACKEND_URL);
 };
 
 /* ── Telemetry Strip ── */
@@ -1176,8 +1176,8 @@ const App: React.FC = () => {
     const primaryUrl = normalizeBackendUrl(urlOverride || backendUrl);
     // Probe order: configured URL → Fly (primary) → Render (secondary)
     const probeUrls = [primaryUrl];
-    if (primaryUrl !== FLY_BACKEND_URL) probeUrls.push(FLY_BACKEND_URL);
     if (primaryUrl !== RENDER_BACKEND_URL) probeUrls.push(RENDER_BACKEND_URL);
+    if (primaryUrl !== FLY_BACKEND_URL) probeUrls.push(FLY_BACKEND_URL);
 
     setBackendStatus('loading');
 

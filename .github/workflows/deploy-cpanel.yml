@@ -25,7 +25,7 @@ jobs:
       - name: Build app
         run: npm run build
         env:
-          VITE_BACKEND_URL: https://jb3ail-qualify-ai-telephone.fly.dev
+          VITE_BACKEND_URL: https://jb3ail-qualify-ai-telephone.onrender.com
 
       - name: Deploy dist to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
