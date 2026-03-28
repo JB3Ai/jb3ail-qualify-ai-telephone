@@ -2135,23 +2135,23 @@ const App: React.FC = () => {
               />
               {isCalling ? (
               <div className="flex flex-col h-full overflow-y-auto pb-20">
-                <div className="bg-[#111827] border border-gray-800 rounded-lg p-6 relative overflow-hidden">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div className="flex items-center gap-4 sm:gap-6">
-                      <div className="w-12 h-12 rounded-md bg-red-500/10 flex items-center justify-center text-red-500 animate-pulse border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                <div className="bg-[#111827] border border-gray-800 rounded-lg p-5 sm:p-6 relative overflow-hidden shrink-0">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-12 h-12 shrink-0 rounded-md bg-red-500/10 flex items-center justify-center text-red-500 animate-pulse border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
                         {isInternalCall ? <CpuChipIcon className="w-6 h-6 text-[#66FF66]" /> : <PhoneIcon className="w-6 h-6" />}
                       </div>
-                      <div>
-                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">
+                      <div className="min-w-0">
+                        <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tighter truncate">
                           {isInternalCall ? 'Neural Hub: Internal Link' : 'Neural Lab: Live Session'}
                         </h3>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 truncate">
                           {isInternalCall ? 'LOCAL_CORE_LINK' : `${activeClient?.name} • ${activeClient?.phone}`}
                         </p>
                       </div>
                     </div>
 
-                    <button onClick={endCall} className="w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-md text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
+                    <button onClick={endCall} className="shrink-0 w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-md text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
                       <PhoneXMarkIcon className="w-4 h-4" /> {isInternalCall ? 'Sever Neural Link' : 'Terminate Session'}
                     </button>
                   </div>
