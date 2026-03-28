@@ -1323,51 +1323,75 @@ const App: React.FC = () => {
 
     setTranscriptions(prev => [...prev, { role: 'user', text, timestamp: Date.now() }]);
     
-    try {
-      const r = await fetch(buildBackendApiUrl(backendUrl, API_ROUTES.converse), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          language: activeClient?.language || Language.ENGLISH,
-          history: conversationHistory,
-          mode: appMode,
-          demoConfig: demoConfig
-        })
-      });
-      const d = await parseJsonResponse(r);
-      if (r.ok && d.success) {
-        if (d.language && d.language !== activeClient?.language) {
-          setActiveClient(prev => prev ? { ...prev, language: d.language as Language } : prev);
-        }
-        setTranscriptions(prev => [...prev, { role: 'model', text: d.text, timestamp: Date.now() }]);
-        if (d.audioBase64) {
-          // Reuse a persistent inline player so iOS Safari can keep audio routed correctly.
-          let player = document.getElementById('os3-audio-player') as HTMLAudioElement | null;
-          if (!player) {
-            player = document.createElement('audio');
-            player.id = 'os3-audio-player';
-            player.setAttribute('playsinline', 'true');
-            document.body.appendChild(player);
+    const payload = JSON.stringify({
+      text,
+      language: activeClient?.language || Language.ENGLISH,
+      history: conversationHistory,
+      mode: appMode,
+      demoConfig: demoConfig
+    });
+
+    // Try primary backend, then fall back to the other known endpoint
+    const candidateUrls = [backendUrl];
+    if (!backendUrl.includes('fly.dev')) candidateUrls.push(FLY_BACKEND_URL);
+    else candidateUrls.push(RENDER_BACKEND_URL);
+
+    let lastError = 'No response from neural core';
+
+    for (const candidateUrl of candidateUrls) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        const r = await fetch(`${normalizeBackendUrl(candidateUrl)}${API_ROUTES.converse}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        const d = await parseJsonResponse(r);
+        if (r.ok && d.success) {
+          // Auto-switch active backend if fallback resolved
+          if (candidateUrl !== backendUrl) {
+            setBackendUrl(normalizeBackendUrl(candidateUrl));
+            setActiveBackendProvider(detectProvider(candidateUrl));
           }
-
-          player.muted = isSpeakerMuted;
-          player.src = `data:audio/wav;base64,${d.audioBase64}`;
-
-          player.play().catch(e => {
-            console.error('🍎 iOS Audio Blocked:', e);
-            alert("Tap OK to allow Zandi's audio to play.");
-            player?.play().catch(() => {});
-          });
+          if (d.language && d.language !== activeClient?.language) {
+            setActiveClient(prev => prev ? { ...prev, language: d.language as Language } : prev);
+          }
+          setTranscriptions(prev => [...prev, { role: 'model', text: d.text, timestamp: Date.now() }]);
+          if (d.audioBase64) {
+            let player = document.getElementById('os3-audio-player') as HTMLAudioElement | null;
+            if (!player) {
+              player = document.createElement('audio');
+              player.id = 'os3-audio-player';
+              player.setAttribute('playsinline', 'true');
+              document.body.appendChild(player);
+            }
+            player.muted = isSpeakerMuted;
+            player.src = `data:audio/wav;base64,${d.audioBase64}`;
+            player.play().catch(e => {
+              console.error('🍎 iOS Audio Blocked:', e);
+              alert("Tap OK to allow Zandi's audio to play.");
+              player?.play().catch(() => {});
+            });
+          }
+          setIsInternalSending(false);
+          return;
         }
-      } else {
-        throw new Error(d.error || 'No response from core');
+        lastError = d.error || 'No response from core';
+      } catch (e: any) {
+        lastError = e?.name === 'AbortError'
+          ? 'Neural core is spooling up — tap Send again in a moment'
+          : e.message;
+        // try next candidate
       }
-    } catch (e: any) {
-      setTranscriptions(prev => [...prev, { role: 'model', text: `[LINK ERROR] ${e.message}`, timestamp: Date.now() }]);
-    } finally {
-      setIsInternalSending(false);
     }
+
+    setTranscriptions(prev => [...prev, { role: 'model', text: `[LINK ERROR] ${lastError}`, timestamp: Date.now() }]);
+    setIsInternalSending(false);
   };
 
   const wakeAudioEngine = useCallback(async () => {
