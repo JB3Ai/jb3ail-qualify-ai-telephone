@@ -61,7 +61,7 @@ const CHUNK_SIZE_BYTES = Math.floor((MULAW_SAMPLE_RATE * CHUNK_SIZE_MS) / 1000);
 const CADENCE_GAP_MS = 1200;
 const SUPPORTED_SWITCH_LANGUAGES = ['en-ZA', 'zu-ZA', 'xh-ZA', 'af-ZA', 'nso-ZA', 'pt-PT', 'pt-BR', 'el-GR', 'zh-CN'];
 
-function parseAzureRegionFromEndpoint(endpoint?: string): string | null {
+function parseAzureOpenAiResourceName(endpoint?: string): string | null {
   if (!endpoint) return null;
   try {
     const hostname = new URL(endpoint).hostname.toLowerCase();
@@ -74,19 +74,24 @@ function parseAzureRegionFromEndpoint(endpoint?: string): string | null {
 
 function logAzureTopologyDiagnostics() {
   const speechRegion = (process.env.SPEECH_REGION || '').trim().toLowerCase();
-  const openAiRegion = parseAzureRegionFromEndpoint(process.env.AZURE_OPENAI_ENDPOINT);
+  const openAiRegion = (process.env.AZURE_OPENAI_REGION || '').trim().toLowerCase();
+  const openAiResourceName = parseAzureOpenAiResourceName(process.env.AZURE_OPENAI_ENDPOINT);
   const sharedResourceGroup = (process.env.AZURE_RESOURCE_GROUP || '').trim();
   const speechResourceGroup = (process.env.AZURE_SPEECH_RESOURCE_GROUP || '').trim();
   const openAiResourceGroup = (process.env.AZURE_OPENAI_RESOURCE_GROUP || '').trim();
 
-  console.log(`[STARTUP] NODE08_PREBUFFER=${PRE_BUFFER_CHUNK_SIZE_MS}ms | SPEECH_REGION=${speechRegion || 'UNSET'} | OPENAI_REGION=${openAiRegion || 'UNSET'}`);
+  console.log(`[STARTUP] NODE08_PREBUFFER=${PRE_BUFFER_CHUNK_SIZE_MS}ms | SPEECH_REGION=${speechRegion || 'UNSET'} | OPENAI_REGION=${openAiRegion || 'UNSET'} | OPENAI_RESOURCE=${openAiResourceName || 'UNSET'}`);
 
   if (speechRegion && speechRegion !== EXPECTED_AZURE_REGION) {
     console.warn(`[STARTUP WARNING] Speech region is ${speechRegion}. For Pretoria Hub latency targets, use ${EXPECTED_AZURE_REGION}.`);
   }
 
+  if (!openAiRegion) {
+    console.warn('[STARTUP NOTICE] AZURE_OPENAI_REGION is not set. Azure OpenAI region cannot be verified from the endpoint hostname alone; set AZURE_OPENAI_REGION to enable true co-location checks.');
+  }
+
   if (openAiRegion && openAiRegion !== EXPECTED_AZURE_REGION) {
-    console.warn(`[STARTUP WARNING] Azure OpenAI endpoint resolves to ${openAiRegion}. Cross-region hops from SA North can add 200ms+ latency.`);
+    console.warn(`[STARTUP WARNING] Azure OpenAI region is ${openAiRegion}. Cross-region hops from SA North can add 200ms+ latency.`);
   }
 
   if (speechRegion && openAiRegion && speechRegion !== openAiRegion) {
