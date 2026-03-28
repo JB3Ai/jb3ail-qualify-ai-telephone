@@ -24,6 +24,8 @@ jobs:
 
       - name: Build app
         run: npm run build
+        env:
+          VITE_BACKEND_URL: https://jb3ail-qualify-ai-telephone.fly.dev
 
       - name: Deploy dist to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5

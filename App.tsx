@@ -83,6 +83,7 @@ const getLanguageName = (lang: string) => {
   return names[code] || lang;
 };
 
+const FLY_BACKEND_URL = 'https://jb3ail-qualify-ai-telephone.fly.dev';
 const RENDER_BACKEND_URL = 'https://jb3ail-qualify-ai-telephone.onrender.com';
 const LOCAL_BACKEND_PORT = '3000';
 
@@ -115,6 +116,14 @@ const safeLocalStorageSet = (key: string, value: string) => {
   }
 };
 
+const safeLocalStorageClear = () => {
+  try {
+    window.localStorage.clear();
+  } catch (error) {
+    console.warn('Local storage clear failed:', error);
+  }
+};
+
 const safeJsonParse = <T,>(raw: string | null, fallback: T): T => {
   if (!raw) return fallback;
   try {
@@ -127,7 +136,7 @@ const safeJsonParse = <T,>(raw: string | null, fallback: T): T => {
 
 const normalizeBackendUrl = (url?: string | null) => {
   const raw = (url || '').trim();
-  if (!raw) return RENDER_BACKEND_URL;
+  if (!raw) return FLY_BACKEND_URL;
 
   const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 
@@ -143,12 +152,12 @@ const normalizeBackendUrl = (url?: string | null) => {
     }
 
     if (hostname.includes('azurewebsites.net') || FRONTEND_ONLY_HOSTS.has(hostname)) {
-      return RENDER_BACKEND_URL;
+      return FLY_BACKEND_URL;
     }
 
     return parsed.origin.replace(/\/$/, '');
   } catch {
-    return RENDER_BACKEND_URL;
+    return FLY_BACKEND_URL;
   }
 };
 
@@ -163,15 +172,33 @@ const getDefaultBackendUrl = () => {
   if (configuredUrl) return normalizeBackendUrl(configuredUrl);
   const isLocalhost =
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return normalizeBackendUrl(isLocalhost ? 'http://localhost:3000' : RENDER_BACKEND_URL);
+  return normalizeBackendUrl(isLocalhost ? 'http://localhost:3000' : FLY_BACKEND_URL);
 };
 
 /* ── Telemetry Strip ── */
 /* ── Uplink Badge ── */
-const UplinkBadge: React.FC<{ backendStatus: string; latencyMs: number | null }> = ({ backendStatus, latencyMs }) => {
+type BackendProvider = 'fly' | 'render' | 'local' | 'custom' | null;
+
+const detectProvider = (url: string): BackendProvider => {
+  const h = url.toLowerCase();
+  if (h.includes('localhost') || h.includes('127.0.0.1')) return 'local';
+  if (h.includes('fly.dev') || h.includes('fly.io')) return 'fly';
+  if (h.includes('onrender.com')) return 'render';
+  return 'custom';
+};
+
+const PROVIDER_META: Record<NonNullable<BackendProvider>, { label: string; color: string; bg: string; border: string }> = {
+  fly:    { label: 'FLY.IO',  color: '#a855f7', bg: '#a855f711', border: '#a855f744' },
+  render: { label: 'RENDER',  color: '#3b82f6', bg: '#3b82f611', border: '#3b82f644' },
+  local:  { label: 'LOCAL',   color: '#f59e0b', bg: '#f59e0b11', border: '#f59e0b44' },
+  custom: { label: 'CUSTOM',  color: '#6b7280', bg: '#6b728011', border: '#6b728044' },
+};
+
+const UplinkBadge: React.FC<{ backendStatus: string; latencyMs: number | null; activeProvider: BackendProvider }> = ({ backendStatus, latencyMs, activeProvider }) => {
   const isConnected = backendStatus === 'connected';
   const isLoading   = backendStatus === 'loading';
   const ping = latencyMs !== null ? `${latencyMs}ms` : isLoading ? '...' : '--';
+  const meta = activeProvider ? PROVIDER_META[activeProvider] : null;
   return (
     <div
       className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded border transition-transform duration-200 hover:-translate-y-px cursor-default ${
@@ -179,11 +206,19 @@ const UplinkBadge: React.FC<{ backendStatus: string; latencyMs: number | null }>
         : isLoading  ? 'bg-[#1a1200] border-[#f59e0b]/30 text-[#f59e0b]'
                      : 'bg-[#220000] border-[#ef4444]/30 text-[#ef4444]'
       }`}
-      title={isConnected ? `Uplink Established: ${ping}` : isLoading ? 'Connecting...' : 'Uplink Severed'}
+      title={isConnected ? `Uplink: ${meta?.label ?? '---'} — ${ping}` : isLoading ? 'Connecting...' : 'Uplink Severed'}
     >
       <div className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-[#39ff88]' : isLoading ? 'bg-[#f59e0b]' : 'bg-[#ef4444]'}`} />
       <Server className="h-4 w-4" />
       <span className="font-mono text-xs">{ping}</span>
+      {meta && (
+        <span
+          className="font-mono text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded"
+          style={{ color: meta.color, background: meta.bg, border: `1px solid ${meta.border}` }}
+        >
+          {meta.label}
+        </span>
+      )}
     </div>
   );
 };
@@ -265,7 +300,8 @@ const TelemetryStrip: React.FC<{
   archiveCount: number;
   isCalling: boolean;
   latencyMs: number | null;
-}> = ({ backendStatus, pipelineCount, activeSignals, archiveCount, isCalling, latencyMs }) => {
+  activeProvider: BackendProvider;
+}> = ({ backendStatus, pipelineCount, activeSignals, archiveCount, isCalling, latencyMs, activeProvider }) => {
   const [uptime, setUptime] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setUptime(s => s + 1), 1000);
@@ -288,6 +324,8 @@ const TelemetryStrip: React.FC<{
       <span className="telemetry-strip__item">ACTIVE_SIGNALS<span className={activeSignals > 0 || isCalling ? 'telemetry-strip__val--live' : 'telemetry-strip__val'}>:{activeSignals}</span></span>
       <Sep />
       <span className="telemetry-strip__item">TERMINAL_LINK<span className={online ? 'telemetry-strip__val--ok' : 'telemetry-strip__val--err'}>{online ? ':OK' : ':SEVERED'}</span></span>
+      <Sep />
+      <span className="telemetry-strip__item">NODE_ROUTE<span className={online ? 'telemetry-strip__val--ok' : 'telemetry-strip__val--err'}>:{activeProvider ? (activeProvider === 'fly' ? 'FLY.IO▲PRIMARY' : activeProvider === 'render' ? 'RENDER▼FALLBACK' : activeProvider.toUpperCase()) : (online ? 'RESOLVING' : 'OFFLINE')}</span></span>
       <Sep />
       <span className="telemetry-strip__item">ARCHIVE<span className={archiveCount > 0 ? 'telemetry-strip__val--hi' : 'telemetry-strip__val'}>:{archiveCount}_RECORDS</span></span>
       <Sep />
@@ -1031,6 +1069,7 @@ const App: React.FC = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const [ledgerStatus, setLedgerStatus] = useState<string>('IDLE');
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [activeBackendProvider, setActiveBackendProvider] = useState<BackendProvider>(null);
 
   useEffect(() => {
     const wsUrl = getBackendSocketUrl(backendUrl);
@@ -1134,37 +1173,39 @@ const App: React.FC = () => {
   }, [transcriptions]);
 
   const checkBackendHealth = async (urlOverride?: string) => {
-    const targetUrl = normalizeBackendUrl(urlOverride || backendUrl);
-    const t0 = performance.now();
-    try {
-      setBackendStatus('loading');
-      const res = await fetch(`${targetUrl}${API_ROUTES.health}`, { method: 'GET' });
-      const rtt = Math.round(performance.now() - t0);
-      if (!res.ok) {
-        setBackendStatus('error');
-        setLatencyMs(null);
-        return;
-      }
+    const primaryUrl = normalizeBackendUrl(urlOverride || backendUrl);
+    // Probe order: configured URL → Fly (primary) → Render (secondary)
+    const probeUrls = [primaryUrl];
+    if (primaryUrl !== FLY_BACKEND_URL) probeUrls.push(FLY_BACKEND_URL);
+    if (primaryUrl !== RENDER_BACKEND_URL) probeUrls.push(RENDER_BACKEND_URL);
 
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.toLowerCase().includes('application/json')) {
-        setBackendStatus('error');
-        setLatencyMs(null);
-        return;
-      }
+    setBackendStatus('loading');
 
-      const data = await res.json();
-      if (data?.status === 'ok') {
-        setBackendStatus('connected');
-        setLatencyMs(rtt);
-      } else {
-        setBackendStatus('error');
-        setLatencyMs(null);
-      }
-    } catch (e) {
-      setBackendStatus('error');
-      setLatencyMs(null);
+    for (const candidateUrl of probeUrls) {
+      const t0 = performance.now();
+      try {
+        const res = await fetch(`${candidateUrl}${API_ROUTES.health}`, { method: 'GET' });
+        const rtt = Math.round(performance.now() - t0);
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.toLowerCase().includes('application/json')) {
+          const data = await res.json();
+          if (data?.status === 'ok') {
+            setBackendStatus('connected');
+            setLatencyMs(rtt);
+            setActiveBackendProvider(detectProvider(candidateUrl));
+            if (candidateUrl !== primaryUrl) {
+              // Auto-switch to the working backend
+              setBackendUrl(candidateUrl);
+            }
+            return;
+          }
+        }
+      } catch { /* try next candidate */ }
     }
+
+    setBackendStatus('error');
+    setLatencyMs(null);
+    setActiveBackendProvider(null);
   };
 
   const handleStartCall = async (client: Client) => {
@@ -1580,7 +1621,7 @@ const App: React.FC = () => {
         </div>
         <VitalsHeader backendStatus={backendStatus} wsConnected={wsConnected} ledgerStatus={ledgerStatus} latencyMs={latencyMs} />
         <div className="flex items-center gap-2.5">
-          <UplinkBadge backendStatus={backendStatus} latencyMs={latencyMs} />
+          <UplinkBadge backendStatus={backendStatus} latencyMs={latencyMs} activeProvider={activeBackendProvider} />
         </div>
       </header>
 
@@ -1637,13 +1678,15 @@ const App: React.FC = () => {
             <span className={`text-[9px] font-bold uppercase tracking-widest hidden lg:inline ${
               backendStatus === 'connected' ? 'text-[#39ff88]' : backendStatus === 'loading' ? 'text-[#f59e0b]' : 'text-[#ef4444]'
             }`}>
-              {backendStatus === 'connected' ? 'Uplink Established' : backendStatus === 'loading' ? 'Connecting...' : 'Uplink Severed'}
+              {backendStatus === 'connected'
+                ? `Uplink · ${activeBackendProvider ? PROVIDER_META[activeBackendProvider].label : '---'}`
+                : backendStatus === 'loading' ? 'Connecting...' : 'Uplink Severed'}
             </span>
             {backendStatus === 'connected' && latencyMs !== null && (
               <span className="text-[9px] font-mono font-bold text-[#39ff88]/60 hidden lg:inline ml-1">{latencyMs}ms</span>
             )}
           </div>
-          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.0.7-stable-mzanzi</p>
+          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.0.8-stable-mzanzi</p>
         </div>
       </nav>
 
@@ -1692,6 +1735,7 @@ const App: React.FC = () => {
             archiveCount={archiveClients.length}
             isCalling={isCalling}
             latencyMs={latencyMs}
+            activeProvider={activeBackendProvider}
           />
         )}
 
@@ -2980,7 +3024,7 @@ const App: React.FC = () => {
                         alert("ACTION RESTRICTED: Neural Hub resets are disabled in DEMO MODE.");
                         return;
                       }
-                      localStorage.clear(); window.location.reload(); 
+                      safeLocalStorageClear(); window.location.reload(); 
                     }} className={`col-span-2 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all ${appMode === 'DEMO' ? 'bg-[#1A2333] text-slate-500 border border-[#1e293b]/40 cursor-not-allowed' : 'bg-red-600/10 text-red-600 border border-red-600/20 hover:bg-red-600 hover:text-white'}`}>
                       Reset Neural Hub
                     </button>
@@ -3023,7 +3067,7 @@ const App: React.FC = () => {
                       alert("ACTION RESTRICTED: System wipes are locked in DEMO MODE.");
                       return;
                     }
-                    localStorage.clear(); window.location.reload();
+                    safeLocalStorageClear(); window.location.reload();
                   }}
                   className={`text-[10px] font-black uppercase tracking-widest ${appMode === 'DEMO' ? 'text-slate-500 cursor-not-allowed' : 'text-red-500 hover:underline'}`}
                 >
@@ -3191,7 +3235,7 @@ const App: React.FC = () => {
       {/* === OS³ FOOTER STRIP === */}
       <footer className="h-9 bg-[#0d1117] border-t border-[#1e293b] flex items-center justify-between px-5 shrink-0 text-[11px] text-[#484f58] font-mono tracking-wide">
         <div className="flex items-center gap-4">
-          <span>v4.0.7-stable-mzanzi</span>
+          <span>v4.0.8-stable-mzanzi</span>
           <span className="hidden sm:inline opacity-40">|</span>
           <span className="hidden sm:inline">&copy; 2026 JB³Ai | OS³ GRID</span>
         </div>
