@@ -172,7 +172,7 @@ const getDefaultBackendUrl = () => {
   if (configuredUrl) return normalizeBackendUrl(configuredUrl);
   const isLocalhost =
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return normalizeBackendUrl(isLocalhost ? 'http://localhost:3000' : RENDER_BACKEND_URL);
+  return normalizeBackendUrl(isLocalhost ? 'http://localhost:3000' : FLY_BACKEND_URL);
 };
 
 /* ── Telemetry Strip ── */
@@ -1070,6 +1070,18 @@ const App: React.FC = () => {
   const [ledgerStatus, setLedgerStatus] = useState<string>('IDLE');
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [activeBackendProvider, setActiveBackendProvider] = useState<BackendProvider>(null);
+  const [preferredBackend, setPreferredBackend] = useState<'fly' | 'render'>(() =>
+    (safeLocalStorageGet('mzansi_preferred_backend') as 'fly' | 'render') || 'fly'
+  );
+
+  const switchPreferredBackend = (target: 'fly' | 'render') => {
+    const url = target === 'fly' ? FLY_BACKEND_URL : RENDER_BACKEND_URL;
+    setPreferredBackend(target);
+    safeLocalStorageSet('mzansi_preferred_backend', target);
+    setBackendUrl(url);
+    safeLocalStorageSet('mzansi_backend_url', url);
+    checkBackendHealth(url);
+  };
 
   useEffect(() => {
     const wsUrl = getBackendSocketUrl(backendUrl);
@@ -1176,8 +1188,8 @@ const App: React.FC = () => {
     const primaryUrl = normalizeBackendUrl(urlOverride || backendUrl);
     // Probe order: configured URL → Render (primary) → Fly (fallback)
     const probeUrls = [primaryUrl];
-    if (primaryUrl !== RENDER_BACKEND_URL) probeUrls.push(RENDER_BACKEND_URL);
     if (primaryUrl !== FLY_BACKEND_URL) probeUrls.push(FLY_BACKEND_URL);
+    if (primaryUrl !== RENDER_BACKEND_URL) probeUrls.push(RENDER_BACKEND_URL);
 
     setBackendStatus('loading');
 
@@ -1334,7 +1346,7 @@ const App: React.FC = () => {
     // Try primary backend, then fall back to the other known endpoint
     const candidateUrls = [backendUrl];
     if (!backendUrl.includes('fly.dev')) candidateUrls.push(FLY_BACKEND_URL);
-    else candidateUrls.push(RENDER_BACKEND_URL);
+    else candidateUrls.push(RENDER_BACKEND_URL); // Render is failover only
 
     let lastError = 'No response from neural core';
 
@@ -3059,6 +3071,49 @@ const App: React.FC = () => {
                 </div>
               </div>
               
+              {/* BACKEND NODE SELECTOR */}
+              <div className="bg-[#0d1117] border border-[#39ff88]/20 p-6 rounded-lg">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#39ff88] mb-1">ACTIVE_NODE_OVERRIDE</h3>
+                <p className="text-xs text-slate-500 mb-5">Force traffic to a specific backend. Render is failover only — use Fly for primary.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => switchPreferredBackend('fly')}
+                    className={`flex flex-col items-center gap-2 py-4 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                      preferredBackend === 'fly'
+                        ? 'bg-[#a855f7]/15 border-[#a855f7]/60 text-[#a855f7] shadow-[0_0_15px_rgba(168,85,247,0.2)]'
+                        : 'bg-[#1e293b]/40 border-[#1e293b] text-slate-500 hover:border-[#a855f7]/30 hover:text-[#a855f7]/70'
+                    }`}
+                  >
+                    <span className="text-lg">▲</span>
+                    <span>FLY.IO</span>
+                    <span className="text-[9px] opacity-60 font-mono normal-case tracking-normal">jnb · primary</span>
+                    {preferredBackend === 'fly' && backendStatus === 'connected' && latencyMs !== null && (
+                      <span className="text-[9px] font-mono text-[#a855f7]">{latencyMs}ms</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => switchPreferredBackend('render')}
+                    className={`flex flex-col items-center gap-2 py-4 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                      preferredBackend === 'render'
+                        ? 'bg-[#3b82f6]/15 border-[#3b82f6]/60 text-[#3b82f6] shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+                        : 'bg-[#1e293b]/40 border-[#1e293b] text-slate-500 hover:border-[#3b82f6]/30 hover:text-[#3b82f6]/70'
+                    }`}
+                  >
+                    <span className="text-lg">▼</span>
+                    <span>RENDER</span>
+                    <span className="text-[9px] opacity-60 font-mono normal-case tracking-normal">failover only</span>
+                    {preferredBackend === 'render' && backendStatus === 'connected' && latencyMs !== null && (
+                      <span className="text-[9px] font-mono text-[#3b82f6]">{latencyMs}ms</span>
+                    )}
+                  </button>
+                </div>
+                {backendStatus === 'connected' && (
+                  <p className="text-[9px] font-mono text-[#39ff88]/50 mt-3 text-center uppercase tracking-widest">
+                    UPLINK: {activeBackendProvider ? PROVIDER_META[activeBackendProvider].label : '---'} · {latencyMs}ms
+                  </p>
+                )}
+              </div>
+
               {/* GLOBAL TELEMETRY FEED TOGGLE */}
               <div className="bg-[#0d1117] border border-[#39ff88]/20 p-6 rounded-lg flex items-center justify-between gap-6">
                 <div>
