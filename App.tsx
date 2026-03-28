@@ -1174,7 +1174,7 @@ const App: React.FC = () => {
 
   const checkBackendHealth = async (urlOverride?: string) => {
     const primaryUrl = normalizeBackendUrl(urlOverride || backendUrl);
-    // Probe order: configured URL → Fly (primary) → Render (secondary)
+    // Probe order: configured URL → Render (primary) → Fly (fallback)
     const probeUrls = [primaryUrl];
     if (primaryUrl !== RENDER_BACKEND_URL) probeUrls.push(RENDER_BACKEND_URL);
     if (primaryUrl !== FLY_BACKEND_URL) probeUrls.push(FLY_BACKEND_URL);
@@ -1184,7 +1184,11 @@ const App: React.FC = () => {
     for (const candidateUrl of probeUrls) {
       const t0 = performance.now();
       try {
-        const res = await fetch(`${candidateUrl}${API_ROUTES.health}`, { method: 'GET' });
+        // 12s timeout per probe — gives Render cold starts a chance without freezing the UI indefinitely
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+        const res = await fetch(`${candidateUrl}${API_ROUTES.health}`, { method: 'GET', signal: controller.signal });
+        clearTimeout(timeoutId);
         const rtt = Math.round(performance.now() - t0);
         const contentType = res.headers.get('content-type') || '';
         if (res.ok && contentType.toLowerCase().includes('application/json')) {
@@ -1194,13 +1198,12 @@ const App: React.FC = () => {
             setLatencyMs(rtt);
             setActiveBackendProvider(detectProvider(candidateUrl));
             if (candidateUrl !== primaryUrl) {
-              // Auto-switch to the working backend
               setBackendUrl(candidateUrl);
             }
             return;
           }
         }
-      } catch { /* try next candidate */ }
+      } catch { /* timeout or network error — try next candidate */ }
     }
 
     setBackendStatus('error');
@@ -3011,10 +3014,10 @@ const App: React.FC = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <button onClick={() => checkBackendHealth()} disabled={backendStatus === 'loading'} className="bg-[#1e293b] text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#1e293b]/80 transition-all disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2">
-                      {backendStatus === 'loading' ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Checking...</> : 'Reboot Server'}
+                      {backendStatus === 'loading' ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Probing...</> : 'Ping Server'}
                     </button>
-                    <button onClick={() => { console.log('Recalibrating Neural Hub...'); checkBackendHealth(); }} disabled={backendStatus === 'loading'} className="bg-[#66FF66] text-[#0d1117] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all font-orbitron disabled:opacity-50 disabled:cursor-wait disabled:hover:scale-100 flex items-center justify-center gap-2">
-                      {backendStatus === 'loading' ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Working...</> : 'Recalibrate'}
+                    <button onClick={() => { checkBackendHealth(); }} disabled={backendStatus === 'loading'} className="bg-[#66FF66] text-[#0d1117] py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] transition-all font-orbitron disabled:opacity-50 disabled:cursor-wait disabled:hover:scale-100 flex items-center justify-center gap-2">
+                      {backendStatus === 'loading' ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Spooling...</> : 'Recalibrate'}
                     </button>
                     <button onClick={resetBackendUrlToDefault} className="col-span-2 bg-[#1e293b]/30 text-[#66FF66] border border-[#66FF66]/20 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-[#66FF66]/10 transition-all">
                       Reset to Default Endpoint
