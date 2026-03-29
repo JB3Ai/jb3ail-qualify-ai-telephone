@@ -3,6 +3,35 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.clientService = void 0;
 const types_1 = require("../types");
 const STORAGE_KEY = 'jb3_qualify_clients_v2';
+const safeStorageGet = (key) => {
+    try {
+        return localStorage.getItem(key);
+    }
+    catch (error) {
+        console.warn(`Client storage read failed for ${key}:`, error);
+        return null;
+    }
+};
+const safeStorageSet = (key, value) => {
+    try {
+        localStorage.setItem(key, value);
+    }
+    catch (error) {
+        console.warn(`Client storage write failed for ${key}:`, error);
+    }
+};
+const safeParseClients = (raw) => {
+    if (!raw)
+        return DEFAULT_CLIENTS;
+    try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : DEFAULT_CLIENTS;
+    }
+    catch (error) {
+        console.warn('Stored client data was invalid JSON. Resetting to defaults.', error);
+        return DEFAULT_CLIENTS;
+    }
+};
 const DEFAULT_CLIENTS = [
     {
         id: "101",
@@ -154,8 +183,7 @@ exports.clientService = {
     getClients: () => {
         if (typeof window === 'undefined')
             return DEFAULT_CLIENTS;
-        const data = localStorage.getItem(STORAGE_KEY);
-        return data ? JSON.parse(data) : DEFAULT_CLIENTS;
+        return safeParseClients(safeStorageGet(STORAGE_KEY));
     },
     addClient: (client) => {
         const clients = exports.clientService.getClients();
@@ -166,7 +194,7 @@ exports.clientService = {
         };
         clients.unshift(newClient);
         if (typeof window !== 'undefined') {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(clients));
+            safeStorageSet(STORAGE_KEY, JSON.stringify(clients));
         }
         return clients;
     },
@@ -188,7 +216,7 @@ exports.clientService = {
         });
         const updated = [...dedupedLeads, ...currentClients];
         if (typeof window !== 'undefined') {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            safeStorageSet(STORAGE_KEY, JSON.stringify(updated));
         }
         return updated;
     },
@@ -203,14 +231,14 @@ exports.clientService = {
                 transcript: transcript || clients[index].transcript
             };
             if (typeof window !== 'undefined') {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(clients));
+                safeStorageSet(STORAGE_KEY, JSON.stringify(clients));
             }
         }
         return clients;
     },
     reset: () => {
         if (typeof window !== 'undefined') {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CLIENTS));
+            safeStorageSet(STORAGE_KEY, JSON.stringify(DEFAULT_CLIENTS));
         }
         return DEFAULT_CLIENTS;
     }

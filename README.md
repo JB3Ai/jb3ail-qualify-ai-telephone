@@ -2,23 +2,28 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# 💎 JB³Ai SIGNAL_DRIVE
+> **The 60-Second Lead Pulse for Sovereign High-Performance Sales.**
 
-This contains everything you need to run your app locally.
+[![Project Status: Production](https://img.shields.io/badge/Status-Production-cyan.svg)](https://jb3ai.com/os3grid)
+[![Market: Security/Sales](https://img.shields.io/badge/Market-Security%20%26%20Sales-blue.svg)]()
 
-View your app in AI Studio: https://ai.studio/apps/97b5dd36-eccc-42c6-a473-03aee547a478
+**SIGNAL_DRIVE** is an executive-grade implementation of the OS3 VoiceGrid chassis. It bridges the "Lapse Gap" between digital marketing (FB/IG/WA) and human-grade AI engagement.
 
-## Run Locally
+## 🚀 The "Speed-to-Lead" Architecture
+In high-end security, response delay is a liability. SIGNAL_DRIVE ingests fragmented digital signals and converts them into qualified appointments in under 60 seconds.
 
-**Prerequisites:**  Node.js
+### 🛠️ Technical Features
+* **320ms Heartbeat:** Neural-standard latency for frictionless professional rapport.
+* **Multi-Source Ingestion:** Automated webhooks for Meta Ads, TikTok, and WhatsApp Business API.
+* **Identity Node:** Features **Zandi (Executive Mode)** and **Luke (Consultative)**.
+* **Strategic HUD:** React Dashboard with live "Conversion Velocity" metrics and Source Attribution (FB/IG/WA/YT).
 
+### 🔐 Security & Governance
+* **Edge-Redaction:** POPIA-sensitive PII is scrubbed on the Node.js server before hitting the ledger.
+* **Auth-Secret Protocol:** All archive POSTs are secured with X-JB3-AUTH headers to prevent data injection.
+* **Sovereign Data:** Hosted 100% in Azure South Africa North.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
-
-## Architecture notes
-
+---
+*Developed by JB³Ai | A Division of OS3 Universal Chassis.*
 - **Azure AI gateways**: When deploying or extending AI/telephony, consider routing through [Azure AI Gateway](https://learn.microsoft.com/en-us/azure/ai-services/ai-gateway/) (or equivalent) for unified routing, rate limits, and observability alongside existing Azure Speech and Gemini usage.
