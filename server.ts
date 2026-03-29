@@ -227,6 +227,9 @@ async function streamNeuralResponse(
 // Azure TTS → raw mu-law in RAM → base64 → Twilio, no disk I/O
 const streamWss = new WebSocketServer({ server, path: '/api/twilio/stream' });
 
+// Inactivity timeout: if no media arrives for this long, tear down the call.
+const INACTIVITY_TIMEOUT_MS = 45_000;
+
 streamWss.on('connection', (ws) => {
   let streamSid = '';
   let callSid   = '';
@@ -234,6 +237,25 @@ streamWss.on('connection', (ws) => {
   let isBusy    = false;
   const ttsBuffer = new TextBufferQueue();
   let speechChain: Promise<void> = Promise.resolve();
+
+  // ── Inactivity watchdog ────────────────────────────────────────────────────
+  let inactivityTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const resetInactivityTimer = () => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+      broadcastLog('WARN', `[STREAM_BRIDGE] INACTIVITY_TIMEOUT: closing ghost call sid=${streamSid}`);
+      recognizer?.stopContinuousRecognitionAsync();
+      closePushStream();
+      cleanupCallBuffers();
+      if (callSid) activeCalls.delete(callSid);
+      if (ws.readyState === WebSocket.OPEN) ws.close();
+    }, INACTIVITY_TIMEOUT_MS);
+  };
+
+  const clearInactivityTimer = () => {
+    if (inactivityTimer) { clearTimeout(inactivityTimer); inactivityTimer = null; }
+  };
 
   // ── 1. Azure Speech SDK ear: PushStream for 8kHz 16-bit PCM ───────────────
   // SDK v1.48 does not expose getCompressedFormat/AudioStreamContainerFormat.
@@ -426,9 +448,13 @@ streamWss.on('connection', (ws) => {
         // Language-appropriate greeting
         const greetProtocol = LANGUAGE_PROTOCOLS[callLang] || LANGUAGE_PROTOCOLS['en-ZA'];
         if (greetProtocol.greeting) await sendAudioToTwilio(greetProtocol.greeting, callLang);
+
+        // Start inactivity watchdog after stream is established
+        resetInactivityTimer();
       }
 
       if (msg.event === 'media') {
+        resetInactivityTimer(); // any audio activity resets the ghost-call timer
         if (isBusy) return; // don't feed STT while Zandi is speaking
         const mulaw = Buffer.from(msg.media.payload, 'base64');
         // Decode 8-bit mu-law → 16-bit linear PCM for the push stream
@@ -439,9 +465,11 @@ streamWss.on('connection', (ws) => {
 
       if (msg.event === 'stop') {
         broadcastLog('INFO', `[STREAM_BRIDGE] Stop: ${streamSid}`);
+        clearInactivityTimer();
         recognizer?.stopContinuousRecognitionAsync();
         closePushStream();
         cleanupCallBuffers();
+        if (callSid) activeCalls.delete(callSid);
       }
     } catch (err: any) {
       broadcastLog('WARN', `[STREAM_BRIDGE] Parse error: ${err?.message}`);
@@ -451,9 +479,11 @@ streamWss.on('connection', (ws) => {
   (ws as any).sendAudioToTwilio = sendAudioToTwilio;
 
   ws.on('close', () => {
+    clearInactivityTimer();
     recognizer?.stopContinuousRecognitionAsync();
     closePushStream();
     cleanupCallBuffers();
+    if (callSid) activeCalls.delete(callSid);
     broadcastLog('INFO', `[STREAM_BRIDGE] Disconnected: ${streamSid}`);
   });
 });

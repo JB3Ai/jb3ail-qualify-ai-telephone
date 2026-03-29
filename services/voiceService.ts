@@ -118,7 +118,13 @@ async function synthesize(text: string, locale: string, outputFormat: sdk.Speech
       (result) => {
         synthesizer.close();
         if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
-          resolve(new Uint8Array(result.audioData));
+          const raw = new Uint8Array(result.audioData);
+          // Prepend 150 ms of silence to WAV so browser decoder startup
+          // consumes silence rather than clipping the first syllable.
+          const out = outputFormat === sdk.SpeechSynthesisOutputFormat.Riff16Khz16BitMonoPcm
+            ? prependSilenceToWav(raw, 150)
+            : raw;
+          resolve(out);
         } else {
           reject(new Error(result.errorDetails || 'Synthesis failed'));
         }
@@ -126,6 +132,34 @@ async function synthesize(text: string, locale: string, outputFormat: sdk.Speech
       (error) => { synthesizer.close(); reject(new Error(String(error))); }
     );
   });
+}
+
+/**
+ * Prepend silence to a Riff16Khz16BitMonoPcm WAV buffer so that browser audio
+ * decoder startup latency consumes silence rather than clipping the first
+ * syllable of speech (~0.2 s clip reported on 80% of responses).
+ */
+function prependSilenceToWav(wavBuffer: Uint8Array, silenceMs: number): Uint8Array {
+  const HEADER_SIZE = 44;
+  if (wavBuffer.length < HEADER_SIZE) return wavBuffer;
+
+  // Riff16Khz16BitMonoPcm: 16 kHz, 16-bit, mono
+  const SAMPLE_RATE = 16000;
+  const BYTES_PER_SAMPLE = 2;
+  const silenceBytes = Math.floor(SAMPLE_RATE * silenceMs / 1000) * BYTES_PER_SAMPLE;
+
+  const newPcmSize = silenceBytes + (wavBuffer.length - HEADER_SIZE);
+  const result = new Uint8Array(HEADER_SIZE + newPcmSize);
+  const view = new DataView(result.buffer);
+
+  // Copy original header, then patch the two size fields
+  result.set(wavBuffer.slice(0, HEADER_SIZE), 0);
+  view.setUint32(4,  HEADER_SIZE + newPcmSize - 8, true);  // RIFF chunk size
+  view.setUint32(40, newPcmSize, true);                     // data chunk size
+
+  // Silence is already zero-initialised; copy original PCM after it
+  result.set(wavBuffer.slice(HEADER_SIZE), HEADER_SIZE + silenceBytes);
+  return result;
 }
 
 function generateSineFallback(durationSec = 1, sampleRate = 8000, freq = 440): Uint8Array {

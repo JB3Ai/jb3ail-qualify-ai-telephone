@@ -1383,12 +1383,17 @@ const App: React.FC = () => {
               document.body.appendChild(player);
             }
             player.muted = isSpeakerMuted;
+            player.oncanplay = null; // clear any stale handler before src swap
             player.src = `data:audio/wav;base64,${d.audioBase64}`;
-            player.play().catch(e => {
-              console.error('🍎 iOS Audio Blocked:', e);
-              alert("Tap OK to allow Zandi's audio to play.");
-              player?.play().catch(() => {});
-            });
+            player.load();
+            player.oncanplay = () => {
+              player!.oncanplay = null;
+              player!.play().catch(e => {
+                console.error('🍎 iOS Audio Blocked:', e);
+                alert("Tap OK to allow Zandi's audio to play.");
+                player?.play().catch(() => {});
+              });
+            };
           }
           setIsInternalSending(false);
           return;
@@ -1725,7 +1730,7 @@ const App: React.FC = () => {
               <span className="text-[9px] font-mono font-bold text-[#39ff88]/60 hidden lg:inline ml-1">{latencyMs}ms</span>
             )}
           </div>
-          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.0.8-stable-mzanzi</p>
+          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.2.0</p>
         </div>
       </nav>
 
@@ -3317,7 +3322,7 @@ const App: React.FC = () => {
       {/* === OS³ FOOTER STRIP === */}
       <footer className="h-9 bg-[#0d1117] border-t border-[#1e293b] flex items-center justify-between px-5 shrink-0 text-[11px] text-[#484f58] font-mono tracking-wide">
         <div className="flex items-center gap-4">
-          <span>v4.0.8-stable-mzanzi</span>
+          <span>v4.2.0</span>
           <span className="hidden sm:inline opacity-40">|</span>
           <span className="hidden sm:inline">&copy; 2026 JB³Ai | OS³ GRID</span>
         </div>
