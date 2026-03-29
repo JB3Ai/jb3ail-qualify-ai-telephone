@@ -23,6 +23,7 @@ import fs from 'fs';
 import * as appInsights from 'applicationinsights';
 import { WebSocketServer, WebSocket } from 'ws';
 import { TextBufferQueue } from './utils/TextBufferQueue';
+import rateLimit from 'express-rate-limit';
 
 // Only initialise Application Insights when the connection string is configured
 if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
@@ -46,8 +47,7 @@ const PORT = Number(process.env.PORT) || 10000;
 const wss = new WebSocketServer({ server, path: '/ws' });
 let wsClients: WebSocket[] = [];
 
-// Separate WebSocket server for Twilio Media Streams (Node 08: Backend Stream Logic)
-const twilioWss = new WebSocketServer({ server, path: '/media-stream' });
+// /media-stream WebSocket removed — was dead code (logged only, no audio processing)
 
 const EXPECTED_AZURE_REGION = 'southafricanorth';
 
@@ -112,35 +112,6 @@ function logAzureTopologyDiagnostics() {
 }
 
 logAzureTopologyDiagnostics();
-
-twilioWss.on('connection', (socket, req) => {
-  let streamSid: string | null = null;
-  broadcastLog('INFO', `📡 TWILIO_MEDIA_STREAM_CONNECTED: ${req.socket.remoteAddress}`);
-
-  socket.on('message', async (raw) => {
-    try {
-      const msg = JSON.parse(raw.toString());
-
-      if (msg.event === 'start') {
-        streamSid = msg.start?.streamSid ?? null;
-        const callSid = msg.start?.callSid ?? 'unknown';
-        broadcastLog('INFO', `▶️  STREAM_START: sid=${streamSid} call=${callSid}`);
-      }
-
-      if (msg.event === 'stop') {
-        broadcastLog('INFO', `⏹️  STREAM_STOP: sid=${streamSid}`);
-        streamSid = null;
-      }
-
-    } catch (err: any) {
-      broadcastLog('WARN', `STREAM_PARSE_ERROR: ${err?.message}`);
-    }
-  });
-
-  socket.on('close', () => {
-    broadcastLog('INFO', `🔌 TWILIO_MEDIA_STREAM_CLOSED: sid=${streamSid}`);
-  });
-});
 
 /**
  * Streams a mu-law audio buffer back to Twilio in 320ms chunks.
@@ -509,6 +480,24 @@ function resolveFrontendDistDir() {
   return candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html')));
 }
 
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+// Protects high-cost endpoints from accidental runaway or abuse.
+const callLimiter = rateLimit({
+  windowMs: 60_000,       // 1 minute
+  max: 10,                // max 10 outbound calls per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many call requests — slow down.' }
+});
+
+const converseLimiter = rateLimit({
+  windowMs: 60_000,       // 1 minute
+  max: 30,                // max 30 converse requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many converse requests — slow down.' }
+});
+
 // Restrict CORS to known frontend origins
 const allowedOrigins = [
   'http://localhost:3000',
@@ -791,7 +780,7 @@ app.get('/api/clients', (req, res) => {
 });
 
 // 2. TRIGGER CALL
-app.all('/make-call', async (req, res) => {
+app.all('/make-call', callLimiter, async (req, res) => {
   try {
     const clients = clientService.getClients();
     const clientId = req.body.clientId;
@@ -1477,7 +1466,7 @@ app.post('/api/test-logic', async (req, res) => {
 // 8. INTERNAL NEURAL LINK — Browser-based conversational loop
 // Accepts { text, language, history, mode, demoConfig }, runs full Zandi protocol (buildSystemPrompt),
 // returns { success, text: spokenText, audioBase64 } for browser Audio playback.
-app.post('/api/converse', async (req, res) => {
+app.post('/api/converse', converseLimiter, async (req, res) => {
   const { text, language, history, mode, demoConfig } = req.body;
   if (!text) return res.status(400).json({ error: 'No text provided' });
 
@@ -1605,3 +1594,20 @@ startServer().catch((err) => {
   console.error('💥 Fatal server startup error:', err);
   process.exit(1);
 });
+
+// ── Graceful shutdown (Fly.io sends SIGTERM on deploy/scale-down) ─────────────
+function gracefulShutdown(signal: string) {
+  console.log(`[SHUTDOWN] ${signal} received — closing server gracefully`);
+  server.close(() => {
+    console.log('[SHUTDOWN] HTTP server closed');
+    process.exit(0);
+  });
+  // Force exit if connections linger beyond 10s
+  setTimeout(() => {
+    console.warn('[SHUTDOWN] Forcing exit after 10s timeout');
+    process.exit(1);
+  }, 10_000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
