@@ -1525,6 +1525,15 @@ app.post('/api/converse', async (req, res) => {
 });
 
 async function startServer() {
+  // Bind port FIRST — Fly.io smoke check probes immediately on container start.
+  // If listen() is deferred behind async middleware setup, Fly sees "not listening"
+  // and marks the release as unstable, triggering a rollback.
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n[STARTUP] Node v${process.versions.node} | ENV=${process.env.NODE_ENV || 'development'} | PORT=${PORT}`);
+    console.log(`[MZANZI ENGINE] Live and listening on port ${PORT}`);
+    console.log(`🔄 Initializing Neural Link Recovery Sequence...`);
+  });
+
   // Global Error Handler for API routes
   app.use('/api', (err: any, req: any, res: any, next: any) => {
     console.error('🔥 API Error:', err);
@@ -1554,12 +1563,6 @@ async function startServer() {
       res.sendFile(path.join(distDir, 'index.html'));
     });
   }
-
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n[STARTUP] Node v${process.versions.node} | ENV=${process.env.NODE_ENV || 'development'} | PORT=${PORT}`);
-    console.log(`[MZANZI ENGINE] Live and listening on port ${PORT}`);
-    console.log(`🔄 Initializing Neural Link Recovery Sequence...`);
-  });
 
   // ── Node 08: Pre-Flight Warm-Up ─────────────────────────────────────────
   // Keeps the SA North (Johannesburg) Azure Speech node and Google Sheets
