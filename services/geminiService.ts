@@ -54,6 +54,9 @@ function buildSystemPrompt(config: CallConfig): string {
       case Language.MANDARIN:
         base = "- If the user speaks **Mandarin** (zh-CN), switch to formal business Mandarin immediately. Avoid regional dialects unless the signal originated from a specific trade node. Keep responses precise and do not translate their Mandarin back into the previous language.";
         break;
+      case Language.FRENCH:
+        base = "- If the user speaks **French** (fr-FR), switch to French immediately. Open with 'Bonjour'. Maintain polished, professional French adapted for a South African Francophone business context. Do not translate their French back into the previous language.";
+        break;
       default:
         base = "- Use English as the fallback base language.";
     }

@@ -50,7 +50,7 @@ const DEFAULT_CONFIG: CallConfig = {
   companyName: "Mzansi Enterprise",
   objectives: "Verify lead contact information, confirm marketing consent, and gauge employment status.",
   parameters: ["Email Address", "Phone Number", "Employment Status", "Residential Area"],
-  enabledLanguages: [Language.ENGLISH, Language.ZULU, Language.XHOSA, Language.AFRIKAANS, Language.SEPEDI, Language.PORTUGUESE, Language.GREEK, Language.MANDARIN],
+  enabledLanguages: [Language.ENGLISH, Language.ZULU, Language.XHOSA, Language.AFRIKAANS, Language.SEPEDI, Language.PORTUGUESE, Language.GREEK, Language.MANDARIN, Language.FRENCH],
   defaultLanguage: Language.ENGLISH,
   customPhrases: {
     [Language.ENGLISH]: {
@@ -78,7 +78,10 @@ const getLanguageName = (lang: string) => {
     'nso': 'Sepedi',
     'pt': 'Portuguese',
     'el': 'Greek',
-    'zh': 'Mandarin'
+    'zh': 'Mandarin',
+    'fr': 'French',
+    'tn': 'Setswana',
+    'st': 'Sesotho'
   };
   return names[code] || lang;
 };
@@ -665,7 +668,7 @@ const DataInbox: React.FC<{
 }> = ({ onSync, onClear, clients, onStartCall, backendStatus, protocolMode, setProtocolMode, isSyncing }) => {
   const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
   const localLanguages = ['en-ZA', 'zu-ZA', 'xh-ZA', 'af-ZA', 'nso-ZA'];
-  const intlLanguages = ['pt-PT', 'el-GR', 'zh-CN'];
+  const intlLanguages = ['pt-PT', 'el-GR', 'zh-CN', 'fr-FR'];
 
   const pendingClients = clients.filter(c => {
     if (c.status !== 'pending' && c.status !== 'READY_FOR_EXECUTION') return false;
@@ -881,6 +884,24 @@ const LANGUAGE_PROTOCOLS: Record<Language, { greeting: string; objection: string
     objection: "我明白您很忙。只需 60 秒即可核实您的信息，以确保您获得最佳费率。",
     closing: "太好了，一切已核实。我们很快会向您发送确认信息。祝您生活愉快！",
     switch: "系统胜过努力。正在初始化太阳能验证信号。"
+  },
+  [Language.FRENCH]: {
+    greeting: "Bonjour ! Je suis Zandi de Mzansi Solutions. Est-ce que je parle bien au propriétaire de la maison ?",
+    objection: "Je comprends que vous êtes occupé. Cela ne prendra que 60 secondes pour vérifier vos informations.",
+    closing: "Parfait, tout est vérifié. Nous vous enverrons la confirmation sous peu. Bonne journée !",
+    switch: "Les systèmes surpassent l'effort. Initialisation du signal de vérification solaire."
+  },
+  [Language.SETSWANA]: {
+    greeting: "Dumela! Ke Zandi go tswa go Mzansi Solutions. A ke bua le mong wa ntlo?",
+    objection: "Ke a tlhaloganya gore o tshwaragane. Se se tla tsaya metsotso e 60 feela go netefatsa dintlha tsa gago.",
+    closing: "Go siame, tsotlhe di netefaditswi. Re tla go romela netefatso ka bonako. Ba le letsatsi le le monate!",
+    switch: "Ditsamaiso di fenya boiteko. Go simolola sesupo sa netefatso ya maatla a letsatsi."
+  },
+  [Language.SESOTHO]: {
+    greeting: "Lumela! Ke Zandi ho tswa ho Mzansi Solutions. Na ke bua le mong wa ntlo?",
+    objection: "Ke a utlwisisa hore o tshwetse. Sena se tla nka metsotso e 60 feela ho netefatsa dintlha tsa hao.",
+    closing: "Ho lokile, tsohle di netefaditswe. Re tla o romela netefatso haufinyane. Ba le letsatsi le monate!",
+    switch: "Ditsamaiso di fenya boiteko. Ho qala sona sa netefatso ya matla a letsatsi."
   }
 };
 
@@ -937,7 +958,7 @@ const App: React.FC = () => {
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [isCalling, setIsCalling] = useState(false);
   const [transcriptions, setTranscriptions] = useState<TranscriptionEntry[]>([]);
-  const ALL_LANGUAGES = [Language.ENGLISH, Language.ZULU, Language.XHOSA, Language.AFRIKAANS, Language.SEPEDI, Language.PORTUGUESE, Language.GREEK, Language.MANDARIN];
+  const ALL_LANGUAGES = [Language.ENGLISH, Language.ZULU, Language.XHOSA, Language.AFRIKAANS, Language.SEPEDI, Language.PORTUGUESE, Language.GREEK, Language.MANDARIN, Language.FRENCH];
   const [activeLangs, setActiveLangs] = useState<Set<Language>>(() => new Set(ALL_LANGUAGES));
   const [viewingTranscriptClient, setViewingTranscriptClient] = useState<Client | null>(null);
   const [showPopiaModal, setShowPopiaModal] = useState<boolean>(true);
@@ -1753,7 +1774,7 @@ const App: React.FC = () => {
               <span className="text-[9px] font-mono font-bold text-[#39ff88]/60 hidden lg:inline ml-1">{latencyMs}ms</span>
             )}
           </div>
-          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.2.0</p>
+          <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.2.2</p>
           {installVisible && (
             <button
               onClick={handleInstall}
@@ -1894,6 +1915,17 @@ const App: React.FC = () => {
                     </button>
                   );
                 })}
+                {/* PENDING languages — no TTS yet */}
+                {([Language.SETSWANA, Language.SESOTHO] as Language[]).map(lang => (
+                  <span
+                    key={lang}
+                    title="Voice not yet available in southafricanorth — coming soon"
+                    className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border border-amber-500/30 bg-amber-500/5 text-amber-500/60 flex items-center gap-2 cursor-not-allowed"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500/50" />
+                    {getLanguageName(lang)} <span className="text-[7px] opacity-60">PENDING</span>
+                  </span>
+                ))}
               </div>
 
               {/* Pipeline Stats Bar */}
@@ -2582,6 +2614,9 @@ const App: React.FC = () => {
                           <option value="Greek">Greek</option>
                           <option value="Portuguese">Portuguese</option>
                           <option value="Mandarin">Mandarin</option>
+                          <option value="French">French</option>
+                          <option value="Setswana" disabled>Setswana (Coming Soon)</option>
+                          <option value="Sesotho" disabled>Sesotho (Coming Soon)</option>
                         </select>
                       </div>
                       <button
@@ -3358,7 +3393,7 @@ const App: React.FC = () => {
       {/* === OS³ FOOTER STRIP === */}
       <footer className="h-9 bg-[#0d1117] border-t border-[#1e293b] flex items-center justify-between px-5 shrink-0 text-[11px] text-[#484f58] font-mono tracking-wide">
         <div className="flex items-center gap-4">
-          <span>v4.2.0</span>
+          <span>v4.2.2</span>
           <span className="hidden sm:inline opacity-40">|</span>
           <span className="hidden sm:inline">&copy; 2026 JB³Ai | OS³ GRID</span>
         </div>

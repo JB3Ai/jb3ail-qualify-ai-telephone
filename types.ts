@@ -6,7 +6,11 @@ export enum Language {
   SEPEDI = 'nso-ZA',
   PORTUGUESE = 'pt-PT',
   GREEK = 'el-GR',
-  MANDARIN = 'zh-CN'
+  MANDARIN = 'zh-CN',
+  FRENCH = 'fr-FR',
+  // PENDING — voices not yet available in southafricanorth
+  SETSWANA = 'tn-ZA',
+  SESOTHO = 'st-ZA'
 }
 
 export interface TranscriptionEntry {

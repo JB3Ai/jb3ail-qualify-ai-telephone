@@ -59,7 +59,7 @@ const CHUNK_SIZE_MS = PRE_BUFFER_CHUNK_SIZE_MS;
 const MULAW_SAMPLE_RATE = 8000;
 const CHUNK_SIZE_BYTES = Math.floor((MULAW_SAMPLE_RATE * CHUNK_SIZE_MS) / 1000); // 2560
 const CADENCE_GAP_MS = 1200;
-const SUPPORTED_SWITCH_LANGUAGES = ['en-ZA', 'zu-ZA', 'xh-ZA', 'af-ZA', 'nso-ZA', 'pt-PT', 'pt-BR', 'el-GR', 'zh-CN'];
+const SUPPORTED_SWITCH_LANGUAGES = ['en-ZA', 'zu-ZA', 'xh-ZA', 'af-ZA', 'nso-ZA', 'pt-PT', 'pt-BR', 'el-GR', 'zh-CN', 'fr-FR'];
 
 function parseAzureOpenAiResourceName(endpoint?: string): string | null {
   if (!endpoint) return null;
@@ -905,7 +905,10 @@ function normalizeDemoLanguage(language: string): string {
     'portuguese (brazil)': 'pt-BR',
     'portuguese (portugal)': 'pt-PT',
     'Mandarin': 'zh-CN',
-    'mandarin': 'zh-CN'
+    'mandarin': 'zh-CN',
+    'French': 'fr-FR',
+    'french': 'fr-FR',
+    'français': 'fr-FR'
   };
   return languageMap[language] || language;
 }
@@ -923,6 +926,8 @@ function buildLanguageLogicGate(language: string): string {
       return 'Mandarin gate: use formal business Mandarin. Avoid regional dialects unless the signal originated from a specific trade node.';
     case 'el-GR':
       return 'Greek gate: open with "Yiasas." Keep a direct, high-trust business tone.';
+    case 'fr-FR':
+      return 'French gate: open with "Bonjour." Maintain polished, professional French adapted for a South African Francophone business context.';
     default:
       return 'Maintain Ubuntu-Business delivery with clear regional pronunciation and stable confidence.';
   }
@@ -960,6 +965,10 @@ function detectSupportedLanguageFromText(text: string, fallback = 'en-ZA'): stri
     {
       language: 'zh-CN',
       patterns: [/[你我他她们您好谢谢请问]/]
+    },
+    {
+      language: 'fr-FR',
+      patterns: [/\b(french|fran[çc]ais|bonjour|bonsoir|merci|s'il vous pla[îi]t|oui|non|je\b|vous\b|nous\b|est-ce que|qu'est-ce)\b/i]
     }
   ];
 
@@ -1096,6 +1105,12 @@ const LANGUAGE_PROTOCOLS: Record<string, { greeting: string; speechLang: string;
     speechLang: 'zh-CN',
     personality: 'Formal, technically precise, and respectful in business Mandarin.',
     languageName: 'Mandarin Chinese'
+  },
+  'fr-FR': {
+    greeting: 'Bonjour ! Je suis Zandi de Mzansi Solutions. Est-ce que je parle bien au propriétaire de la maison ?',
+    speechLang: 'fr-FR',
+    personality: 'Polished, warm, and professional — clear French adapted for a South African business context.',
+    languageName: 'French'
   }
 };
 
@@ -1132,6 +1147,7 @@ const BASE_SYSTEM_PROMPT = `You are Zandi, an elite qualification specialist for
 - Portuguese (pt-BR/PT): Use "Bom dia." Adapt for the Lusophone community in South Africa and prioritize clarity over speed.
 - Mandarin (zh-CN): Use formal business Mandarin. Avoid regional dialects unless the signal originated from a specific trade node.
 - Greek (el-GR): Use "Yiasas." Keep a direct, high-trust business tone.
+- French (fr-FR): Use "Bonjour." Maintain polished, professional French. Adapt energy and solar terminology for a Francophone South African context.
 
 === CALL FLOW ===
 Step 1 — Greeting & compliance notice (call recording disclosure).

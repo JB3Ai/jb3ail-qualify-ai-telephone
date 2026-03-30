@@ -30,6 +30,9 @@ const VOICE_MATRIX: Record<string, string> = {
   'pt-br': 'pt-BR-AntonioNeural',
   'mandarin': 'zh-CN-YunxiNeural',
   'zh-cn': 'zh-CN-YunxiNeural',
+  'french': 'fr-FR-DeniseNeural',
+  'fr-fr': 'fr-FR-DeniseNeural',
+  'denise': 'fr-FR-DeniseNeural',
   'default': 'en-ZA-LeahNeural',
 };
 
@@ -44,6 +47,7 @@ const PROSODY: Record<string, { rate: string; pitch?: string }> = {
   'pt-br':  { rate: '-8%' },
   'el-gr':  { rate: '-4%' },
   'zh-cn':  { rate: '-2%' },
+  'fr-fr':  { rate: '-5%' },
 };
 
 // Fallback voices for languages whose primary Neural voice is unavailable in southafricanorth.
