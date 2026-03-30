@@ -1486,7 +1486,9 @@ app.post('/api/converse', converseLimiter, async (req, res) => {
 - Reply in the caller's latest supported language immediately.
 - Do not narrate a handover or mention switching to another agent.
 - Keep the reply to one or two sharp sentences unless the caller explicitly asks for more detail.
-- Never output raw JSON or code blocks unless the call is finishing under the protocol contract.`;
+- Never output raw JSON or code blocks unless the call is finishing under the protocol contract.
+- If the caller uses profanity, offensive language, or says something unclear, do NOT end the conversation. Respond politely with "Excuse me?" or "I beg your pardon?" in the active language and continue the call flow.
+- If the input is silence, filler, or completely off-topic, gently redirect back to the qualification purpose with a short bridging phrase.`;
 
     if (history) {
       systemPrompt += `\n\n=== RECENT CONVERSATION HISTORY ===\n${history}\n\nCRITICAL INSTRUCTION: Read the history above. DO NOT repeat the greeting or steps you have already completed. Move strictly to the NEXT logical step in the CALL FLOW based on the user's last message.`;

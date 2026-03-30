@@ -36,14 +36,22 @@ const VOICE_MATRIX: Record<string, string> = {
 // Per-language SSML prosody — zero latency, prevents Azure hyper-articulation on Nguni voices
 const PROSODY: Record<string, { rate: string; pitch?: string }> = {
   'en-za':  { rate: '-2%' },
-  'xh-za':  { pitch: '-12%', rate: '-5%' },
-  'zu-za':  { pitch: '-5%',  rate: '-5%' },
+  'xh-za':  { pitch: '-10%', rate: '-5%' },
+  'zu-za':  { pitch: '-8%',  rate: '-6%' },   // increased pitch drop — ThembaNeural sounds Jamaican at default
   'nso-za': { pitch: '-18%', rate: '-7%' },
   'af-za':  { rate: '-3%' },
   'pt-pt':  { rate: '-8%' },
   'pt-br':  { rate: '-8%' },
   'el-gr':  { rate: '-4%' },
   'zh-cn':  { rate: '-2%' },
+};
+
+// Fallback voices for languages whose primary Neural voice is unavailable in southafricanorth.
+// Azure Cognitive Services regional availability: xh-ZA and nso-ZA voices may not be deployed
+// in southafricanorth — fall through to en-ZA-LeahNeural with the original text still in target language.
+const VOICE_FALLBACK: Record<string, string> = {
+  'xh-za':  'en-ZA-LeahNeural',
+  'nso-za': 'en-ZA-LeahNeural',
 };
 const DEFAULT_PROSODY: { rate: string; pitch?: string } = { rate: '-3%' };
 const PHONETIC_BREAK_LOCALES = new Set(['nso-za', 'zh-cn']);
@@ -93,14 +101,14 @@ function buildSsml(text: string, voiceName: string, bcp47Locale: string, normali
   return `<speak version='1.0' xml:lang='${bcp47Locale}'><voice xml:lang='${bcp47Locale}' name='${voiceName}'><prosody ${attrs}>${buildSsmlText(text, normalizedLocale)}</prosody></voice></speak>`;
 }
 
-async function synthesize(text: string, locale: string, outputFormat: sdk.SpeechSynthesisOutputFormat): Promise<Uint8Array> {
+async function synthesize(text: string, locale: string, outputFormat: sdk.SpeechSynthesisOutputFormat, voiceOverride?: string): Promise<Uint8Array> {
   const key    = (process.env.SPEECH_KEY    || '').trim();
   const region = (process.env.SPEECH_REGION || '').trim().toLowerCase();
   if (!key || !region) throw new Error('SPEECH_KEY or SPEECH_REGION missing');
 
   const normalizedLocale = normalizeLocale(locale);
   const bcp47Locale      = toBcp47(normalizedLocale);
-  const voiceName        = resolveVoice(locale);
+  const voiceName        = voiceOverride ?? resolveVoice(locale);
 
   const speechConfig = sdk.SpeechConfig.fromSubscription(key, region);
   speechConfig.speechSynthesisVoiceName    = voiceName;
@@ -197,12 +205,25 @@ export const voiceService = {
       ? sdk.SpeechSynthesisOutputFormat.Riff16Khz16BitMonoPcm   // browser playback
       : sdk.SpeechSynthesisOutputFormat.Raw8Khz8BitMonoMULaw;   // Twilio <Play>
 
+    const primaryLocale = normalizeLocale(options?.language ?? 'en-ZA');
     try {
       return await synthesize(inputText, options?.language ?? 'en-ZA', outputFormat);
     } catch (error: any) {
       const msg = String(error?.message || error);
-      console.error(`⚠️ Speech synthesis failed [${options?.language ?? 'en-ZA'}]: ${msg}`);
+      console.error(`⚠️ Speech synthesis failed [${primaryLocale}]: ${msg}`);
       if (!allowFallback) throw new Error(msg);
+
+      // Retry with regional fallback voice if available (e.g. xh-ZA/nso-ZA not in southafricanorth)
+      const fallbackVoice = VOICE_FALLBACK[primaryLocale];
+      if (fallbackVoice) {
+        console.warn(`⚠️ Retrying with fallback voice ${fallbackVoice} for locale ${primaryLocale}`);
+        try {
+          return await synthesize(inputText, 'en-ZA', outputFormat, fallbackVoice);
+        } catch (fallbackErr: any) {
+          console.error(`⚠️ Fallback voice also failed: ${String(fallbackErr?.message || fallbackErr)}`);
+        }
+      }
+
       return generateSineFallback();
     }
   }
