@@ -1002,6 +1002,29 @@ const App: React.FC = () => {
   const [companyDraft, setCompanyDraft] = useState<Record<string, string>>({});
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
+  // ── PWA Install Prompt ────────────────────────────────────────────────────
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installVisible, setInstallVisible] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setInstallVisible(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setInstallVisible(false));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setInstallVisible(false);
+    setInstallPrompt(null);
+  };
+
   const language = activeLangs.size === ALL_LANGUAGES.length ? 'Multi-Language' : activeLangs.size === 0 ? 'None' : activeLangs.size === 1 ? getLanguageName([...activeLangs][0]) : `${activeLangs.size} Languages`;
 
   const toggleLang = (lang: Language) => {
@@ -1731,6 +1754,19 @@ const App: React.FC = () => {
             )}
           </div>
           <p className="text-[9px] text-[#484f58] font-mono tracking-tighter hidden lg:block">v4.2.0</p>
+          {installVisible && (
+            <button
+              onClick={handleInstall}
+              title="Install OS3 VoiceGrid as desktop app"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-[#39ff88]/40 bg-[#39ff88]/10 hover:bg-[#39ff88]/20 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-[#39ff88]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                <polyline points="8 11 12 15 16 11"/><line x1="12" y1="7" x2="12" y2="15"/>
+              </svg>
+              <span className="text-[9px] font-bold text-[#39ff88] uppercase tracking-widest hidden lg:inline">Install</span>
+            </button>
+          )}
         </div>
       </nav>
 
