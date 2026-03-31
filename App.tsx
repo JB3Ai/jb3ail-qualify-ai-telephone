@@ -1516,37 +1516,25 @@ const App: React.FC = () => {
       return;
     }
 
+    // PTT style: single phrase, auto-stop on silence
     const recognition = new SpeechRecognition();
     recognition.lang = activeClient?.language || Language.ENGLISH;
-    recognition.interimResults = true;
-    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.continuous = false;
     recognition.onstart = () => setIsListening(true);
     recognition.onresult = (event: any) => {
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        }
-      }
-      if (finalTranscript) {
-        setInternalInput(finalTranscript);
-        handleInternalSend(finalTranscript);
+      const transcript = event.results[0]?.[0]?.transcript;
+      if (transcript) {
+        setInternalInput(transcript);
+        handleInternalSend(transcript);
       }
     };
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
-      if (event.error !== 'no-speech') {
-        recognitionRef.current = null;
-        setIsListening(false);
-      }
+      recognitionRef.current = null;
+      setIsListening(false);
     };
     recognition.onend = () => {
-      // Auto-restart if still in listening mode (mobile browsers
-      // stop recognition after silence; continuous keeps it alive)
-      if (recognitionRef.current && isListening) {
-        try { recognitionRef.current.start(); } catch { /* already running */ }
-        return;
-      }
       recognitionRef.current = null;
       setIsListening(false);
     };
