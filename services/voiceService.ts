@@ -50,9 +50,12 @@ const PROSODY: Record<string, { rate: string; pitch?: string }> = {
   'fr-fr':  { rate: '-5%' },
 };
 
-// Fallback voices for languages whose primary Neural voice is unavailable in southafricanorth.
-// Azure Cognitive Services regional availability: xh-ZA and nso-ZA voices may not be deployed
-// in southafricanorth — fall through to en-ZA-LeahNeural with the original text still in target language.
+// Locales whose correct Neural voices are unavailable in southafricanorth.
+// If SPEECH_REGION_EXTENDED + SPEECH_KEY_EXTENDED env vars are set, the synthesis
+// is retried against that secondary region (which should have these voices).
+// If not configured, falls through to en-ZA-LeahNeural as a last resort.
+const CROSS_REGION_LOCALES = new Set(['xh-za', 'nso-za']);
+
 const VOICE_FALLBACK: Record<string, string> = {
   'xh-za':  'en-ZA-LeahNeural',
   'nso-za': 'en-ZA-LeahNeural',
@@ -105,9 +108,9 @@ function buildSsml(text: string, voiceName: string, bcp47Locale: string, normali
   return `<speak version='1.0' xml:lang='${bcp47Locale}'><voice xml:lang='${bcp47Locale}' name='${voiceName}'><prosody ${attrs}>${buildSsmlText(text, normalizedLocale)}</prosody></voice></speak>`;
 }
 
-async function synthesize(text: string, locale: string, outputFormat: sdk.SpeechSynthesisOutputFormat, voiceOverride?: string): Promise<Uint8Array> {
-  const key    = (process.env.SPEECH_KEY    || '').trim();
-  const region = (process.env.SPEECH_REGION || '').trim().toLowerCase();
+async function synthesize(text: string, locale: string, outputFormat: sdk.SpeechSynthesisOutputFormat, voiceOverride?: string, regionOverride?: string): Promise<Uint8Array> {
+  const key    = (regionOverride ? process.env.SPEECH_KEY_EXTENDED || process.env.SPEECH_KEY : process.env.SPEECH_KEY || '').trim();
+  const region = (regionOverride ?? process.env.SPEECH_REGION ?? '').trim().toLowerCase();
   if (!key || !region) throw new Error('SPEECH_KEY or SPEECH_REGION missing');
 
   const normalizedLocale = normalizeLocale(locale);
@@ -217,10 +220,23 @@ export const voiceService = {
       console.error(`⚠️ Speech synthesis failed [${primaryLocale}]: ${msg}`);
       if (!allowFallback) throw new Error(msg);
 
-      // Retry with regional fallback voice if available (e.g. xh-ZA/nso-ZA not in southafricanorth)
+      // Step 1: retry with secondary Azure region (correct voice, different region)
+      if (CROSS_REGION_LOCALES.has(primaryLocale)) {
+        const extRegion = (process.env.SPEECH_REGION_EXTENDED || '').trim().toLowerCase();
+        if (extRegion) {
+          console.warn(`⚠️ Retrying [${primaryLocale}] against extended region ${extRegion}`);
+          try {
+            return await synthesize(inputText, options?.language ?? 'en-ZA', outputFormat, undefined, extRegion);
+          } catch (extErr: any) {
+            console.error(`⚠️ Extended region also failed: ${String(extErr?.message || extErr)}`);
+          }
+        }
+      }
+
+      // Step 2: last resort — en-ZA voice reads the text (accent is wrong but audio plays)
       const fallbackVoice = VOICE_FALLBACK[primaryLocale];
       if (fallbackVoice) {
-        console.warn(`⚠️ Retrying with fallback voice ${fallbackVoice} for locale ${primaryLocale}`);
+        console.warn(`⚠️ Retrying with en-ZA fallback voice for locale ${primaryLocale}`);
         try {
           return await synthesize(inputText, 'en-ZA', outputFormat, fallbackVoice);
         } catch (fallbackErr: any) {
