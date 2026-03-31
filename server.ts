@@ -939,12 +939,16 @@ function detectSupportedLanguageFromText(text: string, fallback = 'en-ZA'): stri
 
   const languageHints: Array<{ language: string; patterns: RegExp[] }> = [
     {
+      language: 'en-ZA',
+      patterns: [/\b(english|speak english|in english|hello|please|thank you|yes|no|sorry|excuse me|how are you|can you|would you|could you|may i|confirm|residential)\b/i]
+    },
+    {
       language: 'af-ZA',
       patterns: [/\b(afrikaans|goeiedag|hallo|ek\b|jy\b|nie\b|praat|dankie|asseblief|m[ôo]re)\b/i]
     },
     {
       language: 'zu-ZA',
-      patterns: [/\b(zulu|sawubona|ngikhuluma|ngiyacela|ngiyabonga|yebo|cha|uxolo|ngifuna)\b/i]
+      patterns: [/\b(zulu|sawubona|ngikhuluma|ngiyacela|ngiyabonga|yebo|cha|uxolo|ngifuna|ngicela|ingabe|umnikazi)\b/i]
     },
     {
       language: 'xh-ZA',
@@ -960,7 +964,7 @@ function detectSupportedLanguageFromText(text: string, fallback = 'en-ZA'): stri
     },
     {
       language: 'el-GR',
-      patterns: [/\b(greek|γειά|γεια|ευχαριστώ|παρακαλώ)\b/i]
+      patterns: [/\b(greek|ελληνικά|γειά|γεια|ευχαριστώ|παρακαλώ|καλημέρα|ναι|όχι)\b/i]
     },
     {
       language: 'zh-CN',
@@ -1530,8 +1534,11 @@ app.post('/api/converse', converseLimiter, async (req, res) => {
       } catch { spokenText = plainResponse; }
     }
 
-    const audioBuffer = await voiceService.generateAudio(spokenText, { allowFallback: true, format: 'wav', language: lang });
-    res.json({ success: true, text: spokenText, language: lang, audioBase64: Buffer.from(audioBuffer).toString('base64') });
+    // Detect language from the AI's response (not the user's input) for accurate TTS voice
+    const responseLang = detectSupportedLanguageFromText(spokenText, lang);
+    console.log(`🗣️ TTS voice: ${responseLang} (user input detected: ${lang})`);
+    const audioBuffer = await voiceService.generateAudio(spokenText, { allowFallback: true, format: 'wav', language: responseLang });
+    res.json({ success: true, text: spokenText, language: responseLang, audioBase64: Buffer.from(audioBuffer).toString('base64') });
   } catch (err: any) {
     console.error('❌ Internal Neural Link Error:', err);
     res.status(500).json({ success: false, error: err?.message || 'Converse failed' });
