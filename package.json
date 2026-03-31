@@ -1,6 +1,6 @@
 {
   "name": "jb3ai-neural-hub",
-  "version": "1.0.0",
+  "version": "4.2.3",
   "description": "JB3Ai Neural Hub - Advanced multi-lingual outbound signal processing and intelligence platform.",
   "main": "server.ts",
   "scripts": {
