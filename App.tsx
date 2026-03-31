@@ -1512,7 +1512,7 @@ const App: React.FC = () => {
     }
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Voice input is not supported on this device. Please type your message or use Chrome on Android/desktop.');
+      alert('Speech recognition is not supported in this browser. Please use Safari, Chrome or Edge.');
       return;
     }
 
