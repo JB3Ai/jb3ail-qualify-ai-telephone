@@ -1419,25 +1419,14 @@ const App: React.FC = () => {
           }
           setTranscriptions(prev => [...prev, { role: 'model', text: d.text, timestamp: Date.now() }]);
           if (d.audioBase64) {
-            let player = document.getElementById('os3-audio-player') as HTMLAudioElement | null;
-            if (!player) {
-              player = document.createElement('audio');
-              player.id = 'os3-audio-player';
-              player.setAttribute('playsinline', 'true');
-              document.body.appendChild(player);
+            try {
+              const audio = new Audio(`data:audio/wav;base64,${d.audioBase64}`);
+              audio.setAttribute('playsinline', 'true');
+              audio.muted = isSpeakerMuted;
+              await audio.play();
+            } catch (e) {
+              console.error('Audio playback failed:', e);
             }
-            player.muted = isSpeakerMuted;
-            player.oncanplay = null; // clear any stale handler before src swap
-            player.src = `data:audio/wav;base64,${d.audioBase64}`;
-            player.load();
-            player.oncanplay = () => {
-              player!.oncanplay = null;
-              player!.play().catch(e => {
-                console.error('🍎 iOS Audio Blocked:', e);
-                alert("Tap OK to allow Zandi's audio to play.");
-                player?.play().catch(() => {});
-              });
-            };
           }
           setIsInternalSending(false);
           return;
