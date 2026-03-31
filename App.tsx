@@ -2441,6 +2441,16 @@ const App: React.FC = () => {
                           {getLanguageName(lang)}
                         </button>
                       ))}
+                      {([Language.SETSWANA, Language.SESOTHO] as Language[]).map(lang => (
+                        <button
+                          key={`opening-lang-${lang}`}
+                          onClick={() => alert('🔜 ' + getLanguageName(lang) + ' voice coming soon. Native TTS not yet available in this region.')}
+                          className="px-3 py-1 text-xs uppercase tracking-widest rounded-full border border-slate-700 text-slate-600 cursor-not-allowed"
+                          title="Coming soon — native TTS voice not yet available"
+                        >
+                          {getLanguageName(lang)}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
