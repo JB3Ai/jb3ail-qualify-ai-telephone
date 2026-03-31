@@ -1512,14 +1512,17 @@ const App: React.FC = () => {
     }
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
+      alert('Voice input is not supported on this device. Please type your message or use Chrome on Android/desktop.');
       return;
     }
 
     await wakeAudioEngine();
-    const micReady = await primeMicrophone();
-    if (!micReady) return;
-    await new Promise(resolve => setTimeout(resolve, 150));
+
+    // Release any existing getUserMedia stream — mobile browsers only allow
+    // one audio capture at a time, so the persistent stream blocks
+    // SpeechRecognition from accessing the mic.
+    releaseMicrophone();
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     const recognition = new SpeechRecognition();
     recognition.lang = activeClient?.language || Language.ENGLISH;
@@ -1537,10 +1540,14 @@ const App: React.FC = () => {
       console.error('Speech recognition error:', event.error);
       recognitionRef.current = null;
       setIsListening(false);
+      // Re-prime mic for audio playback after recognition fails
+      void primeMicrophone();
     };
     recognition.onend = () => {
       recognitionRef.current = null;
       setIsListening(false);
+      // Re-prime mic for audio playback after recognition ends
+      void primeMicrophone();
     };
     recognitionRef.current = recognition;
     try {
@@ -1549,6 +1556,7 @@ const App: React.FC = () => {
       console.error('Speech recognition start failed:', err);
       recognitionRef.current = null;
       setIsListening(false);
+      void primeMicrophone();
     }
   };
 
