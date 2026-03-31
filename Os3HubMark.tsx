@@ -13,7 +13,7 @@ export const Os3HubMark: React.FC<Os3HubMarkProps> = ({ size = 'md' }) => {
 
   return (
     <div className="os3-hub-mark" style={{ width: dim, height: dim, borderRadius: radius, padding: 0, overflow: 'hidden' }}>
-      <img src="./VG_icon.png" alt="OS³ VoiceGrid" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: radius }} />
+      <img src="./favicon.svg" alt="OS³ VoiceGrid" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: radius }} />
       <span className="os3-hub-status" style={statusStyle} />
     </div>
   );
