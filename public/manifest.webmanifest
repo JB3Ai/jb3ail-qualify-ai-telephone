@@ -2,21 +2,15 @@
   "name": "OS3 VoiceGrid",
   "short_name": "VoiceGrid",
   "description": "JB3Ai OS3 VoiceGrid live telephony console.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/os3grid/",
+  "scope": "/os3grid/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#020617",
+  "background_color": "#0b0e11",
+  "theme_color": "#0b0e11",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
+      "src": "/VG_icon.png",
+      "sizes": "256x256",
       "type": "image/png",
       "purpose": "any maskable"
     },
