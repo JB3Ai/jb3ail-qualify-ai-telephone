@@ -1505,7 +1505,7 @@ const App: React.FC = () => {
     micPrimedRef.current = false;
   }, []);
 
-  const toggleListening = async () => {
+  const toggleListening = () => {
     if (isListening) {
       recognitionRef.current?.stop();
       return;
@@ -1516,14 +1516,13 @@ const App: React.FC = () => {
       return;
     }
 
-    await wakeAudioEngine();
-
-    // Release any existing getUserMedia stream — mobile browsers only allow
-    // one audio capture at a time, so the persistent stream blocks
-    // SpeechRecognition from accessing the mic.
+    // Release any held getUserMedia stream so it doesn't block
+    // SpeechRecognition on mobile (single audio capture limit).
     releaseMicrophone();
-    await new Promise(resolve => setTimeout(resolve, 200));
 
+    // Start recognition synchronously from the tap — async gaps
+    // (await/setTimeout) break the user-gesture chain on mobile
+    // browsers and silently prevent recognition.start().
     const recognition = new SpeechRecognition();
     recognition.lang = activeClient?.language || Language.ENGLISH;
     recognition.interimResults = false;
@@ -1540,14 +1539,10 @@ const App: React.FC = () => {
       console.error('Speech recognition error:', event.error);
       recognitionRef.current = null;
       setIsListening(false);
-      // Re-prime mic for audio playback after recognition fails
-      void primeMicrophone();
     };
     recognition.onend = () => {
       recognitionRef.current = null;
       setIsListening(false);
-      // Re-prime mic for audio playback after recognition ends
-      void primeMicrophone();
     };
     recognitionRef.current = recognition;
     try {
@@ -1556,7 +1551,6 @@ const App: React.FC = () => {
       console.error('Speech recognition start failed:', err);
       recognitionRef.current = null;
       setIsListening(false);
-      void primeMicrophone();
     }
   };
 
