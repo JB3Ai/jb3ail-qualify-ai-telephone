@@ -1516,31 +1516,37 @@ const App: React.FC = () => {
       return;
     }
 
-    // Release any held getUserMedia stream so it doesn't block
-    // SpeechRecognition on mobile (single audio capture limit).
-    releaseMicrophone();
-
-    // Start recognition synchronously from the tap — async gaps
-    // (await/setTimeout) break the user-gesture chain on mobile
-    // browsers and silently prevent recognition.start().
     const recognition = new SpeechRecognition();
     recognition.lang = activeClient?.language || Language.ENGLISH;
-    recognition.interimResults = false;
-    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.continuous = true;
     recognition.onstart = () => setIsListening(true);
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0]?.[0]?.transcript;
-      if (transcript) {
-        setInternalInput(transcript);
-        handleInternalSend(transcript);
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+      if (finalTranscript) {
+        setInternalInput(finalTranscript);
+        handleInternalSend(finalTranscript);
       }
     };
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
-      recognitionRef.current = null;
-      setIsListening(false);
+      if (event.error !== 'no-speech') {
+        recognitionRef.current = null;
+        setIsListening(false);
+      }
     };
     recognition.onend = () => {
+      // Auto-restart if still in listening mode (mobile browsers
+      // stop recognition after silence; continuous keeps it alive)
+      if (recognitionRef.current && isListening) {
+        try { recognitionRef.current.start(); } catch { /* already running */ }
+        return;
+      }
       recognitionRef.current = null;
       setIsListening(false);
     };
