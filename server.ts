@@ -649,7 +649,7 @@ const getGoogleAuth = async (forceRefresh = false) => {
 };
 
   // 1.2 Lead Injection / Sheet Sync
-  const SPREADSHEET_ID = '1e4ZanBSWWDYkp-ww79vVl3SQZt294Zfhi7dvAkWKaN4';
+  const SPREADSHEET_ID = process.env.SPREADSHEET_ID || '1e4ZanBSWWDYkp-ww79vVl3SQZt294Zfhi7dvAkWKaN4';
   const RANGE = 'MZANZI_ENGINE!A4:J';
 
   // In-memory call tracking: CallSid → metadata

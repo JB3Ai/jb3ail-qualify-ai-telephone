@@ -14,5 +14,8 @@ os3grid-neural-hub-bfeb425b03a1.json
 *-credentials.json
 *.credentials.json
 
+# Build output (server)
+dist-server/
+
 # Generated archives
 *.zip
